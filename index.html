@@ -844,6 +844,13 @@
           <div class="settings-note">При загрузке PNG сайт автоматически обрезает пустые прозрачные края. Поэтому персонаж занимает реальный размер, а настройки положения работают точнее.</div>
         </section>
 
+        <section class="settings-group settings-server-group">
+          <h3>🌐 Сервер проекта</h3>
+          <label class="setting-field"><span><b>Backend URL</b><small>Скрытый сервер для AniList/Jikan и API-ключей. Для локального режима можно оставить пустым.</small></span><input id="settingBackendUrl" type="url" autocomplete="off" placeholder="https://myanimelist-api....workers.dev"></label>
+          <div class="settings-server-actions"><button id="settingBackendTest" class="secondary" type="button">↻ Проверить сервер</button><span id="settingBackendStatus">Не настроен</span></div>
+          <div class="settings-note">На публичном сайте Backend прячет ключи SubDL/Kodik и проксирует каталог, чтобы браузер не упирался в CORS/сбои прямых API-запросов.</div>
+        </section>
+
         <section class="settings-group">
           <h3>✨ Эффекты</h3>
           <label class="setting-toggle"><span><b>Анимации</b><small>Плавные наведения, появление карточек и окна</small></span><input id="settingAnimations" type="checkbox"><i></i></label>

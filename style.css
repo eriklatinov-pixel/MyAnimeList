@@ -1055,3 +1055,12 @@ body.sidebar-collapsed .sidebar-profile-copy{display:none!important;}
 #watchProviderBar [data-provider="kodik"].active{background:linear-gradient(135deg,#6b4b09,#b47b08);border-color:#d9a82d;color:#fff}
 #watchSubOffset{accent-color:var(--accent)}
 @media(max-width:760px){.watch-provider-bar{align-items:flex-start}.watch-provider-right{width:100%;margin-left:0;justify-content:space-between}.watch-sources-btn{margin-left:auto}.watch-source-config-actions{flex-direction:column}}
+
+/* V20 backend settings */
+.settings-server-group{position:relative;overflow:hidden}
+.settings-server-group:before{content:"";position:absolute;inset:auto -70px -90px auto;width:180px;height:180px;border-radius:50%;background:color-mix(in srgb,var(--accent2) 18%,transparent);filter:blur(24px);pointer-events:none}
+.settings-server-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+#settingBackendStatus{font-size:12px;color:var(--muted);font-weight:700}
+#settingBackendStatus[data-kind="ok"]{color:#65d98d}
+#settingBackendStatus[data-kind="loading"]{color:#c9b8ff}
+#settingBackendStatus[data-kind="error"]{color:#ff7890}
