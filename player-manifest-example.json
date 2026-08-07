@@ -1,0 +1,27 @@
+{
+  "title": "Example Anime",
+  "seasons": [
+    {
+      "number": 1,
+      "title": "Season 1",
+      "episodes": [
+        {
+          "number": 1,
+          "title": "Episode 1",
+          "duration": 1440,
+          "opening": {"start": 42, "end": 132},
+          "ending": {"start": 1328, "end": 1418},
+          "streams": [
+            {"name": "HLS master", "type": "hls", "provider": "MyProvider", "dub": "Master", "quality": "auto", "url": "https://example.com/episode-01/master.m3u8"},
+            {"name": "Russian dub", "type": "video", "provider": "MyProvider", "dub": "Русская", "quality": "1080p", "url": "https://example.com/episode-01-ru-1080.mp4"},
+            {"name": "Original", "type": "video", "provider": "MyProvider", "dub": "Оригинал", "quality": "1080p", "url": "https://example.com/episode-01-jp-1080.mp4"}
+          ],
+          "subtitles": [
+            {"id": "ru", "label": "Русские", "url": "https://example.com/episode-01-ru.vtt"},
+            {"id": "en", "label": "English", "url": "https://example.com/episode-01-en.srt"}
+          ]
+        }
+      ]
+    }
+  ]
+}

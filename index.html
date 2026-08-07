@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎌 Мой аниме-лист</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
+    <div class="sidebar-inner">
+      <div class="sidebar-head">
+        <button id="topBrandBtn" class="sidebar-brand" type="button" title="На обзор">
+          <span class="sidebar-brand-mark">◈</span>
+          <span class="sidebar-brand-copy"><strong id="topBrandName">Мой аниме-лист</strong><small>личная библиотека</small></span>
+        </button>
+        <button id="sidebarToggleBtn" class="sidebar-collapse-btn" type="button" aria-label="Свернуть меню" title="Свернуть меню">☰</button>
+      </div>
+
+      <div class="sidebar-search-wrap">
+        <button id="topSearchBtn" class="sidebar-search" type="button"><span>⌕</span><span class="sidebar-label-text">Поиск</span><kbd>/</kbd></button>
+      </div>
+
+      <div class="sidebar-group">
+        <button type="button" data-nav-target="top" class="sidebar-nav-btn active" data-sidebar-route="overview"><span class="sidebar-icon">⌂</span><span class="sidebar-label-text">Обзор</span></button>
+        <button id="topCatalogBtn" class="sidebar-nav-btn" type="button" data-sidebar-route="catalog"><span class="sidebar-icon">◇</span><span class="sidebar-label-text">Каталог</span><span id="sidebarCatalogTotal" class="sidebar-count">…</span></button>
+        <button type="button" data-nav-target="lists" class="sidebar-nav-btn" data-sidebar-route="list"><span class="sidebar-icon">▦</span><span class="sidebar-label-text">Мой список</span><span id="sidebarTotalCount" class="sidebar-count">0</span></button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">БИБЛИОТЕКА</div>
+      <div class="sidebar-group sidebar-library">
+        <button type="button" data-side-section="watching" class="sidebar-nav-btn"><span class="sidebar-icon">▶</span><span class="sidebar-label-text">Сейчас</span><span id="sidebarWatchingCount" class="sidebar-count">0</span></button>
+        <button type="button" data-side-section="planned" class="sidebar-nav-btn"><span class="sidebar-icon">▣</span><span class="sidebar-label-text">Посмотреть</span><span id="sidebarPlannedCount" class="sidebar-count">0</span></button>
+        <button type="button" data-nav-target="queueSection" class="sidebar-nav-btn"><span class="sidebar-icon">◷</span><span class="sidebar-label-text">Далее</span><span id="sidebarQueueCount" class="sidebar-count">0</span></button>
+        <button type="button" data-side-section="movies" class="sidebar-nav-btn"><span class="sidebar-icon">▤</span><span class="sidebar-label-text">Фильмы</span><span id="sidebarMoviesCount" class="sidebar-count">0</span></button>
+        <button type="button" data-side-section="completed" class="sidebar-nav-btn"><span class="sidebar-icon">✓</span><span class="sidebar-label-text">Посмотрел</span><span id="sidebarCompletedCount" class="sidebar-count">0</span></button>
+        <button type="button" data-side-section="paused" class="sidebar-nav-btn"><span class="sidebar-icon">Ⅱ</span><span class="sidebar-label-text">Отложено</span><span id="sidebarPausedCount" class="sidebar-count">0</span></button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">ОТКРЫТЬ НОВОЕ</div>
+      <div class="sidebar-group">
+        <button id="sidebarForYouBtn" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">✦</span><span class="sidebar-label-text">Для тебя</span></button>
+        <button id="topRandomBtn" class="sidebar-nav-btn" type="button" title="Случайное аниме из всей базы, без OVA"><span class="sidebar-icon">⤨</span><span class="sidebar-label-text">Случайное</span></button>
+      </div>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-bottom">
+        <button id="profileFutureBtn" class="sidebar-profile-btn" type="button" title="Открыть профиль">
+          <span id="sidebarProfileAvatar" class="sidebar-profile-avatar">•</span>
+          <span class="sidebar-profile-copy sidebar-label-text">
+            <span class="sidebar-profile-topline"><strong id="sidebarProfileName">Профиль</strong><b id="sidebarProfileLevel">LVL 1</b></span>
+            <span class="sidebar-profile-xp"><i id="sidebarProfileXpBar"></i></span>
+            <span class="sidebar-profile-meta"><small id="sidebarProfileXpText">0 / 100 XP</small><small><span id="sidebarProfileStars">0</span> ✦ · <span id="sidebarProfileTickets">0</span> 🎴 · <span id="sidebarProfileWaifuTickets">0</span> 💗</small></span>
+          </span>
+          <span class="sidebar-profile-arrow sidebar-label-text">›</span>
+        </button>
+        <button id="topSettingsBtn" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">⚙</span><span class="sidebar-label-text">Настройки</span></button>
+        <div class="sidebar-status"><span class="status-dot"></span><span class="sidebar-label-text">Данные локально</span></div>
+      </div>
+    </div>
+  </aside>
+  <button id="sidebarMobileBtn" class="sidebar-mobile-btn" type="button" aria-label="Открыть меню">☰</button>
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+  <main id="top" class="page">
+    <header class="hero hero-live">
+      <div id="heroTrailerLayer" class="hero-trailer-layer" aria-hidden="true"></div>
+      <div class="hero-live-shade" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <div id="heroEyebrow" class="eyebrow">ТВОЁ АНИМЕ-ПРОСТРАНСТВО</div>
+        <h1 id="siteTitle">Привет 👋</h1>
+        <p id="siteTagline">Рад тебя видеть.</p>
+        <div class="hero-live-meta"><span id="heroTrailerBadge" class="hero-trailer-badge hidden">▶ живой аниме-фон · без звука</span><span id="heroSiteNameChip" class="hero-site-chip">Мой аниме-лист</span></div>
+        <div id="heroStats" class="hero-stats"></div>
+      </div>
+      <div class="header-actions">
+        <button id="settingsBtn" class="secondary settings-top-btn">⚙️ Настройки</button>
+        <button id="copyBtn" class="secondary">📋 Скопировать список</button>
+        <button id="coversBtn" class="secondary">🖼️ Обновить данные</button>
+        <button id="exportBtn" class="secondary">📤 Экспорт</button>
+        <button id="backupBtn" class="secondary">💾 Резервная копия</button>
+        <button id="importBtn" class="secondary">📂 Импорт</button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <section id="homePulse" class="home-pulse panel" aria-label="Продолжить просмотр"></section>
+
+    <section id="catalogView" class="catalog-view hidden" aria-label="Каталог аниме">
+      <div class="catalog-hero">
+        <div>
+          <div class="catalog-kicker">DISCOVER · ТВОЙ КАТАЛОГ</div>
+          <h2>Найди, что смотреть дальше</h2>
+          <p>Большой каталог с живой выдачей, фильтрами и рекомендациями по твоим оценкам. Список остаётся локальным — наружу ничего не отправляется.</p>
+          <div class="catalog-universe-line"><span class="catalog-live-dot"></span><strong id="catalogUniverseCount">Считаю базу…</strong><span>·</span><span id="catalogSourceStatus">AniList + резервный источник</span></div>
+        </div>
+        <div class="catalog-hero-actions">
+          <button id="catalogHomeBtn" class="secondary" type="button">← К моему списку</button>
+          <button id="catalogRandomBtn" type="button">🎲 Случайное</button>
+        </div>
+      </div>
+
+      <div class="catalog-quick" id="catalogQuick">
+        <button type="button" data-catalog-preset="for-you" class="active">✨ Для тебя</button>
+        <button type="button" data-catalog-preset="trending">🔥 В тренде</button>
+        <button type="button" data-catalog-preset="best">⭐ Лучшее</button>
+        <button type="button" data-catalog-preset="airing">📡 Онгоинги</button>
+        <button type="button" data-catalog-preset="new">🆕 Новинки</button>
+        <button type="button" data-catalog-preset="movies">🎬 Фильмы</button>
+        <button type="button" data-catalog-preset="short">⚡ До 13 серий</button>
+      </div>
+
+      <section id="catalogPersonalSection" class="catalog-personal panel">
+        <div class="catalog-section-head">
+          <div>
+            <span class="catalog-mini-kicker">ПЕРСОНАЛЬНО</span>
+            <h3>✨ Тебе может понравиться</h3>
+            <p id="catalogTasteHint">Собираю твой профиль вкуса по просмотренному и оценкам…</p>
+          </div>
+          <button id="catalogRefreshRecBtn" class="secondary" type="button">↻ Пересчитать</button>
+        </div>
+        <div id="catalogTasteChips" class="catalog-taste-chips"></div>
+        <div id="catalogPersonalRail" class="catalog-personal-rail"><div class="catalog-skeleton-row"></div></div>
+      </section>
+
+      <div class="catalog-layout">
+        <aside class="catalog-filters panel">
+          <div class="catalog-filter-title"><div><span>◫</span><b>Фильтры</b></div><button id="catalogResetBtn" type="button">Сбросить</button></div>
+          <label class="catalog-search-field"><span>⌕</span><input id="catalogSearch" type="search" placeholder="Название аниме…" autocomplete="off"></label>
+
+          <div class="catalog-filter-pair">
+            <label><span>Сортировка</span><select id="catalogSort"><option value="POPULARITY_DESC">Популярные</option><option value="SCORE_DESC">По оценке</option><option value="TRENDING_DESC">Сейчас в тренде</option><option value="START_DATE_DESC">Сначала новые</option></select></label>
+            <label><span>Тип</span><select id="catalogFormat"><option value="">Любой</option><option value="TV">TV</option><option value="MOVIE">Фильм</option><option value="OVA">OVA</option><option value="ONA">ONA</option><option value="SPECIAL">Спешл</option></select></label>
+          </div>
+          <label><span>Статус</span><select id="catalogStatus"><option value="">Любой</option><option value="FINISHED">Завершён</option><option value="RELEASING">Онгоинг</option><option value="NOT_YET_RELEASED">Анонс</option></select></label>
+          <label><span>Жанр</span><select id="catalogGenre"><option value="">Все жанры</option></select></label>
+
+          <div class="catalog-year-row">
+            <label><span>Год от</span><input id="catalogYearFrom" type="number" min="1960" max="2035" placeholder="1990"></label>
+            <label><span>до</span><input id="catalogYearTo" type="number" min="1960" max="2035" placeholder="2026"></label>
+          </div>
+
+          <label class="catalog-range"><span><b>Минимальная оценка</b><small id="catalogScoreValue">без ограничения</small></span><input id="catalogScore" type="range" min="0" max="90" step="5" value="0"></label>
+          <label><span>Длина</span><select id="catalogLength"><option value="">Любая</option><option value="13">До 13 серий</option><option value="26">До 26 серий</option><option value="50">До 50 серий</option><option value="long">Больше 50 серий</option></select></label>
+
+          <div class="catalog-toggles">
+            <label><input id="catalogHideOwned" type="checkbox" checked><span><b>Не показывать мой список</b><small>Уже добавленное не мешает искать новое</small></span></label>
+            <label><input id="catalogFirstSeason" type="checkbox" checked><span><b>Только начало франшизы</b><small>Скрывает отдельные 2/3/Final сезоны</small></span></label>
+          </div>
+          <button id="catalogApplyBtn" class="catalog-apply-btn" type="button">Показать</button>
+          <div class="catalog-filter-note">Фильтры сохраняются в этом браузере.</div>
+        </aside>
+
+        <section class="catalog-main">
+          <div class="catalog-results-head">
+            <div><span id="catalogModeLabel">КАТАЛОГ</span><h3 id="catalogResultsTitle">Популярное аниме</h3></div>
+            <div id="catalogResultCount" class="catalog-result-count">—</div>
+          </div>
+          <div id="catalogGrid" class="catalog-grid"></div>
+          <div id="catalogEmpty" class="catalog-empty hidden"><span>🌙</span><b id="catalogEmptyTitle">Ничего не нашлось</b><p id="catalogEmptyText">Попробуй ослабить фильтры или выбрать другую подборку.</p><div class="catalog-empty-actions"><button id="catalogRetryBtn" class="secondary" type="button">↻ Повторить</button><button id="catalogEmptyResetBtn" type="button">Сбросить фильтры</button></div></div>
+          <div id="catalogScrollSentinel" class="catalog-scroll-sentinel" aria-hidden="true"></div>
+          <div class="catalog-load-wrap"><button id="catalogLoadMore" class="secondary hidden" type="button">Показать ещё</button><small id="catalogAutoLoadNote">Листай вниз — следующая страница подгрузится сама.</small></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="searchSection" class="search-panel panel">
+      <form id="searchForm">
+        <input id="searchInput" autocomplete="off" placeholder="Например: Cyberpunk Edgerunners" minlength="2">
+        <button type="submit">Найти</button>
+      </form>
+      <div id="message" class="message"></div>
+      <div id="results" class="results"></div>
+    </section>
+
+    <section id="queueSection" class="queue panel">
+      <div class="section-head queue-section-head">
+        <h2>🗓️ Далее</h2>
+        <div class="queue-head-actions">
+          <small>↑ ↓ — порядок · ✕ — убрать</small>
+          <button id="queueAddBtn" class="secondary queue-add-btn" type="button">＋ Добавить</button>
+        </div>
+      </div>
+      <div id="nextQueue" class="queue-list"></div>
+    </section>
+
+    <section id="lists" class="lists"></section>
+  </main>
+
+  <footer id="appFooter" class="app-footer">
+    <div class="footer-glow"></div>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="footer-brand-line"><span class="footer-mark">🎌</span><strong id="footerSiteName">My Anime List</strong></div>
+        <p id="footerTagline">Мой личный аниме-трекер.</p>
+        <button class="footer-top-btn" type="button" onclick="scrollToV8('top')">↑ Наверх</button>
+      </div>
+      <div class="footer-col"><h4>Навигация</h4><button onclick="scrollToV8('top')">Главная</button><button id="footerCatalogBtn" type="button">Каталог</button><button onclick="scrollToV8('searchSection')">Поиск аниме</button><button onclick="scrollToV8('queueSection')">Очередь «Далее»</button></div>
+      <div class="footer-col"><h4>Мой список</h4><button onclick="scrollSectionV8('watching')">Сейчас</button><button onclick="scrollSectionV8('planned')">Посмотреть</button><button onclick="scrollSectionV8('completed')">Посмотрел</button><button onclick="scrollSectionV8('paused')">Отложено</button></div>
+      <div class="footer-col"><h4>Локально</h4><span>Данные хранятся в браузере</span><span>AniList + MyAnimeList/Jikan</span><button onclick="document.getElementById('settingsBtn').click()">⚙️ Настроить вид</button></div>
+    </div>
+    <div class="footer-bottom"><span id="footerCopyright">© 2026 My Anime List</span><span>Сделано для личного использования · без аккаунта и сервера</span></div>
+  </footer>
+
+  <div id="mascotDock" class="mascot-dock hidden" aria-label="Персональная картинка">
+    <button id="mascotButton" class="mascot-button" type="button" title="Кликни :)" aria-label="Персональная картинка">
+      <img id="mascotPrimary" class="mascot-img mascot-primary" alt="">
+      <img id="mascotAlt" class="mascot-img mascot-alt" alt="">
+    </button>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h3 id="modalTitle">Переместить аниме?</h3>
+      <p id="modalText"></p>
+      <div id="modalActions" class="modal-actions"></div>
+      <button id="modalCancel" class="ghost">Отмена</button>
+    </div>
+  </div>
+
+
+  <div id="detailModal" class="detail-modal hidden" role="dialog" aria-modal="true">
+    <div class="detail-shell">
+      <button id="detailClose" class="detail-close" aria-label="Закрыть">✕</button>
+      <div id="detailHero" class="detail-hero">
+        <div class="detail-hero-shade"></div>
+        <div class="detail-hero-copy">
+          <div id="detailKicker" class="detail-kicker">АНИМЕ</div>
+          <h2 id="detailTitle">Загрузка…</h2>
+          <div id="detailAltTitle" class="detail-alt-title"></div>
+          <div id="detailBadges" class="detail-badges"></div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <aside class="detail-sidebar">
+          <img id="detailCover" class="detail-cover" alt="">
+          <div id="detailCoverPlaceholder" class="detail-cover detail-cover-placeholder">🎌</div>
+          <button id="detailWatchHere" class="detail-watch-here" type="button">▶ Смотреть здесь</button>
+          <button id="detailShareAnime" class="detail-share-anime" type="button">↗ Поделиться</button>
+          <div id="detailWatchHint" class="detail-watch-hint"></div>
+          <div class="detail-control-card">
+            <label>Моя оценка
+              <select id="detailUserScore">
+                <option value="">Без оценки</option>
+                <option value="10">10 — шедевр</option><option value="9">9 — отлично</option>
+                <option value="8">8 — очень хорошо</option><option value="7">7 — хорошо</option>
+                <option value="6">6 — нормально</option><option value="5">5 — средне</option>
+                <option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+              </select>
+            </label>
+            <label>Просмотрено серий
+              <div class="progress-editor"><button id="progressMinus" type="button">−</button><input id="detailProgress" type="number" min="0" value="0"><button id="progressPlus" type="button">+</button></div>
+            </label>
+            <label>Раздел
+              <select id="detailSection"></select>
+            </label>
+            <button id="detailSave" class="detail-save">💾 Сохранить</button>
+          </div>
+        </aside>
+        <section class="detail-main">
+          <div id="detailFacts" class="detail-facts"></div>
+          <div id="detailGenres" class="detail-genres"></div>
+          <section id="detailPartsSection" class="detail-parts-section hidden">
+            <div class="detail-section-title compact parts-title-row">
+              <div><h3>Сезоны и части</h3><small id="detailPartsStatus">Собираю основную историю…</small></div>
+            </div>
+            <div id="detailParts" class="detail-parts-list"></div>
+          </section>
+          <div class="detail-section-title">
+            <h3>Описание</h3>
+            <div class="detail-language-switch" aria-label="Язык описания">
+              <button id="detailRuDescription" type="button" class="mini-tab">🇷🇺 RU</button>
+              <button id="detailEnDescription" type="button" class="mini-tab active">EN</button>
+            </div>
+          </div>
+          <p id="detailDescription" class="detail-description">Загружаю информацию…</p>
+          <div id="detailDescriptionSource" class="detail-description-source"></div>
+          <div id="detailExtra" class="detail-extra"></div>
+
+          <section id="detailThemesSection" class="detail-lower-section hidden">
+            <div class="detail-section-title compact themes-title-row">
+              <div><h3>Музыка всей франшизы</h3><small id="detailThemesStatus">Собираю OP/ED из основной цепочки сезонов…</small></div>
+              <button id="detailThemesRefresh" class="themes-refresh-btn" type="button" title="Заново проверить все части">↻ Обновить</button>
+            </div>
+            <div id="detailPrimaryOpening" class="primary-opening hidden"></div>
+            <div class="theme-folds">
+              <details id="detailOpeningsFold" class="theme-fold">
+                <summary>🎵 Опенинги <span id="detailOpeningsCount"></span></summary>
+                <div id="detailOpenings" class="theme-list"></div>
+              </details>
+              <details id="detailEndingsFold" class="theme-fold">
+                <summary>🌙 Эндинги <span id="detailEndingsCount"></span></summary>
+                <div id="detailEndings" class="theme-list"></div>
+              </details>
+            </div>
+          </section>
+
+          <section id="detailReviewsSection" class="detail-lower-section hidden">
+            <div class="detail-section-title compact">
+              <div><h3>Мнения зрителей</h3><small id="detailReviewsStatus">Загружаю несколько коротких отзывов…</small></div>
+            </div>
+            <div id="detailReviews" class="review-grid"></div>
+          </section>
+        </section>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="watchModal" class="watch-modal hidden" role="dialog" aria-modal="true">
+    <div class="watch-shell">
+      <header class="watch-head">
+        <div class="watch-head-left">
+          <button id="watchClose" class="watch-back" type="button" aria-label="Назад">←</button>
+          <div>
+            <div class="watch-kicker">ПРОСМОТР</div>
+            <h2 id="watchTitle">Аниме</h2>
+            <div id="watchMeta" class="watch-meta"></div>
+          </div>
+        </div>
+        <div class="watch-head-actions">
+          <button id="watchPartyBtn" class="watch-party-btn" type="button">◉ Смотреть вместе <span>позже</span></button>
+        </div>
+      </header>
+
+      <div class="watch-layout">
+        <main class="watch-stage">
+          <div id="watchVideoAnchor" class="watch-video-anchor" aria-hidden="true"></div>
+          <div id="watchVideoWrap" class="watch-video-wrap">
+            <video id="watchVideo" class="watch-video" controls playsinline preload="metadata"></video>
+            <div id="watchSubtitleOverlay" class="watch-subtitle-overlay hidden" aria-live="off"></div>
+            <button id="watchSkipSegment" class="watch-skip-segment hidden" type="button">Пропустить опенинг →</button>
+            <button id="watchMiniClose" class="watch-mini-close hidden" type="button" title="Вернуть плеер на место">↙</button>
+            <iframe id="watchEmbed" class="watch-embed hidden" title="Внешний видеоплеер" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
+            <div id="watchEmpty" class="watch-empty">
+              <div class="watch-empty-icon">▶</div>
+              <h3 id="watchEmptyTitle">Ищу серию…</h3>
+              <p id="watchEmptyText">В режиме «Авто» сайт сам переберёт подключённые источники и выберет подходящий. Ручной URL остаётся только запасным вариантом.</p>
+              <div class="watch-empty-actions">
+                <button id="watchRetryAuto" type="button">↻ Найти ещё раз</button>
+                <button id="watchPickFolder" class="secondary" type="button">📁 Локальная папка</button>
+                <button id="watchImportManifest" class="secondary" type="button">↥ Manifest</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="watchProviderBar" class="watch-provider-bar">
+            <div class="watch-provider-left">
+              <span class="watch-provider-label">ИСТОЧНИК</span>
+              <button type="button" data-provider="auto">✦ Авто</button>
+              <button type="button" data-provider="aniliberty">🟣 AniLiberty</button>
+              <button type="button" data-provider="kodik">◆ Kodik</button>
+            </div>
+            <div class="watch-provider-right">
+              <span id="watchProviderState" class="watch-provider-state">Авто · ищу лучший источник</span>
+              <button id="watchSourcesBtn" class="secondary watch-sources-btn" type="button">⚙ Источники</button>
+            </div>
+          </div>
+          <div id="watchProviderHelp" class="watch-provider-help"><strong>Авто:</strong> сначала пробует нативный HLS, затем резервные провайдеры. Озвучки и субтитры собираются в одном интерфейсе.</div>
+
+          <div class="watch-quickbar">
+            <div class="watch-quick-left">
+              <button id="watchPrevEpisode" class="secondary" type="button" title="Предыдущая серия">⏮ <span>Пред.</span></button>
+              <button id="watchSkipOp" class="secondary hidden" type="button">⏭ OP</button>
+              <button id="watchSkipEd" class="secondary hidden" type="button">⏭ ED</button>
+              <button id="watchNextEpisode" class="secondary" type="button" title="Следующая серия"><span>След.</span> ⏭</button>
+            </div>
+            <div class="watch-quick-right">
+              <button id="watchToggleSubs" class="secondary" type="button" title="Субтитры">CC</button>
+              <button id="watchPip" class="secondary" type="button" title="Картинка в картинке">▣ PiP</button>
+              <button id="watchSettingsBtn" class="secondary" type="button" title="Настройки плеера">⚙ Настройки</button>
+              <button id="watchFullscreen" class="secondary" type="button" title="Полный экран">⛶</button>
+            </div>
+          </div>
+
+          <div id="watchSettingsDrawer" class="watch-settings-drawer hidden">
+            <div class="watch-settings-head"><div><span>PLAYER</span><h3>Настройки просмотра</h3></div><button id="watchSettingsClose" class="secondary" type="button">✕</button></div>
+            <div class="watch-settings-grid">
+              <section class="watch-setting-card">
+                <h4>Воспроизведение</h4>
+                <label>Скорость<select id="watchSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option></select></label>
+                <label class="watch-setting-toggle"><input id="watchAutoSkipOp" type="checkbox"><span>Автопропуск опенинга</span></label>
+                <label class="watch-setting-toggle"><input id="watchAutoSkipEd" type="checkbox"><span>Автопропуск эндинга</span></label>
+                <label class="watch-setting-toggle"><input id="watchMiniPlayer" type="checkbox" checked><span>Мини-плеер при скролле</span></label>
+                <label class="watch-setting-toggle"><input id="watchRememberVolume" type="checkbox" checked><span>Запоминать громкость</span></label>
+              </section>
+              <section class="watch-setting-card watch-setting-sources">
+                <h4>Источники</h4>
+                <p class="watch-setting-help">AniLiberty работает без ключа. Для нескольких озвучек можно добавить свой Kodik API token. Для автоматических RU/EN субтитров — бесплатный SubDL API key.</p>
+                <label>Kodik API token<input id="watchKodikToken" type="password" autocomplete="off" placeholder="необязательно"></label>
+                <label>SubDL API key<input id="watchSubdlKey" type="password" autocomplete="off" placeholder="необязательно"></label>
+                <label class="watch-setting-toggle"><input id="watchAutoSubtitles" type="checkbox" checked><span>Автоматически искать RU/EN субтитры</span></label>
+                <label class="watch-setting-toggle"><input id="watchPreferNative" type="checkbox" checked><span>Предпочитать наш нативный HLS-плеер</span></label>
+                <div class="watch-source-config-actions"><button id="watchSaveSources" type="button">Сохранить</button><button id="watchTestSources" class="secondary" type="button">Проверить</button></div>
+                <div id="watchSourceConfigStatus" class="watch-source-config-status">AniLiberty · готов</div>
+              </section>
+              <section class="watch-setting-card">
+                <h4>Субтитры</h4>
+                <label>Размер <span id="watchSubSizeValue">26 px</span><input id="watchSubSize" type="range" min="16" max="42" step="1" value="26"></label>
+                <label>Фон <span id="watchSubBgValue">72%</span><input id="watchSubBg" type="range" min="0" max="100" step="5" value="72"></label>
+                <label>Позиция<select id="watchSubPosition"><option value="bottom">Снизу</option><option value="middle">По центру</option><option value="top">Сверху</option></select></label>
+                <label>Синхронизация <span id="watchSubOffsetValue">0.0 с</span><input id="watchSubOffset" type="range" min="-5" max="5" step="0.1" value="0"></label>
+                <div class="watch-color-row"><label>Текст<input id="watchSubColor" type="color" value="#ffffff"></label><label>Фон<input id="watchSubBgColor" type="color" value="#000000"></label></div>
+                <label class="watch-setting-toggle"><input id="watchSubShadow" type="checkbox" checked><span>Контур / тень</span></label>
+              </section>
+              <section class="watch-setting-card watch-setting-subs">
+                <h4>Добавить субтитры</h4>
+                <p>Плеер понимает WebVTT и SRT. Если источник отдаёт дорожки сам, они появятся в селекте автоматически.</p>
+                <button id="watchImportSubtitle" class="secondary" type="button">＋ SRT / VTT файл</button>
+                <div class="watch-sub-url-row"><input id="watchSubtitleLabel" type="text" maxlength="40" placeholder="Название: Русские"><input id="watchSubtitleUrl" type="url" placeholder="https://.../subtitles.vtt"><button id="watchAddSubtitleUrl" type="button">Добавить URL</button></div>
+              </section>
+              <section class="watch-setting-card">
+                <h4>Горячие клавиши</h4>
+                <div class="watch-shortcuts"><span><kbd>Space</kbd> пауза</span><span><kbd>← →</kbd> ±5 сек</span><span><kbd>J L</kbd> ±10 сек</span><span><kbd>M</kbd> звук</span><span><kbd>F</kbd> полный экран</span><span><kbd>P</kbd> PiP</span><span><kbd>C</kbd> субтитры</span><span><kbd>O</kbd> пропустить OP</span></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="watch-control-deck">
+            <div class="watch-select-group">
+              <label><span>Озвучка</span><select id="watchDub"></select></label>
+              <label><span>Субтитры</span><select id="watchSubs"></select></label>
+              <label><span>Качество</span><select id="watchQuality"></select></label>
+            </div>
+            <label class="watch-toggle"><input id="watchAutoNext" type="checkbox" checked><span>Автопереход</span></label>
+          </div>
+
+          <div id="watchSourceNote" class="watch-source-note"></div>
+
+          <section class="watch-comments">
+            <div class="watch-comments-head">
+              <div><span>ОБСУЖДЕНИЕ</span><h3>Комментарии</h3></div>
+              <div class="watch-comment-scope" id="watchCommentScope">
+                <button type="button" data-scope="episode" class="active">Серия</button>
+                <button type="button" data-scope="season">Сезон</button>
+                <button type="button" data-scope="title">Весь тайтл</button>
+              </div>
+            </div>
+            <div id="watchCommentContext" class="watch-comment-context"></div>
+            <div id="watchCommentsList" class="watch-comments-list"></div>
+            <div class="watch-comment-compose">
+              <textarea id="watchCommentText" rows="2" maxlength="1200" placeholder="Написать комментарий…"></textarea>
+              <button id="watchCommentSend" type="button">Отправить</button>
+            </div>
+            <div class="watch-comments-note">Пока комментарии хранятся локально. Когда сайт будет опубликован, этот же интерфейс можно подключить к аккаунтам и общей базе.</div>
+          </section>
+        </main>
+
+        <aside class="watch-episodes-panel">
+          <div class="watch-panel-title">
+            <div><span>ЭПИЗОДЫ</span><h3 id="watchEpisodeTitle">Серия 1</h3></div>
+            <div id="watchProgressPill" class="watch-progress-pill">0 / 0</div>
+          </div>
+          <div class="watch-season-block">
+            <div id="watchPartCurrent" class="watch-part-current"></div>
+            <div id="watchSeasonTabs" class="watch-season-tabs"></div>
+          </div>
+          <div id="watchEpisodeGrid" class="watch-episode-grid"></div>
+          <div class="watch-online-box watch-manual-source">
+            <div class="watch-online-title"><strong>🧰 Дополнительный источник</strong><span id="watchOnlineKindLabel">HLS / MP4</span></div>
+            <div class="watch-online-row">
+              <input id="watchOnlineUrl" type="url" autocomplete="off" placeholder="https://.../master.m3u8">
+              <button id="watchAddOnline" type="button">Подключить</button>
+            </div>
+            <small id="watchOnlineHelp">Необязательно: можно подключить свой HLS/MP4 или разрешённый embed как дополнительный источник.</small>
+          </div>
+          <div id="watchResolverStatus" class="watch-resolver-status">
+            <div><strong>Автопоиск</strong><span>готов</span></div>
+            <small>Провайдеры проверяются по очереди для выбранной серии.</small>
+          </div>
+          <div class="watch-library-tools">
+            <button id="watchPickFolderSide" class="secondary" type="button">📁 Локальные серии</button>
+            <button id="watchImportManifestSide" class="secondary" type="button">↥ Manifest</button>
+          </div>
+          <div class="watch-help">
+            <strong>Плеер</strong>
+            <p>Поддерживает HLS <code>.m3u8</code>, <code>.mp4/.webm</code>, несколько аудиодорожек, <code>.vtt/.srt</code>, PiP, OP/ED таймкоды и сохранение позиции.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <input id="watchFolderInput" type="file" webkitdirectory directory multiple hidden>
+    <input id="watchManifestInput" type="file" accept="application/json,.json" hidden>
+    <input id="watchSubtitleInput" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
+  </div>
+
+
+  <div id="profileModal" class="profile-modal hidden" role="dialog" aria-modal="true" aria-label="Профиль">
+    <div class="profile-shell">
+      <header class="profile-head">
+        <div class="profile-identity">
+          <div id="profileAvatar" class="profile-avatar"><span id="profileAvatarFallback">•</span><img id="profileAvatarImage" alt="" class="hidden"></div>
+          <div>
+            <div class="profile-kicker">LOCAL PROFILE · V19</div>
+            <h2 id="profileName">Профиль</h2>
+            <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span></div>
+          </div>
+        </div>
+        <div class="profile-head-actions">
+          <button id="profileAdminBtn" class="profile-admin-btn hidden" type="button">◆ Admin</button>
+          <button id="profileQuickEditBtn" class="profile-quick-edit" type="button">✎ Редактировать</button>
+          <button id="profileClose" class="profile-close" type="button" aria-label="Закрыть">✕</button>
+        </div>
+      </header>
+
+      <section class="profile-progress-card">
+        <div class="profile-level-main">
+          <div><span>УРОВЕНЬ</span><strong id="profileLevelBig">1</strong></div>
+          <div class="profile-xp-copy"><b id="profileXpText">0 / 100 XP</b><small id="profileNextReward">Следующий уровень · +60 ✦</small></div>
+        </div>
+        <div class="profile-xp-track"><i id="profileXpBar"></i></div>
+        <div class="profile-currencies profile-main-stats">
+          <div><span>✦</span><b id="profileStars">0</b><small>Stars</small></div>
+          <div><span>▶</span><b id="profileVerifiedEpisodes">0</b><small>честных серий</small></div>
+          <div><span>🏁</span><b id="profileClosedTitles">0</b><small>тайтлов закрыто</small></div>
+          <div><span>🏆</span><b id="profileAchievementCount">0</b><small>достижений</small></div>
+        </div>
+      </section>
+
+      <nav id="profileTabs" class="profile-tabs">
+        <button type="button" data-profile-tab="overview" class="active">Обзор</button>
+        <button type="button" data-profile-tab="customize">🎨 Мой профиль</button>
+        <button type="button" data-profile-tab="quests">Задания</button>
+        <button type="button" data-profile-tab="achievements">Достижения</button>
+        <button type="button" data-profile-tab="collection">Коллекция</button>
+        <button type="button" data-profile-tab="shop">Магазин</button>
+        <button type="button" data-profile-tab="activity">Активность</button>
+      </nav>
+
+      <div class="profile-body">
+        <section id="profileTabOverview" class="profile-tab-pane active">
+          <div class="profile-overview-grid">
+            <article class="profile-info-card">
+              <div class="profile-card-kicker">КАК РАБОТАЕТ XP</div>
+              <h3>Считается реальный просмотр</h3>
+              <p>Серия получает награду только после просмотра ≥82% уникальной временной шкалы. Перемотка и повтор одного куска XP не фармят.</p>
+              <div class="profile-rule-list">
+                <span>+25 XP · серия</span><span>+150 XP · сезон</span><span>+300 XP · тайтл</span><span>ручной прогресс · 0 XP</span>
+              </div>
+            </article>
+            <article class="profile-info-card supporter-preview">
+              <div class="profile-card-kicker">SUPPORTER · ПОЗЖЕ</div>
+              <h3>Платить за просмотр не придётся</h3>
+              <p>Если сайт когда-нибудь выйдет публично, Premium будет только про косметику: рамки, темы, эффекты профиля и значок поддержки.</p>
+              <button id="profileSupporterInfo" class="secondary" type="button">Что можно добавить</button>
+            </article>
+          </div>
+          <div id="profileOverviewBlocks" class="profile-overview-blocks">
+            <section id="profileBlockFavorites" class="profile-overview-block">
+              <div class="profile-section-head"><div><span>ВИТРИНА</span><h3>Любимые аниме</h3></div><button id="profileChooseFavorites" class="secondary" type="button">★ Выбрать</button></div>
+              <div id="profileFavorites" class="profile-favorites-grid"></div>
+              <div id="profileCardShowcaseWrap" class="profile-card-showcase-wrap hidden">
+                <div class="profile-card-showcase-head"><span>КАРТОЧКИ НА ВИТРИНЕ</span><small>Выбираются во вкладке «Коллекция»</small></div>
+                <div id="profileCardShowcase" class="profile-card-showcase"></div>
+              </div>
+            </section>
+            <section id="profileBlockStats" class="profile-overview-block">
+              <div class="profile-section-head"><div><span>СВОДКА</span><h3>Твоя активность</h3></div></div>
+              <div id="profileOverviewStats" class="profile-overview-stats"></div>
+            </section>
+            <section id="profileBlockList" class="profile-overview-block">
+              <div class="profile-section-head profile-list-heading"><div><span>БИБЛИОТЕКА</span><h3>Мой аниме-лист</h3></div><small id="profileListCount"></small></div>
+              <div id="profileListFilters" class="profile-list-filters"></div>
+              <div id="profileCompactList" class="profile-compact-list"></div>
+            </section>
+            <section id="profileBlockComments" class="profile-overview-block profile-comments-block">
+              <div class="profile-section-head"><div><span>ГОСТЕВАЯ</span><h3>Комментарии профиля</h3></div><small id="profileCommentsCount">0 комментариев</small></div>
+              <div class="profile-comment-composer">
+                <div id="profileCommentComposerAvatar" class="profile-comment-avatar">S</div>
+                <div class="profile-comment-compose-main">
+                  <textarea id="profileCommentInput" maxlength="400" rows="2" placeholder="Оставить запись в профиле..."></textarea>
+                  <div class="profile-comment-compose-foot"><span>Сейчас комментарии локальные · после аккаунтов станут общей гостевой</span><div><small id="profileCommentChars">0 / 400</small><button id="profileCommentSend" type="button">Отправить</button></div></div>
+                </div>
+              </div>
+              <div id="profileCommentsList" class="profile-comments-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="profileTabCustomize" class="profile-tab-pane">
+          <div class="profile-customize-grid">
+            <article class="profile-custom-card profile-custom-wide">
+              <div class="profile-card-kicker">PUBLIC PROFILE</div>
+              <h3>Как выглядит твоя страница</h3>
+              <p class="profile-custom-help">Все настройки пока хранятся только у тебя. Если появятся аккаунты — это станет публичной страницей профиля.</p>
+              <div class="profile-form-grid">
+                <label><span>Ник</span><input id="profileCustomNickname" maxlength="32" placeholder="Твой ник"></label>
+                <label><span>Заголовок профиля</span><input id="profileCustomTitle" maxlength="70" placeholder="Например: вечерний смотритель аниме"></label>
+                <label><span>Статус</span><input id="profileCustomStatus" maxlength="60" placeholder="Например: смотрю без спешки"></label>
+                <label class="profile-field-full"><span>О себе</span><textarea id="profileCustomBio" maxlength="220" rows="3" placeholder="Пара строк о себе, любимых жанрах или настроении..."></textarea></label>
+              </div>
+            </article>
+
+            <article class="profile-custom-card">
+              <div class="profile-card-kicker">COLORS</div><h3>Цвета профиля</h3>
+              <div class="profile-color-row"><label><span>Основной</span><input id="profileAccentColor" type="color"></label><label><span>Второй</span><input id="profileAccent2Color" type="color"></label></div>
+              <label class="profile-range-label"><span>Скругление <b id="profileRadiusValue"></b></span><input id="profileRadius" type="range" min="14" max="36" step="1"></label>
+              <label><span>Стиль карточек</span><select id="profileSurfaceStyle"><option value="glass">Стекло</option><option value="soft">Мягкий</option><option value="solid">Плотный</option></select></label>
+            </article>
+
+            <article class="profile-custom-card">
+              <div class="profile-card-kicker">BACKGROUND</div><h3>Фон и аватар</h3>
+              <label><span>Фон профиля</span><select id="profileBackgroundMode"><option value="gradient">Градиент</option><option value="favorite">Обложка любимого аниме</option><option value="custom">Своя картинка</option><option value="none">Без фона</option></select></label>
+              <label><span>Позиция картинки</span><select id="profileBackgroundPosition"><option value="center">По центру</option><option value="top">Сверху</option><option value="left">Слева</option><option value="right">Справа</option></select></label>
+              <div class="profile-upload-row"><button id="profileBackgroundUploadBtn" class="secondary" type="button">🖼 Загрузить фон</button><button id="profileBackgroundClearBtn" class="ghost" type="button">Очистить</button></div>
+              <div class="profile-upload-row"><button id="profileAvatarUploadBtn" class="secondary" type="button">🙂 Свой аватар</button><button id="profileAvatarClearBtn" class="ghost" type="button">Сбросить</button></div>
+              <label class="profile-range-label"><span>Затемнение фона <b id="profileDimValue"></b></span><input id="profileBackgroundDim" type="range" min="20" max="90" step="1"></label>
+              <label class="profile-range-label"><span>Размытие <b id="profileBlurValue"></b></span><input id="profileBackgroundBlur" type="range" min="0" max="20" step="1"></label>
+            </article>
+
+            <article class="profile-custom-card">
+              <div class="profile-card-kicker">SHOWCASE</div><h3>Витрина и список</h3>
+              <label class="profile-range-label"><span>Любимых аниме <b id="profileFavoriteLimitValue"></b></span><input id="profileFavoriteLimit" type="range" min="3" max="12" step="1"></label>
+              <label class="profile-range-label"><span>Тайтлов в мини-листе <b id="profileListLimitValue"></b></span><input id="profileListLimit" type="range" min="6" max="30" step="3"></label>
+              <label><span>Вид любимых</span><select id="profileFavoriteStyle"><option value="posters">Постеры</option><option value="cards">Карточки</option><option value="compact">Компактно</option></select></label>
+              <div class="profile-toggle-stack">
+                <label><input id="profileShowFavorites" type="checkbox"><span>Показывать любимые</span></label>
+                <label><input id="profileShowList" type="checkbox"><span>Показывать аниме-лист</span></label>
+                <label><input id="profileShowStats" type="checkbox"><span>Показывать статистику</span></label>
+                <label><input id="profileShowComments" type="checkbox"><span>Показывать комментарии профиля</span></label>
+              </div>
+            </article>
+
+            <article class="profile-custom-card profile-custom-wide">
+              <div class="profile-card-kicker">LAYOUT</div><h3>Порядок блоков</h3>
+              <p class="profile-custom-help">Расположи витрину, статистику и список так, как тебе удобнее.</p>
+              <div id="profileBlockOrder" class="profile-order-list"></div>
+            </article>
+
+            <article class="profile-custom-card premium-future-card profile-custom-wide">
+              <div><div class="profile-card-kicker">PREMIUM · ПОТОМ</div><h3>Здесь можно будет сделать косметические плюшки</h3><p>Анимированный фон, профильная музыка, особые рамки, эффекты ника, дополнительные макеты и сезонные оформления. Смотреть аниме и пользоваться основными функциями останется можно без Premium.</p></div>
+              <span class="premium-future-badge">не активно</span>
+            </article>
+          </div>
+          <input id="profileBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        </section>
+
+
+        <section id="profileTabQuests" class="profile-tab-pane">
+          <div class="profile-section-head"><div><span>DAILY QUESTS</span><h3>Задания на сегодня</h3></div><div class="profile-daily-meta"><small id="profileQuestCount">0 активных</small><small id="profileDailyReset">обновятся в 00:00</small></div></div>
+          <div class="profile-collection-note">Каждый день генерируется 4–5 заданий. За полный набор дня суммарно выпадает <b>3 🎴 Character Ticket</b> и случайно <b>1–2 💗 Waifu Ticket</b>, плюс XP и Stars. Ручной прогресс серий ежедневки не фармит.</div>
+          <div id="profileQuests" class="profile-quest-list"></div>
+        </section>
+
+        <section id="profileTabAchievements" class="profile-tab-pane">
+          <div class="profile-section-head"><div><span>ACHIEVEMENTS</span><h3>Достижения</h3></div><small>Награды выдаются один раз</small></div>
+          <div id="profileAchievements" class="profile-achievement-grid"></div>
+        </section>
+
+        <section id="profileTabCollection" class="profile-tab-pane">
+          <div class="profile-section-head"><div><span>COLLECTION</span><h3>Карточки персонажей</h3></div><div class="profile-ticket-actions"><button id="profileOpenTicket" type="button">🎴 Character <b id="collectionRegularTicketCount">0</b></button><button id="profileOpenWaifuTicket" class="waifu-ticket-btn" type="button">💗 Waifu <b id="collectionWaifuTicketCount">0</b></button></div></div>
+          <div class="profile-collection-note"><b>🎴 Character Ticket</b> берёт персонажей из твоих просмотренных/текущих аниме. <b>💗 Waifu Ticket</b> ищет явно взрослых (18+) женских персонажей по всей базе AniList. Повтор персонажа превращается в Stars. Тикеты считаются инвентарём и больше не торчат в общей статистике профиля.</div>
+          <div id="profileCollectionFilters" class="profile-collection-filters">
+            <button type="button" data-card-filter="all" class="active">Все</button>
+            <button type="button" data-card-filter="showcase">★ В профиле</button>
+            <button type="button" data-card-filter="hidden">Скрытые</button>
+          </div>
+          <div id="profileCollection" class="profile-collection-grid"></div>
+        </section>
+
+        <section id="profileTabShop" class="profile-tab-pane">
+          <div class="profile-section-head"><div><span>STARS SHOP</span><h3>Косметика профиля</h3></div><small>Никаких преимуществ в просмотре</small></div>
+          <div id="profileShop" class="profile-shop-grid"></div>
+        </section>
+
+        <section id="profileTabActivity" class="profile-tab-pane">
+          <div class="profile-section-head"><div><span>HISTORY</span><h3>Последние награды</h3></div><small id="profileActivityCount"></small></div>
+          <div id="profileActivity" class="profile-activity-list"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileFavoritePicker" class="profile-favorite-picker hidden" role="dialog" aria-modal="true" aria-label="Любимые аниме">
+    <div class="profile-favorite-picker-card">
+      <div class="profile-favorite-picker-head"><div><div class="profile-card-kicker">FAVORITES</div><h3>Выбери любимые аниме</h3><p id="profileFavoritePickerHint"></p></div><button id="profileFavoritePickerClose" class="profile-close" type="button">✕</button></div>
+      <input id="profileFavoriteSearch" class="profile-favorite-search" placeholder="Найти в своём списке..." autocomplete="off">
+      <div id="profileFavoritePickerGrid" class="profile-favorite-picker-grid"></div>
+    </div>
+  </div>
+
+
+  <div id="adminModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-label="Admin Menu">
+    <div class="admin-shell">
+      <header class="admin-head">
+        <div><span>LOCAL OWNER TOOLS</span><h2>◆ Admin Menu</h2><p>Локальные инструменты владельца. После публикации это должно проверяться серверной ролью.</p></div>
+        <button id="adminClose" class="profile-close" type="button">✕</button>
+      </header>
+      <div id="adminSummary" class="admin-summary"></div>
+      <div class="admin-grid">
+        <section class="admin-card">
+          <span>РЕСУРСЫ</span><h3>Выдать себе</h3>
+          <label>XP <div class="admin-inline"><input id="adminXpAmount" type="number" min="1" value="500"><button id="adminGiveXp" type="button">+ XP</button></div></label>
+          <label>Stars <div class="admin-inline"><input id="adminStarsAmount" type="number" min="1" value="500"><button id="adminGiveStars" type="button">+ Stars</button></div></label>
+          <label>Character Tickets <div class="admin-inline"><input id="adminTicketsAmount" type="number" min="1" value="1"><button id="adminGiveTickets" type="button">+ 🎴</button></div></label>
+          <label>Waifu Tickets <div class="admin-inline"><input id="adminWaifuTicketsAmount" type="number" min="1" value="1"><button id="adminGiveWaifuTickets" class="waifu-ticket-btn" type="button">+ 💗</button></div></label>
+          <label>Уровень <div class="admin-inline"><input id="adminLevelValue" type="number" min="1" max="999" value="1"><button id="adminSetLevel" class="secondary" type="button">Установить</button></div></label>
+        </section>
+        <section class="admin-card">
+          <span>ACHIEVEMENTS</span><h3>Достижения</h3>
+          <select id="adminAchievementSelect"></select>
+          <label class="admin-check"><input id="adminAchievementRewards" type="checkbox" checked><span>Выдать и стандартную награду</span></label>
+          <button id="adminGrantAchievement" type="button">🏆 Выдать достижение</button>
+          <button id="adminUnlockCosmetics" class="secondary" type="button">◇ Открыть все рамки</button>
+          <div class="admin-danger-zone">
+            <span>TEST RESET</span>
+            <p>Убирает тестовую прогрессию и вещи, полученные через Admin Menu. Аниме-лист, настройки профиля, комментарии и честно подтверждённый просмотр сохраняются.</p>
+            <button id="adminResetProfile" class="danger" type="button">↺ Сбросить тестовый профиль</button>
+          </div>
+        </section>
+        <section class="admin-card admin-card-wide">
+          <span>QUEST BUILDER</span><h3>Создать задание</h3>
+          <div class="admin-quest-form">
+            <input id="adminQuestTitle" maxlength="70" placeholder="Название задания">
+            <input id="adminQuestDesc" maxlength="180" placeholder="Что нужно сделать">
+            <label>XP<input id="adminQuestXp" type="number" min="0" value="100"></label>
+            <label>Stars<input id="adminQuestStars" type="number" min="0" value="30"></label>
+            <label>Tickets<input id="adminQuestTickets" type="number" min="0" value="0"></label>
+            <label>Waifu<input id="adminQuestWaifuTickets" type="number" min="0" value="0"></label>
+            <button id="adminCreateQuest" type="button">＋ Создать</button>
+          </div>
+          <div id="adminQuestList" class="admin-quest-list"></div>
+        </section>
+      </div>
+      <div class="admin-foot"><span>Ctrl + Shift + A · доступ показывается только для локального профиля SeNite</span><button id="adminRefresh" class="secondary" type="button">↻ Обновить</button></div>
+    </div>
+  </div>
+
+  <div id="characterReveal" class="character-reveal hidden" role="dialog" aria-modal="true">
+    <div class="character-reveal-card">
+      <div id="characterRevealRarity" class="character-reveal-rarity">RARE</div>
+      <img id="characterRevealImage" alt="">
+      <h3 id="characterRevealName">Персонаж</h3>
+      <p id="characterRevealAnime"></p>
+      <div id="characterRevealReward" class="character-reveal-reward"></div>
+      <button id="characterRevealClose" type="button">Забрать</button>
+    </div>
+  </div>
+  <div id="rewardToastStack" class="reward-toast-stack" aria-live="polite"></div>
+
+  <div id="exportModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card export-card">
+      <h3>📤 Экспорт списка</h3>
+      <p>Для переноса между аниме-сервисами лучше всего использовать MAL XML. JSON — полная резервная копия нашего сайта, CSV — для таблиц.</p>
+      <div class="export-options">
+        <button id="exportMalBtn">🌐 MAL XML — для импорта на другие сайты</button>
+        <button id="exportCsvBtn" class="secondary">📊 CSV — таблица</button>
+        <button id="exportJsonBtn" class="secondary">💾 JSON — полная копия</button>
+      </div>
+      <button id="exportCancel" class="ghost">Закрыть</button>
+    </div>
+  </div>
+
+
+  <div id="settingsModal" class="settings-modal hidden" role="dialog" aria-modal="true">
+    <div class="settings-shell">
+      <div class="settings-head">
+        <div>
+          <div class="settings-kicker">PERSONALIZE</div>
+          <h2>⚙️ Настройки интерфейса</h2>
+          <p>Все настройки сохраняются только в этом браузере.</p>
+        </div>
+        <button id="settingsClose" class="settings-close" type="button">✕</button>
+      </div>
+
+      <div class="settings-layout">
+        <section class="settings-group">
+          <h3>🎨 Вид</h3>
+          <label class="setting-row"><span><b>Тема</b><small>Быстрый набор цветов</small></span>
+            <select id="settingTheme">
+              <option value="midnight">Midnight</option>
+              <option value="oled">OLED Black</option>
+              <option value="graphite">Graphite</option>
+              <option value="light">Light</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <div class="color-grid">
+            <label><span>Акцент</span><input id="settingAccent" type="color"></label>
+            <label><span>Второй акцент</span><input id="settingAccent2" type="color"></label>
+            <label><span>Фон</span><input id="settingBg" type="color"></label>
+            <label><span>Карточки</span><input id="settingPanel" type="color"></label>
+          </div>
+          <label class="setting-range"><span><b>Скругление</b><small id="radiusValue"></small></span><input id="settingRadius" type="range" min="6" max="32" step="1"></label>
+          <label class="setting-range"><span><b>Масштаб интерфейса</b><small id="scaleValue"></small></span><input id="settingScale" type="range" min="85" max="120" step="1"></label>
+        </section>
+
+        <section class="settings-group">
+          <h3>🖼️ Карточки</h3>
+          <label class="setting-range"><span><b>Размер обложек</b><small id="posterValue"></small></span><input id="settingPoster" type="range" min="72" max="150" step="2"></label>
+          <label class="setting-range"><span><b>Ширина сайта</b><small id="widthValue"></small></span><input id="settingWidth" type="range" min="1000" max="1800" step="20"></label>
+          <label class="setting-row"><span><b>Колонки</b><small>Сколько карточек в ряд</small></span>
+            <select id="settingColumns"><option value="auto">Авто</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+          </label>
+          <label class="setting-toggle"><span><b>Показывать прогресс</b><small>Например 7 / 12</small></span><input id="settingProgress" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Показывать характеристику</b><small>«мрачное», «эмоциональное»…</small></span><input id="settingDescriptor" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Показывать быстрые кнопки</b><small>Переместить / Изменить / Далее</small></span><input id="settingActions" type="checkbox"><i></i></label>
+        </section>
+
+        <section class="settings-group">
+          <h3>📖 Страница аниме</h3>
+          <label class="setting-toggle"><span><b>Русское описание</b><small>Показывать RU по умолчанию, если оно найдено</small></span><input id="settingPreferRu" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Опенинги и эндинги</b><small>Компактный блок музыки внизу страницы</small></span><input id="settingThemes" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Отзывы зрителей</b><small>Показывать до трёх коротких отзывов MAL</small></span><input id="settingReviews" type="checkbox"><i></i></label>
+          <div class="settings-note">Аудио не запускается само: у OP/ED будут быстрые ссылки на YouTube/Spotify. Так стабильнее и браузер ничего не блокирует.</div>
+        </section>
+
+        <section class="settings-group settings-branding-group">
+          <h3>🪪 Название, приветствие и футер</h3>
+          <label class="setting-field"><span><b>Твой ник</b><small>Используется в приветствиях и будущем профиле</small></span><input id="settingNickname" type="text" maxlength="28" placeholder="Например: SeNite"></label>
+          <label class="setting-field"><span><b>Название сайта</b><small>Название твоего личного аниме-пространства</small></span><input id="settingSiteName" type="text" maxlength="40" placeholder="My Anime List"></label>
+          <label class="setting-field"><span><b>Подпись</b><small>Короткий текст в футере и запасная подпись</small></span><input id="settingSiteTagline" type="text" maxlength="120" placeholder="Мой личный аниме-трекер"></label>
+          <label class="setting-toggle"><span><b>Живой аниме-фон на главной</b><small>Автоматически берёт OP/ED-видео из AnimeThemes. YouTube не нужен</small></span><input id="settingHeroTrailer" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Показывать футер</b><small>Большой нижний блок как у аниме-сервисов</small></span><input id="settingFooter" type="checkbox"><i></i></label>
+        </section>
+
+        <section class="settings-group settings-mascot-group">
+          <h3>🧩 Картинка в углу</h3>
+          <label class="setting-toggle"><span><b>Показывать картинку</b><small>Закрепить изображение снизу экрана</small></span><input id="settingMascotEnabled" type="checkbox"><i></i></label>
+          <div class="mascot-upload-grid">
+            <label class="mascot-upload"><span>Основная</span><input id="settingMascotFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><b>＋ Выбрать</b></label>
+            <label class="mascot-upload"><span>Альтернативная</span><input id="settingMascotAltFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><b>＋ Выбрать</b></label>
+          </div>
+          <div class="mascot-settings-preview"><div id="mascotSettingsPrimary" class="mascot-preview-empty">Нет картинки</div><div id="mascotSettingsAlt" class="mascot-preview-empty">Alt не задан</div></div>
+          <div class="mascot-clear-row"><button id="settingMascotClear" class="ghost" type="button">Убрать основную</button><button id="settingMascotAltClear" class="ghost" type="button">Убрать alt</button></div>
+          <label class="setting-range"><span><b>Размер по высоте</b><small id="mascotSizeValue"></small></span><input id="settingMascotSize" type="range" min="70" max="520" step="5"></label>
+          <div class="mascot-offset-grid">
+            <label class="setting-range compact-range"><span><b>Отступ сбоку</b><small id="mascotSideValue"></small></span><input id="settingMascotSide" type="range" min="0" max="180" step="2"></label>
+            <label class="setting-range compact-range"><span><b>Отступ снизу</b><small id="mascotBottomValue"></small></span><input id="settingMascotBottom" type="range" min="0" max="220" step="2"></label>
+          </div>
+          <div class="mascot-offset-grid">
+            <label class="setting-range compact-range"><span><b>Прозрачность</b><small id="mascotOpacityValue"></small></span><input id="settingMascotOpacity" type="range" min="20" max="100" step="1"></label>
+            <label class="setting-range compact-range"><span><b>Поворот</b><small id="mascotRotateValue"></small></span><input id="settingMascotRotate" type="range" min="-20" max="20" step="1"></label>
+          </div>
+          <label class="setting-row"><span><b>Положение</b><small>Где закрепить картинку</small></span><select id="settingMascotPosition"><option value="right">Справа снизу</option><option value="left">Слева снизу</option></select></label>
+          <label class="setting-toggle"><span><b>Отразить по горизонтали</b><small>Удобно, чтобы персонаж смотрел внутрь страницы</small></span><input id="settingMascotFlip" type="checkbox"><i></i></label>
+          <label class="setting-row"><span><b>Постоянная анимация</b><small>Очень лёгкое движение в покое</small></span><select id="settingMascotIdle"><option value="none">Нет</option><option value="float">Плавно парить</option><option value="breathe">Дышать</option><option value="sway">Покачиваться</option></select></label>
+          <label class="setting-row"><span><b>При наведении</b><small>Alt автоматически вернётся после ухода мыши</small></span><select id="settingMascotHover"><option value="lift">Приподнять</option><option value="zoom">Увеличить</option><option value="wiggle">Покачать</option><option value="swap">Показать alt</option><option value="glow">Подсветить</option><option value="none">Ничего</option></select></label>
+          <label class="setting-row"><span><b>При нажатии</b><small>Можно временно показать вторую картинку</small></span><select id="settingMascotClick"><option value="swap_temp">Показать alt и вернуть</option><option value="bounce">Прыгнуть</option><option value="spin">Прокрутиться</option><option value="pulse">Пульс</option><option value="swap">Переключить alt навсегда</option><option value="hide">Спрятаться на время</option><option value="none">Ничего</option></select></label>
+          <label class="setting-range"><span><b>Вернуть через</b><small id="mascotReturnValue"></small></span><input id="settingMascotReturn" type="range" min="5" max="100" step="5"></label>
+          <label class="setting-toggle"><span><b>Тень</b><small>Мягко отделяет PNG от страницы</small></span><input id="settingMascotShadow" type="checkbox"><i></i></label>
+          <div class="settings-note">При загрузке PNG сайт автоматически обрезает пустые прозрачные края. Поэтому персонаж занимает реальный размер, а настройки положения работают точнее.</div>
+        </section>
+
+        <section class="settings-group">
+          <h3>✨ Эффекты</h3>
+          <label class="setting-toggle"><span><b>Анимации</b><small>Плавные наведения, появление карточек и окна</small></span><input id="settingAnimations" type="checkbox"><i></i></label>
+          <label class="setting-row"><span><b>Интенсивность</b><small>Насколько интерфейс «живой»</small></span><select id="settingMotion"><option value="soft">Спокойно</option><option value="normal">Обычно</option><option value="playful">Поживее</option></select></label>
+          <label class="setting-row"><span><b>Эффект кнопок</b><small>Анимация при нажатии</small></span><select id="settingButtonFx"><option value="ripple">Волна</option><option value="glow">Вспышка</option><option value="press">Нажатие</option><option value="none">Без эффекта</option></select></label>
+          <label class="setting-toggle"><span><b>Glass-эффект</b><small>Размытие панелей и окон</small></span><input id="settingGlass" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Фоновое свечение</b><small>Мягкие цветные пятна</small></span><input id="settingGlow" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Показывать эмодзи</b><small>Эмодзи перед названием тайтла</small></span><input id="settingEmoji" type="checkbox"><i></i></label>
+          <div class="settings-preview">
+            <div class="preview-cover"></div><div><strong>🎌 Пример карточки</strong><small>12 эпизодов · атмосферное</small><div class="preview-bar"><i></i></div></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-footer">
+        <button id="settingsReset" class="ghost" type="button">↺ Сбросить</button>
+        <div class="settings-footer-right"><button id="settingsCancel" class="secondary" type="button">Отмена</button><button id="settingsSave" type="button">✓ Сохранить</button></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="editModal" class="settings-modal hidden" role="dialog" aria-modal="true">
+    <div class="edit-shell">
+      <div class="edit-head">
+        <div><div class="settings-kicker">EDIT ENTRY</div><h2 id="editTitle">✏️ Изменить аниме</h2></div>
+        <button id="editClose" class="settings-close" type="button">✕</button>
+      </div>
+      <div class="edit-form">
+        <label><span>Эмодзи</span><input id="editEmoji" maxlength="12" autocomplete="off"></label>
+        <label><span>Характеристика</span><input id="editDescriptor" autocomplete="off" placeholder="например: мрачное"></label>
+        <label><span>Оценка</span><select id="editScore"><option value="">Без оценки</option><option value="10">10 — шедевр</option><option value="9">9</option><option value="8">8</option><option value="7">7</option><option value="6">6</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>
+        <label><span>Просмотрено серий</span><input id="editProgress" type="number" min="0" step="1"></label>
+        <label class="edit-note"><span>Заметка</span><textarea id="editNote" rows="4" placeholder="Можно оставить пустым"></textarea></label>
+      </div>
+      <div class="edit-footer"><button id="editCancel" class="secondary" type="button">Отмена</button><button id="editSave" type="button">✓ Сохранить</button></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="app.js"></script>
+</body>
+</html>
