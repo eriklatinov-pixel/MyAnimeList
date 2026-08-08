@@ -91,3 +91,11 @@ V24.0 Steam Layer V1 — Anime Tier Board
 - Explicit Save/Cancel; saved data is part of the existing account cloud snapshot.
 - Tier Board is also a movable/resizable Profile Studio block and can be hidden in profile settings.
 - Includes V23.9 strict genre filter fix.
+
+
+V24.1 SOCIAL / STEAM LAYER
+- Profile Studio layout readability fix.
+- Genre pagination now sends genre server-side and batches Load More.
+- Friends, follows, user search, activity feed, friend-only DMs.
+- New DM starts at LVL 10; lower levels can reply to incoming chats.
+IMPORTANT: run SOCIAL_SETUP_V241.sql once in Supabase SQL Editor before using the social tab.

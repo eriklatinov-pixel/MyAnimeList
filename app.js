@@ -7540,3 +7540,115 @@ setProfileTabV16=function(tab){setProfileTabBeforeV240(tab);if(tab==='customize'
 
 setTimeout(()=>{ensureTierListV240();ensureTierProfileBlockV240();renderTierPreviewV240();injectTierCustomizeV240();},120);
 console.info('Anime list V24.0: Steam Layer V1 · profile Tier Board');
+
+
+/* ===== V24.1 · Bugfix batch + Social / Steam Layer ===== */
+const V241_TAG='24.1';
+
+/* Catalog: genre is now sent to AniList itself, and Load More keeps fetching pages until it has a useful batch. */
+catalogFetchPageV10=async function({append=false}={}){
+  if(catalogStateV10.loading)return;
+  catalogStateV10.mode='catalog';
+  const f=catalogStateV10.filters=catalogReadFormV10();catalogSaveFiltersV10();
+  if(!append){catalogStateV10.page=1;catalogStateV10.items=[];}
+  let cursor=Math.max(1,Number(catalogStateV10.page||1));
+  const target=append?30:36,maxPages=append?5:3,existing=append?[...(catalogStateV10.items||[])]:[];
+  catalogSetLoadingV12(true);catalogMarkPresetV10(null);
+  $('#catalogModeLabel').textContent='КАТАЛОГ';$('#catalogResultsTitle').textContent=f.search?`Поиск: ${f.search}`:(f.genre?`${f.genre} · аниме`:'Каталог аниме');
+  let accepted=[],source='',hasNext=true,total=0,lastErr=null,lastPage=cursor;
+  const pushUnique=(rows)=>{const seen=new Set([...existing,...accepted].map(catalogMediaKeyV11));for(const m of rows){const k=catalogMediaKeyV11(m);if(k&&!seen.has(k)){seen.add(k);accepted.push(m)}}};
+  try{
+    let aniWorked=false;
+    for(let n=0;n<maxPages&&hasNext&&accepted.length<target;n++){
+      const pno=cursor+n;lastPage=pno;
+      try{
+        const payload=await anilistFetchDirectV20(CATALOG_QUERY_V235,{page:pno,search:f.search||null,genre:f.genre||null,sort:catalogSortListV11(f)}),page=payload?.data?.Page||{};
+        const rows=(page.media||[]).filter(m=>catalogClientFilterV11(m,f));pushUnique(rows);hasNext=!!page.pageInfo?.hasNextPage;total=Number(page.pageInfo?.total||total);source='AniList · напрямую';aniWorked=true;
+      }catch(e){lastErr=e;console.warn('V24.1 AniList catalog',e);aniWorked=false;break;}
+    }
+    if(!aniWorked||(!accepted.length&&hasNext)){
+      accepted=[];hasNext=true;total=0;
+      for(let n=0;n<maxPages&&hasNext&&accepted.length<target;n++){
+        const pno=cursor+n;lastPage=pno;const sh=await catalogShikiPageV203(f,pno);pushUnique(sh.filter(m=>catalogClientFilterV11(m,f,{jikan:true})));hasNext=sh.length>=50;source='Shikimori · резерв';
+      }
+    }
+    const merged=catalogDedupV12([...existing,...accepted]);catalogStateV10.items=merged;catalogStateV10.hasNext=hasNext;catalogStateV10.total=total;catalogStateV10.page=lastPage;catalogRegisterItemsV10(merged);catalogRenderGridV10();
+    if(merged.length){$('#catalogResultCount').innerHTML=`${merged.length} показано${total?` · ~${fmtNumV12(total)} всего`:''}<span class="catalog-source-note">${esc(source)}</span>`;$('#catalogSourceStatus').textContent=source;catalogWriteCacheV12(f,merged,total,hasNext,lastPage);catalogSetEmptyV11('Ничего не нашлось','Попробуй изменить фильтры.');}
+    else throw lastErr||new Error('Пустая выдача');
+  }catch(e){
+    console.warn('V24.1 catalog fallback failed',e);const c=catalogReadCacheV12(f);
+    if(c){catalogStateV10.items=c.items;catalogStateV10.total=c.total||0;catalogStateV10.hasNext=!!c.hasNext;catalogStateV10.page=c.page||1;catalogRegisterItemsV10(c.items);catalogRenderGridV10();$('#catalogResultCount').innerHTML=`${c.items.length} из кэша<span class="catalog-source-note">офлайн-кэш</span>`;catalogSetEmptyV11('Нет свежего соединения','Показываю последнюю успешную выдачу.');}
+    else{catalogStateV10.items=[];catalogStateV10.hasNext=false;catalogRenderGridV10();catalogSetEmptyV11('Каталог временно недоступен','AniList и Shikimori сейчас не ответили. Нажми «Повторить».',String(e?.message||e));$('#catalogResultCount').textContent='Ошибка загрузки';}
+  }finally{catalogSetLoadingV12(false);catalogAutoLoadBusyV12=false;}
+};
+window.catalogFetchPageV10=catalogFetchPageV10;
+
+/* Old click handler increments page once before calling append. Keep that contract, but our batch fetch advances page further itself. */
+
+const socialStateV241={ready:false,loading:false,own:null,profiles:new Map(),friends:[],following:[],followers:[],requests:[],search:[],feed:[],selected:'',messages:[],timer:null};
+function socialSignedV241(){return !!accountSessionV23?.access_token}
+function socialMeV241(){return accountSessionV23?.user?.id||''}
+function socialLevelV241(){return Math.max(1,Number(ensureProfileV16()?.level)||1)}
+function socialInitialV241(p){return [...String(p?.display_name||p?.handle||'?')][0]?.toUpperCase()||'?'}
+function socialAvatarV241(p){return p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:esc(socialInitialV241(p))}
+function socialHandleV241(p){return p?.handle?`@${p.handle}`:'без @handle'}
+function socialFmtTimeV241(v){try{return new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return ''}}
+function socialNoticeV241(text='') {const el=$('#socialBackendNoticeV241');if(!el)return;el.textContent=text;el.classList.toggle('hidden',!text)}
+function socialBackendErrorV241(e){const m=String(e?.message||e||'');if(/relation .* does not exist|Could not find the table|404|friendships|follows/i.test(m)){socialStateV241.ready=false;socialNoticeV241('Социальный backend ещё не активирован. Запусти SOCIAL_SETUP_V241.sql в Supabase → SQL Editor один раз.');return true}return false}
+async function socialRestV241(path,opt={}){return accountRestV23(path,opt)}
+async function socialProfilesByIdsV241(ids){ids=[...new Set((ids||[]).filter(Boolean))];if(!ids.length)return [];const p=new URLSearchParams();p.set('id',`in.(${ids.join(',')})`);p.set('select','id,display_name,handle,avatar_url,headline,status_text,last_seen');const rows=await socialRestV241(`profiles?${p.toString()}`);for(const x of rows||[])socialStateV241.profiles.set(x.id,x);return rows||[]}
+function socialSlugV241(v){return String(v||'user').toLowerCase().normalize('NFKD').replace(/[^a-z0-9_]+/g,'-').replace(/^-+|-+$/g,'').slice(0,16)||'user'}
+async function socialEnsureOwnV241(){const me=socialMeV241();if(!me)return null;let rows=await socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}&select=id,display_name,handle,avatar_url,headline,status_text,last_seen&limit=1`),p=rows?.[0];if(!p)return null;if(!p.handle){const h=`${socialSlugV241(p.display_name||accountDisplayNameV23())}-${me.slice(0,4)}`;try{await socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}`,{method:'PATCH',body:{handle:h,last_seen:new Date().toISOString()},prefer:'return=minimal'});p.handle=h}catch{}}else{socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}`,{method:'PATCH',body:{last_seen:new Date().toISOString()},prefer:'return=minimal'}).catch(()=>{})}socialStateV241.own=p;socialStateV241.profiles.set(me,p);return p}
+function socialPersonCardV241(p,{context='search',requestId=''}={}){if(!p)return'';const me=socialMeV241(),isFriend=socialStateV241.friends.includes(p.id),isFollowing=socialStateV241.following.includes(p.id);let acts='';if(context==='request')acts=`<button type="button" onclick="socialRespondV241('${p.id}','${requestId}',true)">✓ Принять</button><button class="ghost" type="button" onclick="socialRespondV241('${p.id}','${requestId}',false)">✕</button>`;else if(context==='friend')acts=`<button type="button" onclick="socialOpenChatV241('${p.id}')">💬 Написать</button><button class="ghost" type="button" onclick="socialRemoveFriendV241('${p.id}')">Убрать</button>`;else if(p.id!==me)acts=`${isFriend?'<span class="social-mini-state-v241">✓ друг</span>':`<button type="button" onclick="socialFriendRequestV241('${p.id}')">＋ Друг</button>`}<button class="secondary" type="button" onclick="socialToggleFollowV241('${p.id}',${isFollowing?'false':'true'})">${isFollowing?'✓ Подписан':'☆ Подписаться'}</button>`;return `<div class="social-person-v241"><div class="social-person-avatar-v241">${socialAvatarV241(p)}</div><div class="social-person-main-v241"><b>${esc(p.display_name||'Пользователь')}</b><span>${esc(socialHandleV241(p))}${p.status_text?` · ${esc(p.status_text)}`:''}</span></div><div class="social-person-actions-v241">${acts}</div></div>`}
+async function socialLoadV241(){
+  const app=$('#socialAppV241'),guest=$('#socialGuestV241');if(!app||!guest)return;
+  if(!socialSignedV241()){guest.classList.remove('hidden');app.classList.add('hidden');return}
+  guest.classList.add('hidden');app.classList.remove('hidden');if(socialStateV241.loading)return;socialStateV241.loading=true;socialNoticeV241('');
+  try{
+    const me=socialMeV241();await socialEnsureOwnV241();
+    const [fol,frq,frs]=await Promise.all([
+      socialRestV241(`follows?or=(follower_id.eq.${me},following_id.eq.${me})&select=follower_id,following_id,created_at`),
+      socialRestV241(`friend_requests?or=(sender_id.eq.${me},receiver_id.eq.${me})&select=id,sender_id,receiver_id,created_at&order=created_at.desc`),
+      socialRestV241(`friendships?or=(user_a.eq.${me},user_b.eq.${me})&select=user_a,user_b,created_at&order=created_at.desc`)
+    ]);
+    socialStateV241.following=(fol||[]).filter(x=>x.follower_id===me).map(x=>x.following_id);socialStateV241.followers=(fol||[]).filter(x=>x.following_id===me).map(x=>x.follower_id);socialStateV241.requests=frq||[];socialStateV241.friends=(frs||[]).map(x=>x.user_a===me?x.user_b:x.user_a);
+    await socialProfilesByIdsV241([...socialStateV241.following,...socialStateV241.followers,...socialStateV241.friends,...socialStateV241.requests.flatMap(x=>[x.sender_id,x.receiver_id])]);socialStateV241.ready=true;
+    await socialLoadFeedV241();socialRenderV241();
+  }catch(e){console.warn('V24.1 social load',e);if(!socialBackendErrorV241(e))socialNoticeV241(`Сообщество временно недоступно: ${e.message||e}`);socialRenderV241();}
+  finally{socialStateV241.loading=false}
+}
+function socialRenderV241(){
+  if(!socialSignedV241())return;const me=socialMeV241(),own=socialStateV241.own;if($('#socialHandleInputV241')&&document.activeElement!==$('#socialHandleInputV241'))$('#socialHandleInputV241').value=own?.handle||'';
+  const incoming=socialStateV241.requests.filter(x=>x.receiver_id===me),friends=socialStateV241.friends.map(id=>socialStateV241.profiles.get(id)).filter(Boolean),results=socialStateV241.search;
+  if($('#socialFriendsCountV241'))$('#socialFriendsCountV241').textContent=friends.length;if($('#socialFollowingCountV241'))$('#socialFollowingCountV241').textContent=socialStateV241.following.length;if($('#socialFollowersCountV241'))$('#socialFollowersCountV241').textContent=socialStateV241.followers.length;if($('#socialIncomingCountV241'))$('#socialIncomingCountV241').textContent=incoming.length;
+  const tab=$('#profileSocialTabV241');if(tab)tab.textContent=incoming.length?`👥 Друзья · ${incoming.length}`:'👥 Друзья';
+  const rq=$('#socialRequestsV241');if(rq)rq.innerHTML=incoming.length?incoming.map(x=>socialPersonCardV241(socialStateV241.profiles.get(x.sender_id),{context:'request',requestId:x.id})).join(''):'<div class="social-empty-v241">Новых заявок нет.</div>';
+  const fr=$('#socialFriendsV241');if(fr)fr.innerHTML=friends.length?friends.map(p=>socialPersonCardV241(p,{context:'friend'})).join(''):'<div class="social-empty-v241">Пока никого. Найди знакомого по нику.</div>';
+  const sr=$('#socialSearchResultsV241');if(sr)sr.innerHTML=results.length?results.map(p=>socialPersonCardV241(p)).join(''):'<div class="social-empty-v241">Введи ник выше.</div>';
+  socialRenderChatsV241();socialRenderFeedV241();
+}
+async function socialSearchV241(){const q=String($('#socialSearchInputV241')?.value||'').trim();if(q.length<2){socialStateV241.search=[];socialRenderV241();return}try{const p=new URLSearchParams();p.set('select','id,display_name,handle,avatar_url,headline,status_text,last_seen');p.set('or',`(display_name.ilike.*${q.replace(/[,*()]/g,'')}*,handle.ilike.*${q.replace(/[,*()@]/g,'')}*)`);p.set('id',`neq.${socialMeV241()}`);p.set('limit','20');const rows=await socialRestV241(`profiles?${p.toString()}`);socialStateV241.search=rows||[];for(const x of rows||[])socialStateV241.profiles.set(x.id,x);socialRenderV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+async function socialSaveHandleV241(){let h=String($('#socialHandleInputV241')?.value||'').trim().toLowerCase().replace(/^@/,'');if(!/^[a-z0-9_][a-z0-9_-]{2,23}$/.test(h)){socialNoticeV241('Handle: 3–24 символа, латиница/цифры/_/-.');return}try{await socialRestV241(`profiles?id=eq.${socialMeV241()}`,{method:'PATCH',body:{handle:h},prefer:'return=minimal'});socialStateV241.own.handle=h;socialNoticeV241('✓ @handle сохранён');setTimeout(()=>socialNoticeV241(''),1600)}catch(e){socialNoticeV241(e.status===409?'Этот @handle уже занят.':(e.message||String(e)))}}
+async function socialToggleFollowV241(id,on){try{const me=socialMeV241();if(on)await socialRestV241('follows',{method:'POST',body:{follower_id:me,following_id:id},prefer:'resolution=ignore-duplicates,return=minimal'});else await socialRestV241(`follows?follower_id=eq.${me}&following_id=eq.${id}`,{method:'DELETE',prefer:'return=minimal'});await socialLoadV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+async function socialFriendRequestV241(id){try{await socialRestV241('rpc/social_send_friend_request',{method:'POST',body:{target:id}});socialNoticeV241('✓ Заявка отправлена');await socialLoadV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+async function socialRespondV241(uid,requestId,accept){try{await socialRestV241('rpc/social_respond_friend_request',{method:'POST',body:{request_id:requestId,accept_request:!!accept}});await socialLoadV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+async function socialRemoveFriendV241(id){if(!confirm('Убрать пользователя из друзей?'))return;try{await socialRestV241('rpc/social_remove_friend',{method:'POST',body:{target:id}});if(socialStateV241.selected===id)socialStateV241.selected='';await socialLoadV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+window.socialToggleFollowV241=socialToggleFollowV241;window.socialFriendRequestV241=socialFriendRequestV241;window.socialRespondV241=socialRespondV241;window.socialRemoveFriendV241=socialRemoveFriendV241;
+
+function socialRenderChatsV241(){const box=$('#socialChatsV241');if(!box)return;const friends=socialStateV241.friends.map(id=>socialStateV241.profiles.get(id)).filter(Boolean);box.innerHTML=friends.length?friends.map(p=>`<button type="button" class="social-chat-person-v241 ${socialStateV241.selected===p.id?'active':''}" onclick="socialOpenChatV241('${p.id}')"><span>${socialAvatarV241(p)}</span><b>${esc(p.display_name||p.handle||'Пользователь')}</b></button>`).join(''):'<div class="social-empty-v241">Чат появится после добавления друзей.</div>';socialRenderMessagesV241()}
+async function socialOpenChatV241(id){socialStateV241.selected=id;socialStateV241.messages=[];socialRenderChatsV241();const p=socialStateV241.profiles.get(id);if($('#socialChatTitleV241'))$('#socialChatTitleV241').textContent=p?`Чат · ${p.display_name||p.handle}`:'Личные сообщения';try{const me=socialMeV241(),q=new URLSearchParams();q.set('or',`(and(sender_id.eq.${me},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${me}))`);q.set('select','id,sender_id,receiver_id,body,created_at,read_at');q.set('order','created_at.asc');q.set('limit','200');socialStateV241.messages=await socialRestV241(`direct_messages?${q.toString()}`)||[];socialRenderMessagesV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+window.socialOpenChatV241=socialOpenChatV241;
+function socialRenderMessagesV241(){const box=$('#socialMessagesV241'),comp=$('#socialComposerV241'),input=$('#socialMessageInputV241'),send=$('#socialMessageSendV241');if(!box||!comp)return;const id=socialStateV241.selected,me=socialMeV241();if(!id){box.innerHTML='<div class="social-empty-v241">Выбери друга слева.</div>';if(input)input.disabled=true;if(send)send.disabled=true;return}box.innerHTML=socialStateV241.messages.length?socialStateV241.messages.map(m=>`<div class="social-message-v241 ${m.sender_id===me?'mine':''}">${esc(m.body)}<time>${socialFmtTimeV241(m.created_at)}</time></div>`).join(''):'<div class="social-empty-v241">Пока пусто. Можно начать разговор.</div>';box.scrollTop=box.scrollHeight;const replyAllowed=socialStateV241.messages.some(m=>m.sender_id===id&&m.receiver_id===me),unlocked=socialLevelV241()>=10||replyAllowed;comp.classList.toggle('locked',!unlocked);comp.dataset.lockText=unlocked?'':`Новый диалог откроется на 10 уровне. Сейчас LVL ${socialLevelV241()}. Если друг напишет первым, ты сможешь ответить.`;if(input){input.disabled=!unlocked;input.placeholder=unlocked?'Сообщение…':'ЛС откроются на 10 уровне'}if(send)send.disabled=!unlocked;if($('#socialChatLevelV241'))$('#socialChatLevelV241').textContent=unlocked?'Можно писать':`LVL ${socialLevelV241()} / 10`}
+async function socialSendMessageV241(){const id=socialStateV241.selected,body=String($('#socialMessageInputV241')?.value||'').trim();if(!id||!body)return;try{await socialRestV241('direct_messages',{method:'POST',body:{sender_id:socialMeV241(),receiver_id:id,body},prefer:'return=minimal'});$('#socialMessageInputV241').value='';await socialOpenChatV241(id)}catch(e){socialBackendErrorV241(e)||socialNoticeV241(/row-level security|policy/i.test(String(e.message))?'ЛС: нужен 10 уровень для первого сообщения, либо ответ на уже начатый другом диалог.':(e.message||String(e)))}}
+
+async function socialPostStatusV241(){const text=String($('#socialStatusInputV241')?.value||'').trim();if(!text)return;try{await socialRestV241('social_activity',{method:'POST',body:{actor_id:socialMeV241(),icon:'💬',title:'Статус',detail:text},prefer:'return=minimal'});$('#socialStatusInputV241').value='';await socialLoadFeedV241();socialRenderFeedV241()}catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}}
+async function socialLoadFeedV241(){try{const ids=[...new Set([...socialStateV241.friends,...socialStateV241.following,socialMeV241()].filter(Boolean))];if(!ids.length){socialStateV241.feed=[];return}await socialProfilesByIdsV241(ids);const p=new URLSearchParams();p.set('actor_id',`in.(${ids.join(',')})`);p.set('select','id,actor_id,icon,title,detail,created_at');p.set('order','created_at.desc');p.set('limit','60');socialStateV241.feed=await socialRestV241(`social_activity?${p.toString()}`)||[]}catch(e){if(!socialBackendErrorV241(e))console.warn('social feed',e)}}
+function socialRenderFeedV241(){const box=$('#socialFeedV241');if(!box)return;box.innerHTML=socialStateV241.feed.length?socialStateV241.feed.map(x=>{const p=socialStateV241.profiles.get(x.actor_id);return `<div class="social-feed-item-v241"><span>${esc(x.icon||'◆')}</span><div><b>${esc(p?.display_name||p?.handle||'Пользователь')} · ${esc(x.title)}</b><p>${esc(x.detail||'')}</p><time>${socialFmtTimeV241(x.created_at)}</time></div></div>`}).join(''):'<div class="social-empty-v241">Лента пока пустая. Подпишись на кого-нибудь или опубликуй статус.</div>'}
+
+const setProfileTabBeforeV241=setProfileTabV16;
+setProfileTabV16=function(tab){setProfileTabBeforeV241(tab);if(tab==='social')socialLoadV241()};
+
+function socialBindV241(){if(document.body.dataset.socialBoundV241==='1')return;document.body.dataset.socialBoundV241='1';$('#socialSearchBtnV241')?.addEventListener('click',socialSearchV241);$('#socialSearchInputV241')?.addEventListener('keydown',e=>{if(e.key==='Enter')socialSearchV241()});$('#socialHandleSaveV241')?.addEventListener('click',socialSaveHandleV241);$('#socialMessageSendV241')?.addEventListener('click',socialSendMessageV241);$('#socialMessageInputV241')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();socialSendMessageV241()}});$('#socialStatusPostV241')?.addEventListener('click',socialPostStatusV241);clearInterval(socialStateV241.timer);socialStateV241.timer=setInterval(()=>{if(profileActiveTabV16==='social'&&socialStateV241.selected&&socialSignedV241())socialOpenChatV241(socialStateV241.selected)},6000)}
+setTimeout(socialBindV241,160);
+
+console.info(`Anime list V${V241_TAG}: strict genre paging + Profile Studio readability + friends/follows/DM social layer`);

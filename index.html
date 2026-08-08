@@ -607,6 +607,7 @@
         <button type="button" data-profile-tab="achievements">Достижения</button>
         <button type="button" data-profile-tab="collection">Коллекция</button>
         <button type="button" data-profile-tab="shop">Магазин</button>
+        <button type="button" data-profile-tab="social" id="profileSocialTabV241">👥 Друзья</button>
         <button type="button" data-profile-tab="activity">Активность</button>
       </nav>
 
@@ -745,6 +746,39 @@
         <section id="profileTabShop" class="profile-tab-pane">
           <div class="profile-section-head"><div><span>STARS SHOP</span><h3>Косметика профиля</h3></div><small>Никаких преимуществ в просмотре</small></div>
           <div id="profileShop" class="profile-shop-grid"></div>
+        </section>
+
+        <section id="profileTabSocial" class="profile-tab-pane">
+          <div id="socialGuestV241" class="social-guest-v241 hidden">
+            <span>COMMUNITY</span><h2>Друзья, подписки и личные сообщения</h2>
+            <p>Войди в аккаунт, чтобы искать людей, подписываться, добавлять друзей и собирать свою аниме-тусовку.</p>
+            <button type="button" onclick="openLoginV236()">Войти в аккаунт</button>
+          </div>
+          <div id="socialAppV241" class="social-app-v241 hidden">
+            <header class="social-hero-v241">
+              <div><span>ANIME SOCIAL</span><h2>Твоя аниме-тусовка</h2><p>Подписывайся на людей, добавляй друзей и общайся. ЛС доступны только друзьям; новый диалог открывается с 10 уровня.</p></div>
+              <div class="social-own-handle-v241"><small>Твой ID</small><div><span>@</span><input id="socialHandleInputV241" maxlength="24" placeholder="user-name"><button id="socialHandleSaveV241" class="secondary" type="button">Сохранить</button></div></div>
+            </header>
+            <div id="socialBackendNoticeV241" class="social-backend-notice-v241 hidden"></div>
+            <div class="social-search-v241"><input id="socialSearchInputV241" maxlength="40" placeholder="Найти пользователя по нику или @handle"><button id="socialSearchBtnV241" type="button">Найти</button></div>
+            <div class="social-kpis-v241"><div><b id="socialFriendsCountV241">0</b><span>друзей</span></div><div><b id="socialFollowingCountV241">0</b><span>подписок</span></div><div><b id="socialFollowersCountV241">0</b><span>подписчиков</span></div><div><b id="socialIncomingCountV241">0</b><span>заявок</span></div></div>
+            <div class="social-columns-v241">
+              <section class="social-card-v241"><header><div><span>ПОИСК</span><h3>Люди</h3></div></header><div id="socialSearchResultsV241" class="social-people-list-v241"><div class="social-empty-v241">Введи ник выше.</div></div></section>
+              <section class="social-card-v241"><header><div><span>REQUESTS</span><h3>Заявки в друзья</h3></div></header><div id="socialRequestsV241" class="social-people-list-v241"></div></section>
+              <section class="social-card-v241"><header><div><span>FRIENDS</span><h3>Друзья</h3></div></header><div id="socialFriendsV241" class="social-people-list-v241"></div></section>
+            </div>
+            <div class="social-bottom-grid-v241">
+              <section class="social-card-v241 social-feed-card-v241">
+                <header><div><span>FEED</span><h3>Активность друзей</h3></div></header>
+                <div class="social-status-compose-v241"><input id="socialStatusInputV241" maxlength="180" placeholder="Например: досматриваю Girls Band Cry…"><button id="socialStatusPostV241" class="secondary" type="button">Опубликовать</button></div>
+                <div id="socialFeedV241" class="social-feed-v241"></div>
+              </section>
+              <section class="social-card-v241 social-chat-card-v241">
+                <header><div><span>MESSAGES</span><h3 id="socialChatTitleV241">Личные сообщения</h3></div><small id="socialChatLevelV241">LVL 10 для нового диалога</small></header>
+                <div class="social-chat-layout-v241"><aside id="socialChatsV241" class="social-chat-people-v241"></aside><div class="social-chat-main-v241"><div id="socialMessagesV241" class="social-messages-v241"><div class="social-empty-v241">Выбери друга слева.</div></div><div id="socialComposerV241" class="social-composer-v241"><input id="socialMessageInputV241" maxlength="2000" placeholder="Сообщение…"><button id="socialMessageSendV241" type="button">Отправить</button></div></div></div>
+              </section>
+            </div>
+          </div>
         </section>
 
         <section id="profileTabActivity" class="profile-tab-pane">
