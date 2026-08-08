@@ -6583,11 +6583,11 @@ console.info(`Anime list V${V220_TAG}: Media Deck + original audio/dubs/subtitle
 const ACCOUNT_SESSION_KEY_V23='animeAccountSessionV23';
 const ACCOUNT_PRE_CLOUD_BACKUP_V23='animeAccountPreCloudBackupV23';
 const ACCOUNT_LAST_SYNC_V23='animeAccountLastSyncV23';
-let accountSessionV23=null;
-let accountSyncTimerV23=null;
-let accountSyncingV23=false;
-let accountApplyingRemoteV23=false;
-let accountRecoveryV23=false;
+var accountSessionV23=null;
+var accountSyncTimerV23=null;
+var accountSyncingV23=false;
+var accountApplyingRemoteV23=false;
+var accountRecoveryV23=false;
 
 function accountConfigV23(){
   const c=window.ANIME_AUTH_CONFIG||{};
