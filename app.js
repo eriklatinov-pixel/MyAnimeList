@@ -1146,7 +1146,7 @@ function loadData() {
   try { latestData=JSON.parse(raw); } catch { latestData=clone(DEFAULT_DATA); saveData(); }
   latestData.sections ||= {}; Object.keys(SECTION_TITLES).forEach(k => latestData.sections[k] ||= []); latestData.next_queue ||= [];
 }
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(latestData)); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(latestData)); if(typeof scheduleAccountCloudSyncV23==='function') scheduleAccountCloudSyncV23(); }
 function pickTitle(m) { return m?.title?.english || m?.title?.romaji || m?.title?.native || "Без названия"; }
 function aliasesForMedia(m) { return [m?.title?.english,m?.title?.romaji,m?.title?.native].filter(Boolean); }
 function episodesText(n,isMovie) {
@@ -1663,7 +1663,7 @@ function loadSettings(){
   }
   return uiSettings;
 }
-function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));}
+function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));if(typeof scheduleAccountCloudSyncV23==='function')scheduleAccountCloudSyncV23();}
 function derivePanel2(panel,bg){
   // Let CSS color-mix do most of the work; this is only a stable fallback variable.
   return panel || bg;
@@ -4200,14 +4200,14 @@ function equipCharacterAvatarV16(id){const p=ensureProfileV16();p.equipped.avata
 const CHARACTER_QUERY_V16=`query($id:Int!){Media(id:$id,type:ANIME){id title{english romaji} characters(page:1,perPage:18,sort:[ROLE,RELEVANCE]){edges{role node{id name{full} image{large}}}}}}`;
 function rollRarityV16(){const r=Math.random()*100;return r<3?'Legendary':r<13?'Epic':r<40?'Rare':'Common'}
 function duplicateStarsV16(r){return ({Common:35,Rare:90,Epic:220,Legendary:600})[r]||35}
-async function openCharacterTicketV16(){const p=ensureProfileV16();if(p.tickets<1){profileToastV16('Нет Character Ticket','Их дают за полное аниме, уровни и достижения.');return}const candidates=[];for(const s of ['completed','watching'])for(const e of latestData.sections?.[s]||[])if(Number(e.anilist_id)>0)candidates.push(e);if(!candidates.length){profileToastV16('Нужен AniList ID','Обнови данные хотя бы одного аниме.');return}const entry=candidates[Math.floor(Math.random()*candidates.length)];let media;try{const res=await anilistFetch(CHARACTER_QUERY_V16,{id:Number(entry.anilist_id)});media=res?.data?.Media}catch(err){profileToastV16('Не удалось открыть Ticket','AniList не ответил. Ticket не потрачен.');return}const edges=media?.characters?.edges||[];if(!edges.length){profileToastV16('Нет персонажей','Ticket не потрачен.');return}const mains=edges.filter(x=>x.role==='MAIN'),pool=mains.length&&Math.random()<.58?mains:edges,edge=pool[Math.floor(Math.random()*pool.length)],node=edge?.node;if(!node?.id)return;p.tickets--;const rarity=rollRarityV16(),existing=p.collection.find(x=>String(x.characterId)===String(node.id));let reward='Добавлено в коллекцию';if(existing){const stars=duplicateStarsV16(rarity);addStarsV16(stars,`Повтор · ${node.name?.full||'персонаж'}`,true);reward=`Повтор → +${stars} ✦`}else p.collection.push({characterId:node.id,name:node.name?.full||'Персонаж',image:node.image?.large||'',animeId:media.id,animeTitle:pickTitle(media),rarity,at:Date.now()});profileActivityV16('🎴',`Ticket: ${node.name?.full||'Персонаж'}`,`${rarity} · ${reward}`);saveData();$('#characterReveal')?.classList.remove('waifu-reveal');$('#characterRevealRarity').textContent=rarity.toUpperCase();$('#characterRevealRarity').className=`character-reveal-rarity ${rarityClassV16(rarity)}`;$('#characterRevealImage').src=node.image?.large||'';$('#characterRevealName').textContent=node.name?.full||'Персонаж';$('#characterRevealAnime').textContent=pickTitle(media);$('#characterRevealReward').textContent=reward;$('#characterReveal').classList.remove('hidden');renderProfileV16()}
+async function openCharacterTicketV16(){const p=ensureProfileV16();if(p.tickets<1){profileToastV16('Нет Character Ticket','Их дают за полное аниме, уровни и достижения.');return}const candidates=[];for(const s of ['completed','watching'])for(const e of latestData.sections?.[s]||[])if(Number(e.anilist_id)>0)candidates.push(e);if(!candidates.length){profileToastV16('Нужен AniList ID','Обнови данные хотя бы одного аниме.');return}const entry=candidates[Math.floor(Math.random()*candidates.length)];let media;try{const res=await anilistFetch(CHARACTER_QUERY_V16,{id:Number(entry.anilist_id)});media=res?.data?.Media}catch(err){profileToastV16('Не удалось открыть Ticket','AniList временно недоступен и напрямую, и через сервер. Ticket не потрачен.');return}const edges=media?.characters?.edges||[];if(!edges.length){profileToastV16('Нет персонажей','Ticket не потрачен.');return}const mains=edges.filter(x=>x.role==='MAIN'),pool=mains.length&&Math.random()<.58?mains:edges,edge=pool[Math.floor(Math.random()*pool.length)],node=edge?.node;if(!node?.id)return;p.tickets--;const rarity=rollRarityV16(),existing=p.collection.find(x=>String(x.characterId)===String(node.id));let reward='Добавлено в коллекцию';if(existing){const stars=duplicateStarsV16(rarity);addStarsV16(stars,`Повтор · ${node.name?.full||'персонаж'}`,true);reward=`Повтор → +${stars} ✦`}else p.collection.push({characterId:node.id,name:node.name?.full||'Персонаж',image:node.image?.large||'',animeId:media.id,animeTitle:pickTitle(media),rarity,at:Date.now()});profileActivityV16('🎴',`Ticket: ${node.name?.full||'Персонаж'}`,`${rarity} · ${reward}`);saveData();$('#characterReveal')?.classList.remove('waifu-reveal');$('#characterRevealRarity').textContent=rarity.toUpperCase();$('#characterRevealRarity').className=`character-reveal-rarity ${rarityClassV16(rarity)}`;$('#characterRevealImage').src=node.image?.large||'';$('#characterRevealName').textContent=node.name?.full||'Персонаж';$('#characterRevealAnime').textContent=pickTitle(media);$('#characterRevealReward').textContent=reward;$('#characterReveal').classList.remove('hidden');renderProfileV16()}
 
 window.openCharacterTicketV16=openCharacterTicketV16;
 
 /* V16.8.1: Waifu Ticket — stronger bias toward adult, glamorous, 'waifu-coded' heroines. */
 let waifuCharacterPageCountV165=0;
 const WAIFU_PAGEINFO_QUERY_V165=`query{Page(page:1,perPage:1){pageInfo{lastPage total}characters(sort:[FAVOURITES_DESC]){id}}}`;
-const WAIFU_CHARACTER_PAGE_QUERY_V165=`query($page:Int!){Page(page:$page,perPage:50){characters(sort:[FAVOURITES_DESC]){id name{full} description image{large} favourites gender age media(type:ANIME,page:1,perPage:8,sort:[POPULARITY_DESC]){nodes{id isAdult format popularity averageScore genres title{english romaji}}}}}}`;
+const WAIFU_CHARACTER_PAGE_QUERY_V165=`query($page:Int!){Page(page:$page,perPage:50){characters(sort:[FAVOURITES_DESC]){id name{full} description image{large} favourites gender age media(type:ANIME,page:1,perPage:8,sort:[POPULARITY_DESC]){nodes{id isAdult format popularity averageScore genres title{english romaji}} edges{characterRole node{id}}}}}}`;
 const WAIFU_LOCAL_MEDIA_QUERY_V182=`query($id:Int!){Media(id:$id,type:ANIME){id isAdult format popularity averageScore genres title{english romaji} characters(page:1,perPage:50,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} description image{large} favourites gender age}}}}}`;
 
 function explicitAdultAgeV165(age){const nums=(String(age||'').match(/\d+/g)||[]).map(Number).filter(Number.isFinite);if(!nums.length)return false;return Math.min(...nums)>=18}
@@ -4320,13 +4320,13 @@ async function pickLocalWaifuV182(){
       if(!media||media.isAdult)continue;
       const ranked=(media.characters?.edges||[])
         .filter(x=>localWaifuNodeEligibleV182(x?.node))
-        .map(x=>{const c=x.node;const faux={...c,media:{nodes:[media]}};const scored=waifuScoreV181(faux);let score=scored.score+(x.role==='MAIN'?18:4);return {c,media,score,waifuMeta:scored.waifuMeta}})
+        .map(x=>{const c=x.node;const faux={...c,media:{nodes:[media]}};const scored=waifuScoreV181(faux);let score=scored.score+(x.role==='MAIN'?18:4);return {c,media,score,waifuMeta:scored.waifuMeta,role:x.role}})
         .filter(x=>x.score>=16)
         .sort((a,b)=>b.score-a.score);
       if(ranked.length){
         const top=ranked.slice(0,Math.min(10,ranked.length));
         const chosen=top[Math.floor(Math.random()*top.length)];
-        return {picked:chosen.c,pickedMedia:media,source:useCompleted?'completed':'watching',waifuMeta:chosen.waifuMeta};
+        return {picked:chosen.c,pickedMedia:media,source:useCompleted?'completed':'watching',waifuMeta:chosen.waifuMeta,characterRole:chosen.role||''};
       }
     }catch(e){}
   }
@@ -4345,7 +4345,7 @@ async function openWaifuTicketV165(){
   }
   // Остальные ~28% (или fallback, если в локальном списке нет подходящей взрослой героини): сюрприз из всей AniList.
   if(!picked){
-    let lastPage=1;try{lastPage=await waifuPageCountV165()}catch(err){profileToastV16('AniList не ответил','Waifu Ticket не потрачен.');return}
+    let lastPage=1;try{lastPage=await waifuPageCountV165()}catch(err){profileToastV16('AniList временно недоступен','Проверил прямое соединение и сервер. Waifu Ticket не потрачен.');return}
     for(let attempt=0;attempt<8&&!picked;attempt++){
       const popularBias=Math.random()<.62;
       const maxPopular=Math.min(lastPage,80);
@@ -4359,7 +4359,7 @@ async function openWaifuTicketV165(){
           const chosen=pickFrom[Math.floor(Math.random()*pickFrom.length)];
           picked=chosen.c;pickedMedia=chosen.media||(picked.media?.nodes||[]).find(m=>m&&!m.isAdult)||null;pickedMeta=chosen.waifuMeta||waifuTraitsV183(picked,pickedMedia);
         }
-      }catch(err){if(attempt===7){profileToastV16('Не удалось открыть Waifu Ticket','AniList временно не отвечает. Ticket не потрачен.');return}}
+      }catch(err){if(attempt===7){profileToastV16('Не удалось открыть Waifu Ticket','AniList недоступен и напрямую, и через сервер. Ticket не потрачен.');return}}
     }
   }
   if(!picked){profileToastV16('Не нашлась подходящая waifu','Попробуй ещё раз — Ticket не потрачен.');return}
@@ -5263,7 +5263,7 @@ loadWatchEpisodeV15=async function(opts={}){if(!watchStateV15.entry)return;watch
 /* Shell/selectors awareness for Kodik + source status. */
 const renderWatchShellBeforeV19=renderWatchShellV15;
 renderWatchShellV15=function(){renderWatchShellBeforeV19();syncWatchProviderUiV17();syncProviderConfigUiV19();if(watchResolverV19.active==='kodik')setTimeout(renderKodikSelectorsV19,0)};window.renderWatchShellV15=renderWatchShellV15;
-$('#watchDub')?.addEventListener('change',e=>{if(watchResolverV19.active!=='kodik')return;e.stopImmediatePropagation();patchWatchPrefsV18({dub:e.target.value});showKodikV19()},true);
+$('#watchDub')?.addEventListener('change',e=>{if(watchResolverV19.active!=='kodik')return;const value=String(e.target.value||'');e.stopImmediatePropagation();if(value==='switch:aniliberty'){switchUnifiedTrackV21?.('aniliberty');return}patchWatchPrefsV18({dub:value});showKodikV19();setTimeout(mergeUnifiedTracksV21,0)},true);
 $('#watchSourcesBtn')?.addEventListener('click',openSourcesV19);
 $('#watchSaveSources')?.addEventListener('click',saveProviderConfigFromUiV19);
 $('#watchTestSources')?.addEventListener('click',async()=>{saveProviderConfigFromUiV19();const cfg=providerConfigV19(),st=$('#watchSourceConfigStatus');if(st)st.textContent='Проверяю…';const bits=['AniLiberty ✓'];if(cfg.kodikToken){try{await kodikSearchRawV19({title:'Naruto',types:'anime-serial',limit:1});bits.push('Kodik ✓')}catch(e){bits.push(`Kodik ✕ ${String(e.message||e)}`)}}else bits.push('Kodik — token не задан');if(cfg.subdlKey){try{const u=`https://api.subdl.com/api/v1/me?api_key=${encodeURIComponent(cfg.subdlKey)}`;await fetchJsonTimeoutV19(u,{},10000);bits.push('SubDL ✓')}catch(e){bits.push(`SubDL ✕ ${String(e.message||e)}`)}}else bits.push('SubDL — key не задан');if(st)st.textContent=bits.join(' · ')})
@@ -5292,7 +5292,23 @@ async function backendHealthV20({force=false}={}){const b=backendBaseV20();if(!b
 window.backendHealthV20=backendHealthV20;
 
 const anilistFetchDirectV20=anilistFetch;
-anilistFetch=async function(query,variables){const b=backendBaseV20();if(!b)return anilistFetchDirectV20(query,variables);const response=await fetch(`${b}/anilist`,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query,variables}),cache:'no-store'});const payload=await response.json().catch(()=>({}));if(!response.ok||payload.errors||payload.error)throw new Error(payload?.errors?.[0]?.message||payload?.error||`Backend AniList ${response.status}`);return payload};
+/* V20.4: AniList resilience. Browser-direct first, backend second.
+   Cloudflare/server IPs can be temporarily blocked while the browser endpoint still works. */
+anilistFetch=async function(query,variables){
+  let directErr=null;
+  try{return await anilistFetchDirectV20(query,variables)}catch(err){directErr=err;console.warn('V20.4 direct AniList failed, trying backend',err)}
+  const b=backendBaseV20();
+  if(!b)throw directErr||new Error('AniList unavailable');
+  try{
+    const response=await fetch(`${b}/anilist`,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query,variables}),cache:'no-store'});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok||payload.errors||payload.error)throw new Error(payload?.errors?.[0]?.message||payload?.error||`Backend AniList ${response.status}`);
+    return payload;
+  }catch(backendErr){
+    const e=new Error(`AniList недоступен: ${directErr?.message||'direct failed'} / ${backendErr?.message||'backend failed'}`);
+    e.cause=backendErr;throw e;
+  }
+};
 
 const jikanSearchAnimeDirectV20=jikanSearchAnime;
 jikanSearchAnime=async function(q){const b=backendBaseV20();if(!b)return jikanSearchAnimeDirectV20(q);const res=await fetch(`${b}/jikan/anime?q=${encodeURIComponent(q)}&limit=5&sfw=true`,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error(`Backend Jikan ${res.status}`);const j=await res.json();return j?.data||[]};
@@ -5326,7 +5342,7 @@ $('#settingsBtn')?.addEventListener('click',()=>setTimeout(syncBackendSettingsV2
 $('#topSettingsBtn')?.addEventListener('click',()=>setTimeout(syncBackendSettingsV20,0));
 $('#settingBackendUrl')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();testBackendFromSettingsV20()}});
 
-$('#watchTestSources')?.addEventListener('click',async e=>{if(!backendBaseV20())return;e.preventDefault();e.stopImmediatePropagation();saveProviderConfigFromUiV19();const st=$('#watchSourceConfigStatus');if(st)st.textContent='Проверяю backend…';try{const h=await backendHealthV20({force:true}),s=h.services||{};const bits=['Backend ✓','AniList ✓','Jikan ✓',`AniLiberty ${s.aniliberty?'✓':'✕'}`,`SubDL ${s.subdl?'✓':'— key'}`,`Kodik ${s.kodik?'✓':'— token'}`];if(st)st.textContent=bits.join(' · ')}catch(err){if(st)st.textContent=`Backend ✕ ${String(err?.message||err)}`}},true);
+$('#watchTestSources')?.addEventListener('click',async e=>{if(!backendBaseV20())return;e.preventDefault();e.stopImmediatePropagation();saveProviderConfigFromUiV19();const st=$('#watchSourceConfigStatus');if(st)st.textContent='Проверяю backend…';try{const h=await backendHealthV20({force:true}),s=h.services||{};const bits=['Backend ✓','AniList ✓','Jikan ✓',`AniLiberty ${s.aniliberty?'✓':'✕'}`,`AnimeVost ${s.animevost?'✓':'✕'}`,`SubDL ${s.subdl?'✓':'— key'}`,`Kodik ${s.kodik?'✓':'— token'}`];if(st)st.textContent=bits.join(' · ')}catch(err){if(st)st.textContent=`Backend ✕ ${String(err?.message||err)}`}},true);
 
 syncBackendSettingsV20();
 if(backendBaseV20())backendHealthV20().then(()=>syncProviderConfigUiV19()).catch(()=>{});
@@ -5858,3 +5874,838 @@ fetchAnimeThemesHeroV14=async function(entry){
   let data=null;for(const [site,id] of [['AniList',aid],['MyAnimeList',mid]]){if(!id)continue;try{data=await animeThemesByExternalV203(site,id);if(data?.anime?.length)break;}catch(e){console.warn('V20.3 hero theme',site,id,e);}}
   const picked=data?chooseAnimeThemesVideoV14(data):null;animeThemesHeroCacheV14.set(key,picked||null);if(picked)try{localStorage.setItem(V14_HERO_THEME_CACHE_KEY+key,JSON.stringify({ts:Date.now(),data:picked}));}catch{}return picked||null;
 };
+
+/* ===== V20.6: role-aware card rarities + avatar effect compatibility ===== */
+const CARD_RARITY_VERSION_V205=206;
+const CARD_STATS_CACHE_MS_V205=120000;
+let cardStatsLastFetchV205=0;
+let cardRaritySyncBusyV205=false;
+const CHARACTER_MEDIA_QUERY_V205=`query($id:Int!){Media(id:$id,type:ANIME){id idMal popularity title{english romaji native} characters(page:1,perPage:50,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} image{large} favourites}}}}}`;
+const CHARACTER_META_QUERY_V205=`query($ids:[Int]){Page(page:1,perPage:50){characters(id_in:$ids){id favourites media(page:1,perPage:25,type:ANIME,sort:[POPULARITY_DESC]){edges{characterRole node{id popularity}}}}}}}`;
+
+function ensureCardProfileV205(){
+  const p=ensureProfileV16();
+  p.animeTickets ||= {};
+  p.themedTicketClaimed ||= {};
+  p.equipped ||= {};
+  if(p.equipped.avatarEffect===undefined)p.equipped.avatarEffect='none';
+  if(p.equipped.avatarFit===undefined)p.equipped.avatarFit='cover';
+  if(p.equipped.avatarPosition===undefined)p.equipped.avatarPosition='center';
+  for(const c of p.collection||[]){
+    if(c.globalPulls===undefined)c.globalPulls=null;
+    if(c.rarityVersion===undefined)c.rarityVersion=0;
+  }
+  return p;
+}
+function rarityFromPopularityV205(favourites,role='',mediaPopularity=0){
+  const f=Math.max(0,Number(favourites)||0),r=String(role||'').toUpperCase(),mp=Math.max(0,Number(mediaPopularity)||0),isMain=r==='MAIN';
+  // Rarity is deterministic for the character: popularity sets the base tier,
+  // while being a MAIN character guarantees a high tier even when AniList favourites are low.
+  if(f>=30000||(isMain&&(f>=4000||mp>=180000)))return 'Legendary';
+  if(f>=8000||isMain)return 'Epic';
+  if(f>=1500)return 'Rare';
+  return 'Common';
+}
+function cardDropWeightV206(edge,mediaPopularity=0){
+  const rarity=rarityFromPopularityV205(edge?.node?.favourites,edge?.role,mediaPopularity);
+  return ({Common:100,Rare:42,Epic:16,Legendary:5})[rarity]||100;
+}
+function weightedCharacterEdgeV206(edges,mediaPopularity=0){
+  const list=(edges||[]).filter(x=>x?.node?.id);if(!list.length)return null;
+  const weights=list.map(x=>Math.max(1,cardDropWeightV206(x,mediaPopularity))),total=weights.reduce((a,b)=>a+b,0);let roll=Math.random()*total;
+  for(let i=0;i<list.length;i++){roll-=weights[i];if(roll<=0)return list[i]}
+  return list[list.length-1]||null;
+}
+function cardRarityRankV205(r){return ({Common:0,Rare:1,Epic:2,Legendary:3})[r]??0}
+function formatGlobalPullsV205(n){n=Number(n);return Number.isFinite(n)&&n>0?n.toLocaleString('ru-RU'):'—'}
+
+function findEntryByKeyV205(key){return profileAllEntriesV162().find(x=>String(x.key)===String(key))||null}
+function addAnimeTicketV205(entry,n=1,{silent=false,reason=''}={}){
+  if(!entry||n<=0)return;
+  const p=ensureCardProfileV205(),key=String(entryKeyV16(entry));
+  const t=p.animeTickets[key] ||= {count:0,title:entry.title||'Anime',emoji:entry.emoji||'🎟️',anilistId:Number(entry.anilist_id)||0,malId:Number(entry.mal_id)||0,cover:entry.cover||'',createdAt:Date.now()};
+  t.count=Math.max(0,Number(t.count)||0)+Math.round(n);t.title=entry.title||t.title;t.emoji=entry.emoji||t.emoji;t.anilistId=Number(entry.anilist_id)||t.anilistId||0;t.malId=Number(entry.mal_id)||t.malId||0;t.cover=entry.cover||t.cover||'';
+  profileActivityV16('🎟️',`+${n} ${t.title} Ticket`,reason||'Полный просмотр тайтла');
+  if(!silent)profileToastV16(`🎟️ ${t.title} Ticket`,`${n>1?`×${n} · `:''}только персонажи этого аниме`);
+  saveData();
+}
+window.addAnimeTicketV205=addAnimeTicketV205;
+
+function migrateThemedTicketsV205(){
+  const p=ensureCardProfileV205();let changed=false;
+  for(const [key,at] of Object.entries(p.titleRewards||{})){
+    if(p.themedTicketClaimed[key])continue;
+    const row=findEntryByKeyV205(key);if(!row)continue;
+    addAnimeTicketV205(row.entry,1,{silent:true,reason:'Компенсация V20.5 за уже закрытый тайтл'});
+    p.themedTicketClaimed[key]=at||Date.now();changed=true;
+  }
+  if(changed)saveData();
+}
+
+function avatarEffectsV205(selectedCard=null){
+  const p=ensureCardProfileV205(),cards=p.collection||[],max=Math.max(-1,...cards.map(c=>cardRarityRankV205(c.rarity))),selectedIsWaifu=selectedCard?.ticketType==='waifu';
+  return [
+    {id:'none',name:'Без эффекта',icon:'○',unlocked:true,desc:'Чистый аватар'},
+    {id:'soft',name:'Soft Glow',icon:'✦',unlocked:cards.length>0,desc:'Откроется после первой карточки'},
+    {id:'rare',name:'Rare Aura',icon:'◇',unlocked:max>=1,desc:'Нужна Rare-карточка'},
+    {id:'epic',name:'Epic Pulse',icon:'◆',unlocked:max>=2,desc:'Нужна Epic-карточка'},
+    {id:'legendary',name:'Legendary Halo',icon:'👑',unlocked:max>=3,desc:'Нужна Legendary-карточка'},
+    {id:'waifu',name:'Heart Sparks',icon:'💗',unlocked:selectedIsWaifu,desc:selectedIsWaifu?'Waifu-эффект для выбранной карточки':'Нужна выбранная Waifu-карточка'}
+  ];
+}
+function avatarEffectAllowedV206(effectId,card){return avatarEffectsV205(card).some(x=>x.id===effectId&&x.unlocked)}
+function applyAvatarVisualV205(){
+  const p=ensureCardProfileV205(),card=(p.collection||[]).find(x=>String(x.characterId)===String(p.equipped.avatarCharacterId)),stored=String(p.equipped.avatarEffect||'none'),effect=avatarEffectAllowedV206(stored,card)?stored:'none',fit=p.equipped.avatarFit==='contain'?'contain':'cover',pos=['center','top','bottom'].includes(p.equipped.avatarPosition)?p.equipped.avatarPosition:'center';
+  if(effect!==stored){p.equipped.avatarEffect='none';saveData()}
+  const root=$('#profileAvatar'),side=$('#sidebarProfileAvatar'),img=$('#profileAvatarImage');
+  if(root){root.classList.remove('avatar-fx-soft','avatar-fx-rare','avatar-fx-epic','avatar-fx-legendary','avatar-fx-waifu');if(effect!=='none')root.classList.add(`avatar-fx-${effect}`)}
+  if(side){side.classList.remove('avatar-fx-soft','avatar-fx-rare','avatar-fx-epic','avatar-fx-legendary','avatar-fx-waifu');if(effect!=='none')side.classList.add(`avatar-fx-${effect}`);const si=side.querySelector('img');if(si){si.style.objectFit=fit;si.style.objectPosition=pos}}
+  if(img){img.style.objectFit=fit;img.style.objectPosition=pos}
+}
+const renderProfileChromeV16BaseV205=renderProfileChromeV16;
+renderProfileChromeV16=function(){renderProfileChromeV16BaseV205();applyAvatarVisualV205()};
+
+function ensureAvatarStudioV205(){
+  let modal=$('#avatarStudioV205');if(modal)return modal;
+  modal=document.createElement('div');modal.id='avatarStudioV205';modal.className='avatar-studio-v205 hidden';modal.innerHTML=`<div class="avatar-studio-shell-v205"><header><div><span>AVATAR STUDIO</span><h3>Выбери аватар</h3><p>Любая выбитая карточка может стать аватаром. Редкие карточки открывают эффекты.</p></div><button type="button" id="avatarStudioCloseV205">✕</button></header><div class="avatar-studio-preview-v205"><div id="avatarPreviewV205" class="profile-avatar"><span>?</span></div><div><strong id="avatarPreviewNameV205">Без персонажа</strong><small id="avatarPreviewMetaV205">Выбери карточку ниже</small></div></div><section><div class="avatar-studio-label-v205">КАРТИНКА</div><div id="avatarCardsV205" class="avatar-card-grid-v205"></div></section><section class="avatar-studio-controls-v205"><label>Кадр<select id="avatarFitV205"><option value="cover">Заполнить</option><option value="contain">Показать целиком</option></select></label><label>Позиция<select id="avatarPositionV205"><option value="center">По центру</option><option value="top">Сверху</option><option value="bottom">Снизу</option></select></label></section><section><div class="avatar-studio-label-v205">ЭФФЕКТЫ ИЗ КОЛЛЕКЦИИ</div><div id="avatarEffectsV205" class="avatar-effects-grid-v205"></div></section><footer><button type="button" id="avatarResetV205" class="secondary">Сбросить на букву</button><button type="button" id="avatarApplyV205">✓ Поставить</button></footer></div>`;
+  document.body.appendChild(modal);
+  $('#avatarStudioCloseV205').onclick=closeAvatarStudioV205;modal.addEventListener('click',e=>{if(e.target===modal)closeAvatarStudioV205()});
+  $('#avatarFitV205').addEventListener('change',renderAvatarStudioPreviewV205);$('#avatarPositionV205').addEventListener('change',renderAvatarStudioPreviewV205);
+  $('#avatarResetV205').onclick=()=>{const p=ensureCardProfileV205();p.equipped.avatarCharacterId=null;p.equipped.avatarEffect='none';ensureProfilePrefsV162().customAvatar='';saveData();closeAvatarStudioV205();renderProfileV16();profileToastV16('Аватар сброшен','Вернул инициалы профиля')};
+  $('#avatarApplyV205').onclick=applyAvatarStudioV205;
+  return modal;
+}
+let avatarStudioPickV205=null,avatarStudioEffectV205='none';
+function avatarStudioCardV205(c,selected){return `<button type="button" class="avatar-pick-v205 ${selected?'selected':''}" data-avatar-card="${Number(c.characterId)||0}"><img src="${esc(c.image||'')}" alt=""><span><b>${esc(c.name||'')}</b><small class="${rarityClassV16(c.rarity)}">${esc(String(c.rarity||'Common'))}</small></span></button>`}
+function renderAvatarStudioV205(){
+  const p=ensureCardProfileV205(),box=$('#avatarCardsV205'),fx=$('#avatarEffectsV205');if(!box||!fx)return;
+  const cards=[...(p.collection||[])].sort((a,b)=>cardRarityRankV205(b.rarity)-cardRarityRankV205(a.rarity)||String(a.name).localeCompare(String(b.name)));
+  box.innerHTML=cards.length?cards.map(c=>avatarStudioCardV205(c,String(avatarStudioPickV205)===String(c.characterId))).join(''):'<div class="profile-empty">Сначала выбей хотя бы одну карточку.</div>';
+  box.querySelectorAll('[data-avatar-card]').forEach(btn=>btn.onclick=()=>{avatarStudioPickV205=btn.dataset.avatarCard;const selected=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205));if(!avatarEffectAllowedV206(avatarStudioEffectV205,selected))avatarStudioEffectV205='none';renderAvatarStudioV205();renderAvatarStudioPreviewV205()});
+  const selected=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205));
+  if(!avatarEffectAllowedV206(avatarStudioEffectV205,selected))avatarStudioEffectV205='none';
+  fx.innerHTML=avatarEffectsV205(selected).map(e=>`<button type="button" class="avatar-effect-pick-v205 ${avatarStudioEffectV205===e.id?'selected':''} ${e.unlocked?'':'locked'}" data-avatar-effect="${e.id}" ${e.unlocked?'':'disabled'}><b>${e.icon} ${esc(e.name)}</b><small>${esc(e.desc)}</small></button>`).join('');
+  fx.querySelectorAll('[data-avatar-effect]:not(:disabled)').forEach(btn=>btn.onclick=()=>{avatarStudioEffectV205=btn.dataset.avatarEffect;renderAvatarStudioV205();renderAvatarStudioPreviewV205()});
+  $('#avatarFitV205').value=p.equipped.avatarFit||'cover';$('#avatarPositionV205').value=p.equipped.avatarPosition||'center';
+}
+function renderAvatarStudioPreviewV205(){
+  const p=ensureCardProfileV205(),c=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205)),root=$('#avatarPreviewV205');if(!root)return;
+  root.className='profile-avatar';if(avatarStudioEffectV205!=='none')root.classList.add(`avatar-fx-${avatarStudioEffectV205}`);
+  const fit=$('#avatarFitV205')?.value||'cover',pos=$('#avatarPositionV205')?.value||'center';
+  root.innerHTML=c?.image?`<img src="${esc(c.image)}" style="object-fit:${fit};object-position:${pos}" alt="">`:`<span>${esc(profileNicknameV16().slice(0,1).toUpperCase())}</span>`;
+  $('#avatarPreviewNameV205').textContent=c?.name||'Без персонажа';$('#avatarPreviewMetaV205').textContent=c?`${c.rarity} · ${c.animeTitle||''}`:'Выбери карточку ниже';
+}
+function openAvatarStudioV205(characterId=null){
+  const p=ensureCardProfileV205();ensureAvatarStudioV205();avatarStudioPickV205=characterId!=null?String(characterId):(p.equipped.avatarCharacterId!=null?String(p.equipped.avatarCharacterId):null);avatarStudioEffectV205=p.equipped.avatarEffect||'none';const selected=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205));if(!avatarEffectAllowedV206(avatarStudioEffectV205,selected))avatarStudioEffectV205='none';renderAvatarStudioV205();renderAvatarStudioPreviewV205();$('#avatarStudioV205').classList.remove('hidden');
+}
+function closeAvatarStudioV205(){$('#avatarStudioV205')?.classList.add('hidden')}
+function applyAvatarStudioV205(){
+  const p=ensureCardProfileV205();if(avatarStudioPickV205&&!p.collection.some(x=>String(x.characterId)===String(avatarStudioPickV205))){profileToastV16('Карточка не найдена');return}
+  const selected=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205));if(!avatarEffectAllowedV206(avatarStudioEffectV205,selected))avatarStudioEffectV205='none';
+  p.equipped.avatarCharacterId=avatarStudioPickV205?Number(avatarStudioPickV205):null;p.equipped.avatarEffect=avatarStudioEffectV205;p.equipped.avatarFit=$('#avatarFitV205')?.value||'cover';p.equipped.avatarPosition=$('#avatarPositionV205')?.value||'center';
+  if(avatarStudioPickV205)ensureProfilePrefsV162().customAvatar='';saveData();closeAvatarStudioV205();renderProfileV16();profileToastV16('✓ Аватар обновлён',avatarStudioPickV205?'Карточка и эффект применены':'Вернул инициалы');
+}
+window.openAvatarStudioV205=openAvatarStudioV205;
+equipCharacterAvatarV16=function(id){openAvatarStudioV205(id)};window.equipCharacterAvatarV16=equipCharacterAvatarV16;
+setTimeout(()=>{$('#profileAvatar')?.addEventListener('click',()=>openAvatarStudioV205());$('#profileAvatar')?.setAttribute('title','Настроить аватар')},0);
+
+async function registerGlobalPullV205(characterId){
+  const b=backendBaseV20();if(!b||!characterId)return null;
+  try{const eventId=(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);const r=await fetch(`${b}/cards/pull`,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({characterId:Number(characterId),eventId})});const j=await r.json().catch(()=>({}));if(!r.ok||!j?.ok)return null;return Number(j.count)||null}catch{return null}
+}
+async function refreshGlobalPullCountsV205({force=false}={}){
+  const p=ensureCardProfileV205(),b=backendBaseV20();if(!b||!p.collection.length)return;if(!force&&Date.now()-cardStatsLastFetchV205<CARD_STATS_CACHE_MS_V205)return;cardStatsLastFetchV205=Date.now();
+  const ids=[...new Set(p.collection.map(c=>Number(c.characterId)).filter(Boolean))].slice(0,100);if(!ids.length)return;
+  try{const r=await fetch(`${b}/cards/counts?ids=${encodeURIComponent(ids.join(','))}`,{headers:{Accept:'application/json'}}),j=await r.json();if(!r.ok||!j?.counts)return;let changed=false;for(const c of p.collection){const n=Number(j.counts[String(c.characterId)]);if(Number.isFinite(n)&&c.globalPulls!==n){c.globalPulls=n;changed=true}}if(changed){saveData();renderCollectionV16()}}catch{}
+}
+
+async function syncCollectionRaritiesV205(){
+  if(cardRaritySyncBusyV205)return;const p=ensureCardProfileV205(),needs=(p.collection||[]).filter(c=>!c.rarityVersion||c.rarityVersion<CARD_RARITY_VERSION_V205||c.favourites===undefined||c.characterRole===undefined).slice(0,50);if(!needs.length)return;cardRaritySyncBusyV205=true;
+  try{
+    const ids=needs.map(c=>Number(c.characterId)).filter(Boolean),res=await anilistFetch(CHARACTER_META_QUERY_V205,{ids}),map=new Map((res?.data?.Page?.characters||[]).map(x=>[String(x.id),x]));let changed=false;
+    for(const c of needs){const meta=map.get(String(c.characterId));if(!meta)continue;const edges=meta.media?.edges||[],exact=edges.find(e=>String(e?.node?.id)===String(c.animeId)),main=edges.find(e=>e?.characterRole==='MAIN'),rel=exact||main||edges[0]||null;c.favourites=Math.max(0,Number(meta.favourites)||0);c.characterRole=rel?.characterRole||c.characterRole||'';c.mediaPopularity=Math.max(0,Number(rel?.node?.popularity)||Number(c.mediaPopularity)||0);c.rarity=rarityFromPopularityV205(c.favourites,c.characterRole,c.mediaPopularity);c.rarityVersion=CARD_RARITY_VERSION_V205;changed=true}
+    if(changed){saveData();renderCollectionV16();renderProfileChromeV16()}
+  }catch(e){console.warn('V20.6 rarity sync',e)}finally{cardRaritySyncBusyV205=false}
+}
+
+function ensureAnimeTicketPanelV205(){
+  const filters=$('#profileCollectionFilters');if(!filters)return null;let panel=$('#animeTicketsV205');if(!panel){panel=document.createElement('div');panel.id='animeTicketsV205';panel.className='anime-tickets-v205';filters.before(panel)}return panel;
+}
+function renderAnimeTicketsV205(){
+  const p=ensureCardProfileV205(),panel=ensureAnimeTicketPanelV205();if(!panel)return;const rows=Object.entries(p.animeTickets||{}).filter(([,t])=>Number(t.count)>0).sort((a,b)=>String(a[1].title).localeCompare(String(b[1].title)));
+  panel.classList.toggle('hidden',!rows.length);panel.innerHTML=rows.length?`<div class="anime-ticket-head-v205"><div><span>ТЕМАТИЧЕСКИЕ БИЛЕТЫ</span><b>За полный просмотр аниме</b></div><small>Внутри — только персонажи этого тайтла</small></div><div class="anime-ticket-list-v205">${rows.map(([key,t])=>`<button type="button" onclick="openAnimeTicketV205('${esc(key)}')">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<span><b>${esc(t.title)} Ticket</b><small>×${Number(t.count)||0}</small></span></button>`).join('')}</div>`:'';
+}
+
+async function resolveTicketMediaV205(ticket){
+  let id=Number(ticket?.anilistId)||0;if(id){const r=await anilistFetch(CHARACTER_MEDIA_QUERY_V205,{id});if(r?.data?.Media)return r.data.Media}
+  if(Number(ticket?.malId)){try{const r=await anilistFetchDirectV20(DETAIL_BY_MAL_QUERY,{idMal:Number(ticket.malId)}),id=Number(r?.data?.Media?.id)||0;if(id){ticket.anilistId=id;return (await anilistFetch(CHARACTER_MEDIA_QUERY_V205,{id}))?.data?.Media||null}}catch{}}
+  return null;
+}
+function chooseCharacterEdgeV205(edges,mediaPopularity=0){return weightedCharacterEdgeV206(edges,mediaPopularity)}
+async function commitCardPullV205(node,media,{ticketType='character',sourceLabel='',waifuMeta=null,characterRole='',mediaPopularity=0}={}){
+  const p=ensureCardProfileV205(),favourites=Math.max(0,Number(node?.favourites)||0),role=String(characterRole||'').toUpperCase(),mp=Math.max(0,Number(mediaPopularity)||Number(media?.popularity)||0),rarity=rarityFromPopularityV205(favourites,role,mp),existing=p.collection.find(x=>String(x.characterId)===String(node.id));let reward='Добавлено в коллекцию';
+  if(existing){existing.favourites=favourites;existing.characterRole=role||existing.characterRole||'';existing.mediaPopularity=mp||existing.mediaPopularity||0;existing.rarity=rarityFromPopularityV205(existing.favourites,existing.characterRole,existing.mediaPopularity);existing.rarityVersion=CARD_RARITY_VERSION_V205;if(waifuMeta&&!existing.waifuMeta)existing.waifuMeta=waifuMeta;const stars=duplicateStarsV16(existing.rarity);addStarsV16(stars,`Повтор · ${node.name?.full||'персонаж'}`,true);reward=`Повтор → +${stars} ✦`}
+  else p.collection.push({characterId:node.id,name:node.name?.full||'Персонаж',image:node.image?.large||'',animeId:media?.id||null,animeTitle:media?pickTitle(media):'',rarity,rarityVersion:CARD_RARITY_VERSION_V205,favourites,characterRole:role,mediaPopularity:mp,ticketType,waifuSource:sourceLabel||'',waifuMeta:waifuMeta||null,waifuVote:'',globalPulls:null,at:Date.now()});
+  const card=existing||p.collection[p.collection.length-1];const finalRarity=card.rarity;saveData();
+  registerGlobalPullV205(node.id).then(n=>{if(n){card.globalPulls=n;saveData();renderCollectionV16();const g=$('#characterRevealGlobalV205');if(g)g.textContent=`🌐 Всего выбито: ${formatGlobalPullsV205(n)}`}});
+  return {rarity:finalRarity,reward,card};
+}
+function revealCardV205(node,media,rarity,reward,type='character'){
+  revealCharacterV165(node,media,rarity,reward,type);let g=$('#characterRevealGlobalV205');if(!g){g=document.createElement('div');g.id='characterRevealGlobalV205';g.className='character-reveal-global-v205';$('#characterRevealReward')?.after(g)}const c=ensureCardProfileV205().collection.find(x=>String(x.characterId)===String(node.id));g.textContent=`🌐 Всего выбито: ${formatGlobalPullsV205(c?.globalPulls)}`;
+}
+
+openCharacterTicketV16=async function(){
+  const p=ensureCardProfileV205();if(p.tickets<1){profileToastV16('Нет Character Ticket','Обычные билеты дают уровни, задания и достижения.');return}
+  const candidates=[];for(const s of ['completed','watching'])for(const e of latestData.sections?.[s]||[])if(Number(e.anilist_id)>0)candidates.push(e);if(!candidates.length){profileToastV16('Нужен AniList ID','Обнови данные хотя бы одного аниме.');return}
+  const entry=candidates[Math.floor(Math.random()*candidates.length)];let media;try{media=(await anilistFetch(CHARACTER_MEDIA_QUERY_V205,{id:Number(entry.anilist_id)}))?.data?.Media}catch{profileToastV16('Не удалось открыть Ticket','Источник персонажей временно недоступен. Ticket не потрачен.');return}
+  const edge=chooseCharacterEdgeV205(media?.characters?.edges||[],media?.popularity),node=edge?.node;if(!node?.id){profileToastV16('Нет персонажей','Ticket не потрачен.');return}p.tickets--;const out=await commitCardPullV205(node,media,{characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});profileActivityV16('🎴',`Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · ${out.reward}`);saveData();renderProfileChromeV16();revealCardV205(node,media,out.rarity,out.reward,'character');renderProfileV16();
+};window.openCharacterTicketV16=openCharacterTicketV16;
+
+async function openAnimeTicketV205(key){
+  const p=ensureCardProfileV205(),ticket=p.animeTickets?.[key];if(!ticket||Number(ticket.count)<1){profileToastV16('Этот Ticket закончился');return}
+  let media;try{media=await resolveTicketMediaV205(ticket)}catch{}if(!media){profileToastV16('Не удалось открыть тематический Ticket','Данные персонажей временно недоступны. Ticket не потрачен.');return}
+  const edge=chooseCharacterEdgeV205(media.characters?.edges||[],media?.popularity),node=edge?.node;if(!node?.id){profileToastV16('У аниме не нашлись персонажи','Ticket не потрачен.');return}
+  ticket.count--;const out=await commitCardPullV205(node,media,{ticketType:'anime',characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});profileActivityV16('🎟️',`${ticket.title} Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · ${out.reward}`);saveData();renderProfileChromeV16();revealCardV205(node,media,out.rarity,`${ticket.title} Ticket · ${out.reward}`,'character');renderProfileV16();
+}
+window.openAnimeTicketV205=openAnimeTicketV205;
+
+const openWaifuTicketV165BaseV205=openWaifuTicketV165;
+openWaifuTicketV165=async function(){
+  const p=ensureCardProfileV205();if(p.waifuTickets<1){profileToastV16('Нет Waifu Ticket','Получай их из ежедневок, уровней и магазина.');return}
+  let picked=null,pickedMedia=null,pickedMeta=null,pickedRole='',sourceLabel='вся база';if(Math.random()<.72){const local=await pickLocalWaifuV182();if(local){picked=local.picked;pickedMedia=local.pickedMedia;pickedMeta=local.waifuMeta||waifuTraitsV183(picked,pickedMedia);pickedRole=local.characterRole||'';sourceLabel=local.source==='completed'?'из просмотренного':'из текущего'}}
+  if(!picked){let lastPage=1;try{lastPage=await waifuPageCountV165()}catch{profileToastV16('Источник персонажей временно недоступен','Waifu Ticket не потрачен.');return}for(let attempt=0;attempt<8&&!picked;attempt++){const popularBias=Math.random()<.62,maxPopular=Math.min(lastPage,80),page=popularBias?1+Math.floor(Math.random()*maxPopular):1+Math.floor(Math.random()*lastPage);try{const res=await anilistFetch(WAIFU_CHARACTER_PAGE_QUERY_V165,{page}),ranked=(res?.data?.Page?.characters||[]).filter(eligibleWaifuV165).map(c=>({c,...waifuScoreV181(c)})).filter(x=>x.score>=24).sort((a,b)=>b.score-a.score);if(ranked.length){const top=ranked.slice(0,Math.min(12,ranked.length)),pickFrom=Math.random()<.78?top:ranked.slice(0,Math.min(20,ranked.length)),chosen=pickFrom[Math.floor(Math.random()*pickFrom.length)];picked=chosen.c;pickedMedia=chosen.media||(picked.media?.nodes||[]).find(m=>m&&!m.isAdult)||null;pickedMeta=chosen.waifuMeta||waifuTraitsV183(picked,pickedMedia);pickedRole=(picked.media?.edges||[]).find(e=>String(e?.node?.id)===String(pickedMedia?.id))?.characterRole||((picked.media?.edges||[]).find(e=>e?.characterRole==='MAIN')?.characterRole)||''}}catch{}}
+  }
+  if(!picked){profileToastV16('Не нашлась подходящая waifu','Ticket не потрачен.');return}p.waifuTickets--;const out=await commitCardPullV205(picked,pickedMedia,{ticketType:'waifu',sourceLabel,waifuMeta:pickedMeta||waifuTraitsV183(picked,pickedMedia),characterRole:pickedRole,mediaPopularity:pickedMedia?.popularity||0});profileActivityV16('💗',`Waifu Ticket: ${picked.name?.full||'Персонаж'}`,`${out.rarity} · ${sourceLabel} · ${out.reward}`);saveData();renderProfileChromeV16();revealCardV205(picked,pickedMedia,out.rarity,`${sourceLabel} · ${out.reward}`,'waifu');renderProfileV16();
+};window.openWaifuTicketV165=openWaifuTicketV165;
+
+renderCollectionV16=function(){
+  const p=normalizeCollectionV166();ensureCardProfileV205();renderAnimeTicketsV205();const box=$('#profileCollection');if(!box)return;document.querySelectorAll('#profileCollectionFilters [data-card-filter]').forEach(b=>b.classList.toggle('active',b.dataset.cardFilter===collectionFilterV166));let cards=[...p.collection].reverse();if(collectionFilterV166==='showcase')cards=cards.filter(c=>c.showcase);if(collectionFilterV166==='hidden')cards=cards.filter(c=>!c.showcase);
+  if(!p.collection.length){box.innerHTML='<div class="profile-empty">Коллекция пока пустая. Закрой аниме полностью — получишь тематический Ticket именно этого тайтла.</div>';return}
+  if(!cards.length){box.innerHTML='<div class="profile-empty">В этом фильтре карточек нет.</div>';return}
+  box.innerHTML=cards.map(c=>{const vote=c.waifuVote||ensureWaifuTasteV183().votes[String(c.characterId)]||'',rate=c.ticketType==='waifu'?`<div class="waifu-rate-v183"><button class="${vote==='love'?'active love':''}" onclick="setWaifuVoteV183(${Number(c.characterId)||0},'love')">💘</button><button class="${vote==='ok'?'active ok':''}" onclick="setWaifuVoteV183(${Number(c.characterId)||0},'ok')">🙂</button><button class="${vote==='no'?'active no':''}" onclick="setWaifuVoteV183(${Number(c.characterId)||0},'no')">🚫</button></div>`:'';const type=c.ticketType==='waifu'?'<span class="collection-ticket-type">💗 WAIFU</span>':c.ticketType==='anime'?'<span class="collection-ticket-type anime">🎟️ TITLE</span>':'';return `<article class="collection-card ${c.ticketType==='waifu'?'ticket-waifu':''} ${c.showcase?'in-showcase':'not-showcase'}" data-character-id="${Number(c.characterId)||0}"><span class="collection-rarity ${rarityClassV16(c.rarity)}">${esc(String(c.rarity).toUpperCase())}</span>${type}<img src="${esc(c.image||'')}" alt="${esc(c.name)}"><div class="collection-card-copy"><strong>${esc(c.name)}</strong><small>${esc(c.animeTitle||'')}</small><div class="collection-global-v205">🌐 выбито: <b>${formatGlobalPullsV205(c.globalPulls)}</b></div>${rate}<div class="collection-card-actions"><button type="button" onclick="openAvatarStudioV205(${Number(c.characterId)||0})">🙂 Аватар</button><button type="button" class="${c.showcase?'showcase-on':''}" onclick="toggleCardShowcaseV166(${Number(c.characterId)||0})">${c.showcase?'★ В профиле':'☆ В витрину'}</button></div></div></article>`}).join('');
+  setTimeout(()=>refreshGlobalPullCountsV205(),0);setTimeout(()=>syncCollectionRaritiesV205(),50);
+};
+
+verifyEpisodeV16=function(){
+  const e=watchStateV15?.entry,rec=currentEpisodeRecordV16();if(!e||!rec)return false;const cov=coverageV16(rec),watched=watchedSecondsV16(rec);if(rec.verified)return true;if(!rec.duration||rec.duration<90||cov<.82||watched<Math.min(rec.duration*.82,480))return false;
+  rec.verified=true;rec.verifiedAt=Date.now();if(!rec.xpAwarded){rec.xpAwarded=true;addXpV16(PROFILE_EPISODE_XP_V16,`${e.title} · серия ${watchStateV15.episode}`);addStarsV16(3,`${e.title} · серия ${watchStateV15.episode}`,true)}const h=new Date(rec.verifiedAt).getHours();if(h<5)ensureProfileV16().stats.nightEpisodes=(Number(ensureProfileV16().stats.nightEpisodes)||0)+1;const contiguous=contiguousVerifiedV16(e);if(contiguous>Number(e.progress||0)){e.progress=contiguous;renderAll()}
+  const seasonKey=`${entryKeyV16(e)}:s${watchStateV15.season+1}`,p=ensureCardProfileV205();if(seasonCompleteV16(e,watchStateV15.season)&&!p.seasonRewards[seasonKey]){p.seasonRewards[seasonKey]=Date.now();addXpV16(PROFILE_SEASON_XP_V16,`${e.title} · часть ${watchStateV15.season+1} завершена`);addStarsV16(30,`Завершён сезон ${watchStateV15.season+1}`)}
+  const titleKey=entryKeyV16(e);if(titleCompleteVerifiedV16(e)&&!p.titleRewards[titleKey]){p.titleRewards[titleKey]=Date.now();addXpV16(PROFILE_TITLE_XP_V16,`${e.title} завершён полностью`);addStarsV16(120,`${e.title} · полный просмотр`);addAnimeTicketV205(e,1,{reason:`${e.title} · полный просмотр`});p.themedTicketClaimed[titleKey]=Date.now()}
+  profileActivityV16('▶','Серия подтверждена',`${e.title} · ${Math.round(cov*100)}% уникального просмотра`);evaluateAchievementsV16();saveData();renderProfileChromeV16();if(!$('#profileModal')?.classList.contains('hidden'))renderProfileV16();return true;
+};
+
+const renderProfileV16BaseV205=renderProfileV16;
+renderProfileV16=function(){migrateThemedTicketsV205();renderProfileV16BaseV205();renderAnimeTicketsV205();applyAvatarVisualV205();setTimeout(()=>refreshGlobalPullCountsV205(),0)};
+const openProfileV16BaseV205=openProfileV16;
+openProfileV16=function(){migrateThemedTicketsV205();openProfileV16BaseV205();setTimeout(()=>{syncCollectionRaritiesV205();refreshGlobalPullCountsV205({force:true})},100)};window.openProfileV16=openProfileV16;
+
+ensureCardProfileV205();migrateThemedTicketsV205();setTimeout(()=>syncCollectionRaritiesV205(),900);saveData();
+console.info('Anime list V20.6: role-aware rarity/drop rates + avatar effect compatibility + themed tickets + global card pulls');
+/* V20.5 late binding: legacy listeners were attached before the overrides above. */
+$('#profileOpenTicket')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openCharacterTicketV16()},true);
+$('#profileOpenWaifuTicket')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openWaifuTicketV165()},true);
+/* V20.5 economy rebuild: completed titles now award themed tickets, not generic Character Tickets. */
+const adminCleanProgressSnapshotV167BaseV205=adminCleanProgressSnapshotV167;
+adminCleanProgressSnapshotV167=function(){const clean=adminCleanProgressSnapshotV167BaseV205();clean.tickets=Math.max(0,Number(clean.tickets||0)-Object.keys(clean.titleRewards||{}).length);return clean};
+
+
+/* ===== V21.0: unified audio hub + premium-ready downloads + provider prefetch ===== */
+const V210_TAG='21.0';
+const WATCH_DOWNLOAD_QUOTA_KEY_V21='animeWatchDownloadQuotaV21';
+let watchAltDiscoverySeqV21=0;
+
+/* Keep provider/download metadata when a manifest is imported. */
+normalizeManifestV15=function(raw){
+  if(!raw||typeof raw!=='object')throw new Error('Manifest должен быть JSON-объектом');
+  const seasons=Array.isArray(raw.seasons)?raw.seasons:[];
+  return {...raw,seasons:seasons.map((s,si)=>({
+    number:Number(s.number||s.season||si+1),title:s.title||`Сезон ${si+1}`,
+    episodes:(s.episodes||[]).map((ep,ei)=>({
+      ...ep,
+      number:Number(ep.number||ep.episode||ei+1),title:ep.title||'',
+      streams:(ep.streams||ep.sources||[]).map((x,j)=>({
+        ...x,url:x.url||x.src||'',type:x.type||(/\.m3u8(?:$|[?#])/i.test(String(x.url||x.src||''))?'hls':'video'),
+        provider:x.provider||'manifest',dub:x.dub||x.audio||x.name||`Дорожка ${j+1}`,quality:x.quality||'auto',label:x.label||x.name||'',
+        downloadUrl:x.downloadUrl||x.download_url||'',downloadName:x.downloadName||x.filename||'',downloadable:x.downloadable===true
+      })).filter(x=>x.url),
+      subtitles:(ep.subtitles||ep.subs||[]).map((x,j)=>({...x,url:x.url||x.src||'',id:x.id||x.lang||`sub${j+1}`,label:x.label||x.name||x.lang||`Субтитры ${j+1}`,provider:x.provider||'manifest'})).filter(x=>x.url),
+      downloads:(ep.downloads||[]).map((x,j)=>({
+        ...x,url:x.url||x.src||x.downloadUrl||'',quality:x.quality||'auto',dub:x.dub||x.audio||x.name||'Дорожка',provider:x.provider||'manifest',
+        label:x.label||x.name||`Файл ${j+1}`,filename:x.filename||x.downloadName||''
+      })).filter(x=>x.url)
+    }))
+  }))};
+};
+
+function ensureAltTracksBadgeV21(){
+  const bar=$('#watchProviderState')?.parentElement;if(!bar)return null;let b=$('#watchAltTracksBadgeV21');
+  if(!b){b=document.createElement('span');b.id='watchAltTracksBadgeV21';b.className='watch-alt-tracks-badge-v21 hidden';bar.insertBefore(b,$('#watchSourcesBtn')||null)}return b;
+}
+function updateAltTracksBadgeV21(){
+  const b=ensureAltTracksBadgeV21();if(!b)return;const k=currentKodikSourcesV19?.()||[],extra=k.length;
+  b.classList.toggle('hidden',!extra);b.textContent=extra?`🎙 +${extra} перевод${extra===1?'':extra<5?'а':'ов'}`:'';
+}
+function unifiedKodikOptionValueV21(x){return `switch:kodik:${String(x?.dub||'')}`}
+function mergeUnifiedTracksV21(){
+  const d=$('#watchDub');if(!d)return;const active=watchResolverV19?.active||'';const kodik=currentKodikSourcesV19?.()||[];
+  if(active==='aniliberty'||active==='direct'){
+    const existing=new Set([...d.options].map(o=>o.value));
+    for(const x of kodik){const value=unifiedKodikOptionValueV21(x);if(existing.has(value))continue;const o=new Option(`${x.dubLabel||x.translation||'Перевод'} · Kodik`,value);o.dataset.provider='kodik';d.add(o)}
+  }else if(active==='kodik'){
+    if(currentAniLibertySourcesV171?.().length&&!([...d.options].some(o=>o.value==='switch:aniliberty'))){const o=new Option('🎙 AniLiberty · нативный HLS','switch:aniliberty');o.dataset.provider='aniliberty';d.insertBefore(o,d.firstChild)}
+  }
+  updateAltTracksBadgeV21();
+  const c=$('#watchTrackChip');if(c&&d.selectedOptions?.[0])c.textContent=d.selectedOptions[0].textContent.replace(/^[🎙CC\s]+/,'').slice(0,28);
+}
+async function switchUnifiedTrackV21(target,value=''){
+  if(!watchStateV15.entry)return;
+  if(target==='kodik'){
+    const raw=String(value||'').replace(/^switch:kodik:/,'');
+    if(!currentKodikSourcesV19().length){const ok=await ensureKodikEpisodeV19({force:false});if(!ok){profileToastV16?.('Дополнительные озвучки пока недоступны',watchResolverV19.lastKodikError||'Kodik ещё не подключён');return}}
+    watchResolverV19.active='kodik';hideWatchEmbedV17();renderKodikSelectorsV19();const d=$('#watchDub');if(d&&[...d.options].some(o=>o.value===raw))d.value=raw;patchWatchPrefsV18({dub:raw});showKodikV19();mergeUnifiedTracksV21();syncPlayerChromeV201?.();return;
+  }
+  if(target==='aniliberty'){
+    if(!currentAniLibertySourcesV171().length){const ok=await ensureAniLibertyEpisodeV171({force:false});if(!ok){profileToastV16?.('AniLiberty не нашёл серию',aniLibertyLastErrorV171||'Источник недоступен');return}}
+    watchResolverV19.active='aniliberty';patchWatchPrefsV18({dub:''});hideWatchEmbedV17();await loadNativeProviderV19('aniliberty',{autoplay:false,preserveTime:false});setResolverStatusV19('AniLiberty','нативный HLS подключён','ok');mergeUnifiedTracksV21();syncPlayerChromeV201?.();return;
+  }
+}
+window.switchUnifiedTrackV21=switchUnifiedTrackV21;window.mergeUnifiedTracksV21=mergeUnifiedTracksV21;
+
+/* Capture unified-provider options before legacy selector handlers see them. */
+$('#watchDub')?.addEventListener('change',e=>{
+  const value=String(e.target.value||'');if(!value.startsWith('switch:kodik:'))return;e.preventDefault();e.stopImmediatePropagation();switchUnifiedTrackV21('kodik',value);
+},true);
+
+/* HLS.js may rebuild the audio selector after parsing a master playlist; append provider tracks again. */
+const populateHlsSelectorsBeforeV21=populateHlsSelectorsV151;
+populateHlsSelectorsV151=function(h,pref){populateHlsSelectorsBeforeV21(h,pref);setTimeout(mergeUnifiedTracksV21,0)};
+
+async function discoverAlternativeTracksV21({force=false}={}){
+  const seq=++watchAltDiscoverySeqV21,entry=watchStateV15.entry;if(!entry)return false;
+  const cfg=providerConfigV19(),backend=backendBaseV20();if(!cfg.kodikToken&&!backend){updateAltTracksBadgeV21();return false}
+  try{
+    const ok=await ensureKodikEpisodeV19({force});if(seq!==watchAltDiscoverySeqV21||entry!==watchStateV15.entry)return false;
+    if(ok){mergeUnifiedTracksV21();const n=currentKodikSourcesV19().length;const st=$('#watchProviderState');if(st&&watchResolverV19.active==='aniliberty'){st.dataset.kind='ok';st.textContent=`AniLiberty · играет · ещё ${n} перевод${n===1?'':n<5?'а':'ов'} готово`}}
+    return ok;
+  }catch(e){console.warn('V21 alt track discovery',e);return false}
+}
+
+const loadWatchEpisodeBeforeV21=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){
+  const out=await loadWatchEpisodeBeforeV21(opts);updateWatchDownloadUiV21();mergeUnifiedTracksV21();
+  if(watchResolverV19?.active==='aniliberty')setTimeout(()=>discoverAlternativeTracksV21({force:false}),120);
+  return out;
+};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+/* Download support is intentionally explicit: only a manifest/provider that supplies a download URL becomes downloadable. HLS streams are never scraped or reconstructed. */
+function currentDownloadOptionsV21(){
+  const ep=currentManifestEpisodeV15?.(),out=[];
+  for(const x of ep?.downloads||[])if(x?.url)out.push({...x,source:'download'});
+  for(const x of ep?.streams||[]){const u=x?.downloadUrl||(x?.downloadable===true&&String(x?.type||'').toLowerCase()!=='hls'?x?.url:'');if(u)out.push({url:u,quality:x.quality||'auto',dub:x.dub||'Дорожка',provider:x.provider||'manifest',label:x.label||x.dub||'Файл',filename:x.downloadName||'',source:'stream'})}
+  const seen=new Set();return out.filter(x=>{const k=String(x.url);if(!k||seen.has(k))return false;seen.add(k);return true})
+}
+function downloadQuotaV21(){
+  const day=new Date().toISOString().slice(0,10);let q={day,count:0};try{q={...q,...JSON.parse(localStorage.getItem(WATCH_DOWNLOAD_QUOTA_KEY_V21)||'{}')}}catch{}if(q.day!==day)q={day,count:0};return q
+}
+function saveDownloadQuotaV21(q){try{localStorage.setItem(WATCH_DOWNLOAD_QUOTA_KEY_V21,JSON.stringify(q))}catch{}}
+function downloadPremiumEnabledV21(){try{return typeof profilePremiumV168==='function'&&profilePremiumV168()}catch{return false}}
+function ensureDownloadPanelV21(){
+  let p=$('#watchDownloadPanelV21');if(p)return p;const wrap=$('#watchVideoWrap');if(!wrap)return null;p=document.createElement('div');p.id='watchDownloadPanelV21';p.className='watch-download-panel-v21 hidden';p.innerHTML='<div class="watch-download-head-v21"><div><span>PREMIUM DOWNLOAD</span><b>Скачать серию</b></div><button id="watchDownloadCloseV21" type="button">✕</button></div><div id="watchDownloadBodyV21"></div>';wrap.appendChild(p);p.querySelector('#watchDownloadCloseV21')?.addEventListener('click',()=>p.classList.add('hidden'));return p
+}
+function updateWatchDownloadUiV21(){
+  const opts=currentDownloadOptionsV21(),premium=downloadPremiumEnabledV21();for(const id of ['watchDownloadInline','watchDownload']){const b=$('#'+id);if(!b)continue;b.classList.toggle('has-download',!!opts.length);b.classList.toggle('premium-active',premium);b.title=opts.length?(premium?'Скачать серию':'Скачивание · Premium'):'Для этого источника нет отдельного файла для скачивания'}
+}
+function renderDownloadPanelV21(){
+  const p=ensureDownloadPanelV21(),body=$('#watchDownloadBodyV21');if(!p||!body)return;const opts=currentDownloadOptionsV21(),premium=downloadPremiumEnabledV21(),q=downloadQuotaV21(),left=Math.max(0,50-Number(q.count||0));
+  if(!premium){body.innerHTML='<div class="watch-download-lock-v21"><i>👑</i><b>Скачивание — Premium</b><p>Плеер уже готов к Premium-загрузкам. В публичной версии доступ будет подтверждать backend, а не localStorage.</p></div>';return}
+  if(!opts.length){body.innerHTML='<div class="watch-download-lock-v21"><i>⬇</i><b>У этой серии нет download-файла</b><p>Мы не вытаскиваем сегменты из HLS и не обходим чужие плееры. Кнопка появляется, когда источник или наш Manifest явно отдаёт разрешённый файл.</p></div>';return}
+  body.innerHTML=`<div class="watch-download-quota-v21">Сегодня доступно: <b>${left} / 50</b></div><div class="watch-download-list-v21">${opts.map((x,i)=>`<button type="button" data-download-index="${i}" ${left<1?'disabled':''}><span><b>${esc(x.dub||x.label||'Дорожка')}</b><small>${esc(x.provider||'Источник')} · ${esc(x.quality||'auto')}</small></span><strong>⬇</strong></button>`).join('')}</div>`;
+  body.querySelectorAll('[data-download-index]').forEach(b=>b.addEventListener('click',()=>startDownloadV21(Number(b.dataset.downloadIndex))))
+}
+function openWatchDownloadV21(){const p=ensureDownloadPanelV21();if(!p)return;renderDownloadPanelV21();p.classList.remove('hidden')}
+function startDownloadV21(i){
+  const opts=currentDownloadOptionsV21(),x=opts[i];if(!x||!downloadPremiumEnabledV21())return;const q=downloadQuotaV21();if(Number(q.count)>=50){profileToastV16?.('Лимит скачиваний','50 серий на сегодня');renderDownloadPanelV21();return}
+  const a=document.createElement('a');a.href=x.url;a.rel='noopener';if(x.filename)a.download=x.filename;else a.download='';document.body.appendChild(a);a.click();a.remove();q.count=Number(q.count||0)+1;saveDownloadQuotaV21(q);profileToastV16?.('⬇ Загрузка запущена',`${x.dub||x.label||'Дорожка'} · ${x.quality||'auto'}`);renderDownloadPanelV21();
+}
+window.openWatchDownloadV21=openWatchDownloadV21;
+$('#watchDownloadInline')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openWatchDownloadV21()});
+$('#watchDownload')?.addEventListener('click',openWatchDownloadV21);
+
+/* Make source settings clear about the current state while Kodik is pending. */
+const syncProviderConfigUiBeforeV21=syncProviderConfigUiV19;
+syncProviderConfigUiV19=function(){syncProviderConfigUiBeforeV21();const st=$('#watchSourceConfigStatus'),cfg=providerConfigV19();if(!st)return;const b=backendBaseV20(),h=backendHealthCacheV20?.data,s=h?.services||{};const kodik=cfg.kodikToken||s.kodik;st.innerHTML=`<span class="ok-dot">●</span> AniLiberty · готов &nbsp; ${kodik?'<span class="ok-dot">●</span> Kodik · дополнительные озвучки готовы':'<span class="off-dot">●</span> Kodik · ждём API token'} &nbsp; ${(cfg.subdlKey||s.subdl)?'<span class="ok-dot">●</span> SubDL · готов':'<span class="off-dot">●</span> SubDL · необязательно'}${b?' &nbsp; <span class="ok-dot">●</span> Backend':''}`};
+
+setTimeout(()=>{updateWatchDownloadUiV21();updateAltTracksBadgeV21()},200);
+console.info(`Anime list V${V210_TAG}: unified audio hub + provider prefetch + explicit Premium downloads`);
+
+/* ===== V21.1: AnimeVost second native voice source =====
+ * Goal: do not wait for Kodik to have a second real Russian voice source.
+ * AnimeVost is treated as an experimental provider discovered through its public API.
+ * We only consume search/playlist responses and play provider-returned URLs; no page scraping,
+ * ad/DRM bypass, HLS reconstruction, or Premium download entitlement is inferred.
+ */
+const V211_TAG='21.1';
+const ANIMEVOST_API_V211='https://api.animevost.org/v1';
+const ANIMEVOST_CACHE_KEY_V211='animeWatchAnimeVostCacheV211';
+const WATCH_AUDIO_PROVIDER_KEY_V211='animeWatchAudioProviderV211';
+let animeVostRequestSeqV211=0;
+let animeVostLastErrorV211='';
+
+function animeVostCacheV211(){try{return JSON.parse(localStorage.getItem(ANIMEVOST_CACHE_KEY_V211)||'{}')||{}}catch{return {}}}
+function saveAnimeVostCacheV211(x){try{localStorage.setItem(ANIMEVOST_CACHE_KEY_V211,JSON.stringify(x||{}))}catch{}}
+function audioProviderPrefV211(){try{return localStorage.getItem(WATCH_AUDIO_PROVIDER_KEY_V211)||''}catch{return ''}}
+function setAudioProviderPrefV211(v){try{if(v)localStorage.setItem(WATCH_AUDIO_PROVIDER_KEY_V211,v);else localStorage.removeItem(WATCH_AUDIO_PROVIDER_KEY_V211)}catch{}}
+function animeVostPartKeyV211(){const e=watchStateV15.entry,p=currentPartV19?.()||e||{};return `${watchEntryKeyV15(e)}|av:1|part:${watchStateV15.season+1}|${normalize(p?.title||'')}`}
+function animeVostEpisodeKeyV211(){return `${animeVostPartKeyV211()}|ep:${watchStateV15.episode}`}
+function currentAnimeVostSourcesV211(){return currentRemoteStreamsV17().filter(x=>String(x.provider||'').toLowerCase()==='animevost')}
+function animeVostUnwrapV211(data){if(Array.isArray(data))return data;if(Array.isArray(data?.data))return data.data;if(Array.isArray(data?.items))return data.items;if(Array.isArray(data?.playlist))return data.playlist;return []}
+async function animeVostPostV211(endpoint,payload={},timeout=10000){
+  const backend=backendBaseV20();const url=backend?`${backend}/animevost/${endpoint}`:`${ANIMEVOST_API_V211}/${endpoint}`;
+  const ctrl=new AbortController(),tm=setTimeout(()=>ctrl.abort(),timeout);
+  try{
+    const r=await fetch(url,{method:'POST',headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(payload).toString(),credentials:'omit',cache:'no-store',signal:ctrl.signal});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json();
+  }finally{clearTimeout(tm)}
+}
+function animeVostNamesV211(row){
+  const raw=String(row?.title||row?.name||'').trim();if(!raw)return [];
+  const clean=raw.replace(/\[[^\]]*\]\s*$/g,'').trim();
+  const parts=clean.split(/\s+[\/|]\s+/).map(x=>x.trim()).filter(Boolean);
+  return [...new Set([raw,clean,...parts])];
+}
+function animeVostCandidateScoreV211(row,targets,meta={}){
+  const names=animeVostNamesV211(row);if(!names.length)return -999;
+  const fmt=String(meta?.format||currentPartV19?.()?.format||watchStateV15.entry?.format||'').toUpperCase();
+  if(names.some(n=>typeof aniHasUnwantedVariantV1711==='function'&&aniHasUnwantedVariantV1711(n,targets,fmt)))return -999;
+  let score=0;for(const a of targets)for(const b of names)score=Math.max(score,aniTitleScoreV171(a,b));
+  if(score<52)return -999;
+  const wantYear=Number(meta?.seasonYear||currentPartV19?.()?.year||watchStateV15.entry?.year||0),gotYear=Number(String(row?.year||'').match(/\d{4}/)?.[0]||0);
+  if(wantYear&&gotYear){const d=Math.abs(wantYear-gotYear);if(d>1)return -999;score+=d===0?34:6}
+  const t=aniTitleNormV171(row?.type||'');if(fmt==='MOVIE'&&t&&/(tv|сериал|ova|ona)/i.test(t))score-=28;
+  return score;
+}
+async function animeVostFindTitleV211({force=false}={}){
+  const key=animeVostPartKeyV211(),cache=animeVostCacheV211(),meta=await aniLibertyTargetMetaV1711(),targets=aniTargetTitlesV171(meta);
+  if(!force&&cache[key]?.id)return cache[key];
+  const queries=typeof aniSearchQueriesV171==='function'?aniSearchQueriesV171(meta):targets.slice(0,8);let rows=[];
+  for(const q of queries.slice(0,10)){
+    try{rows.push(...animeVostUnwrapV211(await animeVostPostV211('search',{name:q},9000)))}catch{}
+    if(rows.length>=24)break;
+  }
+  const uniq=new Map();for(const r of rows){if(r?.id!=null)uniq.set(String(r.id),r)}
+  const scored=[...uniq.values()].map(r=>({r,score:animeVostCandidateScoreV211(r,targets,meta)})).sort((a,b)=>b.score-a.score);
+  const best=scored[0];if(!best||best.score<62)throw new Error('релиз не совпал достаточно точно');
+  // Ambiguous near-tie: refuse instead of silently playing a spin-off/wrong season.
+  if(scored[1]&&best.score<105&&best.score-scored[1].score<5)throw new Error('нашлось несколько слишком похожих релизов');
+  const out={id:best.r.id,title:best.r.title||'',year:best.r.year||'',score:best.score,at:Date.now()};cache[key]=out;saveAnimeVostCacheV211(cache);return out;
+}
+function animeVostEpisodeNumberV211(row,index){
+  const s=String(row?.name||'').trim();const m=s.match(/^\s*(\d+(?:\.\d+)?)\b/)||s.match(/(?:серия|episode|ep\.?)[\s#:]*(\d+(?:\.\d+)?)/i);return m?Number(m[1]):index+1;
+}
+function animeVostEpisodeFromPlaylistV211(list,n){
+  const numbered=(list||[]).map((x,i)=>({x,n:animeVostEpisodeNumberV211(x,i),i}));return numbered.find(x=>Number(x.n)===Number(n))?.x||numbered[n-1]?.x||null;
+}
+function animeVostStreamsV211(row){
+  const out=[];const add=(url,quality)=>{url=String(url||'').trim();if(!/^https?:\/\//i.test(url))return;out.push({url,type:'video',provider:'animevost',dub:'AnimeVost',dubLabel:'AnimeVost',quality,label:`AnimeVost · ${quality}`,downloadable:false})};
+  add(row?.hd,'720p');add(row?.std,'480p');const seen=new Set();return out.filter(x=>!seen.has(x.url)&&(seen.add(x.url),true));
+}
+async function ensureAnimeVostEpisodeV211({force=false}={}){
+  const entry=watchStateV15.entry;if(!entry)return false;const snap=animeVostEpisodeKeyV211(),seq=++animeVostRequestSeqV211;
+  if(!force&&currentAnimeVostSourcesV211().length)return true;animeVostLastErrorV211='';
+  try{
+    const title=await animeVostFindTitleV211({force});if(seq!==animeVostRequestSeqV211||snap!==animeVostEpisodeKeyV211())return false;
+    const data=await animeVostPostV211('playlist',{id:String(title.id)},11000),list=animeVostUnwrapV211(data),remote=animeVostEpisodeFromPlaylistV211(list,watchStateV15.episode);
+    if(!remote)throw new Error(`серия ${watchStateV15.episode} не найдена`);const streams=animeVostStreamsV211(remote);if(!streams.length)throw new Error('в API нет 720p/480p потока');
+    const ep=ensureEpisodeManifestV151();ep.streams=(ep.streams||[]).filter(x=>String(x.provider||'').toLowerCase()!=='animevost');ep.streams.push(...streams);ep.providerMeta=ep.providerMeta||{};
+    ep.providerMeta.animevost={titleId:title.id,title:title.title||'',year:title.year||'',episodeName:remote?.name||'',at:Date.now(),experimental:true};saveWatchManifestV15(entry,watchStateV15.manifest);return true;
+  }catch(err){if(seq!==animeVostRequestSeqV211)return false;animeVostLastErrorV211=String(err?.message||err||'источник недоступен');return false}
+}
+window.ensureAnimeVostEpisodeV211=ensureAnimeVostEpisodeV211;
+
+async function loadAnimeVostProviderV211(opts={}){
+  hideWatchEmbedV17();const v=$('#watchVideo');if(v)v.classList.remove('hidden');const ep=currentManifestEpisodeV15(),orig=ep?.streams,oldLocal=watchStateV15.localVideos;
+  if(ep)ep.streams=(orig||[]).filter(x=>String(x.provider||'').toLowerCase()==='animevost');watchStateV15.localVideos=[];
+  try{renderWatchShellV15();await loadWatchEpisodeV17Base(opts)}finally{watchStateV15.localVideos=oldLocal;if(ep)ep.streams=orig}
+  const empty=$('#watchEmpty');if(empty)empty.classList.add('hidden');setResolverStatusV19('AnimeVost','вторая озвучка · нативное видео','ok');setTimeout(syncRuntimeAfterLoadV18,80);setTimeout(syncRuntimeAfterLoadV18,650);
+  ensureSubdlV19().then(ok=>{if(ok)mergeExternalSubtitleOptionsV18()});
+}
+
+/* Provider button: AnimeVost can be forced manually, while Auto remains the default. */
+const setWatchProviderBeforeV211=setWatchProviderV17;
+setWatchProviderV17=function(v){
+  if(v!=='animevost')return setWatchProviderBeforeV211(v);
+  try{localStorage.setItem(WATCH_PROVIDER_KEY_V17,'animevost')}catch{}setAudioProviderPrefV211('animevost');const st=$('#watchProviderState');if(st)delete st.dataset.kind;syncWatchProviderUiV17();loadWatchEpisodeV15({autoplay:false,preserveTime:true,forceAnimeVost:true});
+};window.setWatchProviderV17=setWatchProviderV17;
+const syncWatchProviderUiBeforeV211=syncWatchProviderUiV17;
+syncWatchProviderUiV17=function(){
+  syncWatchProviderUiBeforeV211();const v=watchProviderV17();document.querySelectorAll('#watchProviderBar [data-provider]').forEach(b=>b.classList.toggle('active',b.dataset.provider===v));if(v==='animevost'){const st=$('#watchProviderState');if(st&&!st.dataset.kind)st.textContent='AnimeVost · экспериментальный второй нативный источник';const h=$('#watchOnlineHelp');if(h)h.textContent='AnimeVost ищется автоматически через API. Ручной URL не нужен.'}
+};
+
+/* Add AnimeVost into the same "Озвучка" selector as AniLiberty/Kodik. */
+const updateAltTracksBadgeBeforeV211=updateAltTracksBadgeV21;
+updateAltTracksBadgeV21=function(){
+  const b=ensureAltTracksBadgeV21();if(!b)return;const k=currentKodikSourcesV19?.()||[],av=currentAnimeVostSourcesV211(),active=watchResolverV19?.active||'';const extra=k.length+(av.length&&active!=='animevost'?1:0);
+  b.classList.toggle('hidden',!extra);b.textContent=extra?`🎙 +${extra} вариант${extra===1?'':extra<5?'а':'ов'}`:'';
+};
+const mergeUnifiedTracksBeforeV211=mergeUnifiedTracksV21;
+mergeUnifiedTracksV21=function(){
+  mergeUnifiedTracksBeforeV211();const d=$('#watchDub');if(!d)return;const active=watchResolverV19?.active||'',existing=new Set([...d.options].map(o=>o.value));
+  if(active!=='animevost'&&currentAnimeVostSourcesV211().length&&!existing.has('switch:animevost')){const o=new Option('🎙 AnimeVost · русская озвучка','switch:animevost');o.dataset.provider='animevost';d.add(o);existing.add(o.value)}
+  if(active==='animevost'){
+    if(!existing.has('switch:aniliberty')){const o=new Option('🎙 AniLiberty · русская озвучка','switch:aniliberty');o.dataset.provider='aniliberty';d.insertBefore(o,d.firstChild);existing.add(o.value)}
+    for(const x of currentKodikSourcesV19?.()||[]){const value=unifiedKodikOptionValueV21(x);if(existing.has(value))continue;const o=new Option(`${x.dubLabel||x.translation||'Перевод'} · Kodik`,value);o.dataset.provider='kodik';d.add(o);existing.add(value)}
+  }
+  updateAltTracksBadgeV21();const c=$('#watchTrackChip');if(c&&d.selectedOptions?.[0])c.textContent=d.selectedOptions[0].textContent.replace(/^[🎙CC\s]+/,'').slice(0,28);
+};window.mergeUnifiedTracksV21=mergeUnifiedTracksV21;
+const switchUnifiedTrackBeforeV211=switchUnifiedTrackV21;
+function unifiedTrackUseAutoModeV211(){
+  if(watchProviderV17()==='auto')return;try{localStorage.setItem(WATCH_PROVIDER_KEY_V17,'auto')}catch{}const st=$('#watchProviderState');if(st)delete st.dataset.kind;syncWatchProviderUiV17();
+}
+switchUnifiedTrackV21=async function(target,value=''){
+  if(target==='animevost'){
+    if(!watchStateV15.entry)return;unifiedTrackUseAutoModeV211();setAudioProviderPrefV211('animevost');if(!currentAnimeVostSourcesV211().length){setResolverStatusV19('AnimeVost','ищу серию…','loading');const ok=await ensureAnimeVostEpisodeV211({force:false});if(!ok){profileToastV16?.('AnimeVost не нашёл серию',animeVostLastErrorV211||'Источник недоступен');return}}
+    watchResolverV19.active='animevost';patchWatchPrefsV18({dub:'AnimeVost'});await loadAnimeVostProviderV211({autoplay:false,preserveTime:true});mergeUnifiedTracksV21();syncPlayerChromeV201?.();return;
+  }
+  if(['aniliberty','kodik'].includes(target)){unifiedTrackUseAutoModeV211();setAudioProviderPrefV211(target)}return switchUnifiedTrackBeforeV211(target,value);
+};window.switchUnifiedTrackV21=switchUnifiedTrackV21;
+$('#watchDub')?.addEventListener('change',e=>{
+  const value=String(e.target.value||'');if(value==='switch:animevost'){e.preventDefault();e.stopImmediatePropagation();switchUnifiedTrackV21('animevost',value);return}
+  if(value==='switch:aniliberty'&&watchResolverV19?.active==='animevost'){e.preventDefault();e.stopImmediatePropagation();switchUnifiedTrackV21('aniliberty',value)}
+},true);
+
+async function discoverAnimeVostV211({force=false}={}){
+  const entry=watchStateV15.entry,snap=animeVostEpisodeKeyV211();if(!entry)return false;
+  try{const ok=await ensureAnimeVostEpisodeV211({force});if(entry!==watchStateV15.entry||snap!==animeVostEpisodeKeyV211())return false;if(ok){mergeUnifiedTracksV21();const st=$('#watchProviderState');if(st&&watchResolverV19.active==='aniliberty'){st.dataset.kind='ok';const k=currentKodikSourcesV19?.().length||0;st.textContent=`AniLiberty · играет · AnimeVost готов${k?` · Kodik: ${k}`:''}`}}return ok}catch(e){console.warn('V21.1 AnimeVost discovery',e);return false}
+}
+
+/* Final playback wrapper: preferred AnimeVost persists to the next episode; if all older
+ * resolvers fail in Auto, AnimeVost gets one last native chance before showing "no source". */
+const loadWatchEpisodeBeforeV211=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){
+  if(!watchStateV15.entry)return;const mode=watchProviderV17(),preferAv=mode==='animevost'||(mode==='auto'&&audioProviderPrefV211()==='animevost');
+  if(preferAv){
+    setResolverStatusV19('AnimeVost','ищу серию…','loading');const ok=await ensureAnimeVostEpisodeV211({force:!!opts.forceResolver||!!opts.forceAnimeVost});
+    if(ok){watchResolverV19.active='animevost';await loadAnimeVostProviderV211(opts);updateWatchDownloadUiV21();mergeUnifiedTracksV21();setTimeout(()=>discoverAlternativeTracksV21({force:false}),160);return true}
+    if(mode==='animevost'){hideWatchEmbedV17();aniLibertyEmptyV171('AnimeVost не нашёл серию',animeVostLastErrorV211||'Источник недоступен',true);setResolverStatusV19('AnimeVost','серия не найдена','error');return false}
+  }
+  const out=await loadWatchEpisodeBeforeV211(opts);
+  if(mode==='auto'&&watchResolverV19?.active==='none'){
+    setResolverStatusV19('AnimeVost','проверяю второй нативный источник…','loading');const ok=await ensureAnimeVostEpisodeV211({force:!!opts.forceResolver});
+    if(ok){watchResolverV19.active='animevost';await loadAnimeVostProviderV211(opts);updateWatchDownloadUiV21();mergeUnifiedTracksV21();return true}
+  }
+  if(['aniliberty','direct'].includes(watchResolverV19?.active))setTimeout(()=>discoverAnimeVostV211({force:false}),170);
+  return out;
+};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+/* Player chrome + settings status. */
+const syncPlayerChromeBeforeV211=typeof syncPlayerChromeV201==='function'?syncPlayerChromeV201:null;
+if(syncPlayerChromeBeforeV211){syncPlayerChromeV201=function(){syncPlayerChromeBeforeV211();if(watchResolverV19?.active==='animevost'){const chip=$('#watchTrackChip');if(chip)chip.textContent='AnimeVost';const s=$('#watchSourceNote');if(s&&/Manifest|Direct/i.test(s.textContent||''))s.textContent=(s.textContent||'').replace(/Manifest|Direct/g,'AnimeVost');const p=$('#watchPlayerProviderLabel');if(p)p.innerHTML='<span class="watch-player-status-dot"></span>AnimeVost'}}}
+const syncProviderConfigUiBeforeV211=syncProviderConfigUiV19;
+syncProviderConfigUiV19=function(){syncProviderConfigUiBeforeV211();const st=$('#watchSourceConfigStatus'),cfg=providerConfigV19();if(!st)return;const b=backendBaseV20(),h=backendHealthCacheV20?.data,s=h?.services||{};const kodik=cfg.kodikToken||s.kodik;st.innerHTML=`<span class="ok-dot">●</span> AniLiberty · готов &nbsp; <span class="ok-dot">●</span> AnimeVost · экспериментально &nbsp; ${kodik?'<span class="ok-dot">●</span> Kodik · дополнительные озвучки готовы':'<span class="off-dot">●</span> Kodik · ждём API token'} &nbsp; ${(cfg.subdlKey||s.subdl)?'<span class="ok-dot">●</span> SubDL · готов':'<span class="off-dot">●</span> SubDL · необязательно'}${b?' &nbsp; <span class="ok-dot">●</span> Backend':''}`};
+
+setTimeout(()=>{syncWatchProviderUiV17();syncProviderConfigUiV19();mergeUnifiedTracksV21()},240);
+console.info(`Anime list V${V211_TAG}: AnimeVost second native voice source + unified audio switching`);
+
+/* V21 compatibility shim: refresh the custom player chrome after provider switches. */
+function syncPlayerChromeV201(){try{updateWatchPlayerStateV201();updateWatchTimelineV201()}catch{}}
+
+/* ===== V22.0: Media Deck — original audio + dubs + subtitles, provider-agnostic UI =====
+ * User-facing rule: show media tracks, not infrastructure. Provider diagnostics stay in settings.
+ * No fake JP/original track is created: it appears only when HLS/manifest/provider metadata really exposes one.
+ */
+const V220_TAG='22.0';
+let watchDeckTabV22='tracks';
+let watchTrackRegistryV22=new Map();
+let watchDeckRenderQueuedV22=false;
+
+function cleanMediaLabelV22(v){
+  return String(v||'').replace(/^\s*[🎙🎧🔊CC]+\s*/u,'').replace(/\s*·\s*Kodik\s*$/i,'').replace(/\s*·\s*нативный HLS\s*$/i,'').replace(/\s*·\s*русская озвучка\s*$/i,'').trim()||'Дорожка';
+}
+function mediaNormV22(v){return String(v||'').toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9ぁ-んァ-ン一-龯]+/gi,' ')}
+function isOriginalTrackV22(label='',lang=''){
+  const s=`${mediaNormV22(label)} ${String(lang||'').toLowerCase()}`;
+  return /(^| )(original|japanese|japan|jpn|jp|ja|日本語|оригинал|японская|японский)( |$)/i.test(s);
+}
+function mediaLangBadgeV22(label='',kind='dub'){
+  const s=mediaNormV22(label);
+  if(isOriginalTrackV22(label))return 'JP';
+  if(/(^| )(english|eng|en)( |$)/.test(s))return 'EN';
+  if(/(^| )(russian|rus|ru|русские|русская|русский)( |$)/.test(s))return 'RU';
+  if(kind==='sub')return 'CC';
+  return 'VO';
+}
+function isGenericHlsAudioV22(name=''){const s=mediaNormV22(name);return !s||/^(audio|аудио|russian|русская|русский|ru|rus)( \d+)?$/.test(s)}
+function providerFriendlyCurrentV22(){
+  const a=String(watchResolverV19?.active||'');
+  if(a==='aniliberty')return 'AniLiberty';
+  if(a==='animevost')return 'AnimeVost';
+  if(a==='direct')return cleanMediaLabelV22($('#watchDub')?.selectedOptions?.[0]?.textContent||'Прямая дорожка');
+  if(a==='kodik')return cleanMediaLabelV22($('#watchDub')?.selectedOptions?.[0]?.textContent||'Перевод');
+  return cleanMediaLabelV22($('#watchDub')?.selectedOptions?.[0]?.textContent||'Авто');
+}
+function audioTrackNoteV22(track){
+  if(track.original)return 'Исходная аудиодорожка';
+  if(track.kind==='provider')return 'Русская озвучка';
+  if(track.kind==='hls')return 'Аудиодорожка потока';
+  if(track.kind==='kodik')return 'Дополнительный перевод';
+  return 'Аудиодорожка';
+}
+function pushUniqueTrackV22(arr,track,seen){
+  const key=track.key||`${track.group}|${mediaNormV22(track.label)}|${track.action}|${track.value||''}`;
+  if(seen.has(key))return;seen.add(key);track.key=key;arr.push(track);
+}
+function collectMediaTracksV22(){
+  const original=[],dubs=[],subs=[];const seen=new Set();const dubSel=$('#watchDub'),subSel=$('#watchSubs'),h=watchStateV15.hls;const active=String(watchResolverV19?.active||'');
+  const providerCurrent=providerFriendlyCurrentV22();
+
+  /* HLS audio is the only place where a true multi-audio master can expose JP + dub side by side. */
+  const hlsTracks=Array.isArray(h?.audioTracks)?h.audioTracks:[];
+  if(hlsTracks.length){
+    hlsTracks.forEach((t,i)=>{
+      const raw=String(t?.name||t?.lang||`Аудио ${i+1}`),orig=isOriginalTrackV22(raw,t?.lang),generic=hlsTracks.length===1&&!orig&&['aniliberty','animevost'].includes(active);
+      if(generic)return;
+      const track={id:`hls:${i}`,group:orig?'original':'dub',kind:'hls',label:cleanMediaLabelV22(raw),original:orig,action:'select-audio',value:`hlsaudio:${i}`,active:Number(h.audioTrack)===i,note:orig?'Японская / исходная дорожка':'Аудиодорожка потока'};
+      pushUniqueTrackV22(orig?original:dubs,track,seen);
+    });
+  }
+
+  /* Active and alternative native providers become voice choices, not source buttons. */
+  const addProvider=(id,label,available,isActive)=>{if(!available)return;const track={id:`provider:${id}`,group:'dub',kind:'provider',label,action:`provider:${id}`,active:!!isActive,note:'Русская озвучка'};pushUniqueTrackV22(dubs,track,seen)};
+  addProvider('aniliberty','AniLiberty',!!currentAniLibertySourcesV171?.().length&&(active!=='aniliberty'||hlsTracks.length<=1),active==='aniliberty');
+  addProvider('animevost','AnimeVost',!!currentAnimeVostSourcesV211?.().length&&(active!=='animevost'||hlsTracks.length<=1),active==='animevost');
+
+  /* Manifest/local audio options that are not already represented above. */
+  if(dubSel){for(const o of [...dubSel.options]){
+    const value=String(o.value||''),text=cleanMediaLabelV22(o.textContent||'');if(o.disabled||/нет дорожек/i.test(text))continue;
+    if(value.startsWith('hlsaudio:')||value.startsWith('switch:kodik:')||value==='switch:aniliberty'||value==='switch:animevost')continue;
+    if(/^kodik:/i.test(value))continue;
+    if(['aniliberty','animevost'].includes(active)&&hlsTracks.length<=1&&mediaNormV22(text)===mediaNormV22(providerCurrent))continue;
+    const orig=isOriginalTrackV22(text);const track={id:`select:${value}`,group:orig?'original':'dub',kind:'select',label:text,original:orig,action:'select-audio',value,active:o.selected,note:orig?'Исходная аудиодорожка':'Аудиодорожка'};
+    pushUniqueTrackV22(orig?original:dubs,track,seen);
+  }}
+
+  /* Kodik can expose voice translations and subtitle releases. Keep the infrastructure name out of the main UI. */
+  for(const x of currentKodikSourcesV19?.()||[]){
+    const name=cleanMediaLabelV22(x.translation||x.dubLabel||'Перевод'),type=String(x.translationType||'voice').toLowerCase(),value=unifiedKodikOptionValueV21(x),isSub=/sub/.test(type);
+    if(isSub){pushUniqueTrackV22(subs,{id:`kodiksub:${x.dub}`,group:'sub',kind:'subtitle-release',label:name,action:'kodik-sub',value,active:active==='kodik'&&String(dubSel?.value||'')===String(x.dub||''),note:'Релиз с оригинальной дорожкой и субтитрами'},seen)}
+    else{pushUniqueTrackV22(dubs,{id:`kodik:${x.dub}`,group:'dub',kind:'kodik',label:name,action:'kodik-audio',value,active:active==='kodik'&&String(dubSel?.value||'')===String(x.dub||''),note:'Дополнительный перевод'},seen)}
+  }
+
+  /* Subtitle layer is independent of audio: Off + HLS + SubDL/local/manifest. */
+  if(subSel){for(const o of [...subSel.options]){
+    if(o.disabled&&o.value!=='off')continue;const value=String(o.value||'off'),label=value==='off'?'Без субтитров':cleanMediaLabelV22(o.textContent||'Субтитры');
+    pushUniqueTrackV22(subs,{id:`sub:${value}`,group:'sub',kind:value==='off'?'sub-off':'sub',label,action:'select-sub',value,active:value===String(subSel.value||'off'),note:value==='off'?'Чистое видео':value.startsWith('hlssub:')?'Встроенная дорожка':'Внешняя дорожка'},seen);
+  }}else pushUniqueTrackV22(subs,{id:'sub:off',group:'sub',kind:'sub-off',label:'Без субтитров',action:'select-sub',value:'off',active:true,note:'Чистое видео'},seen);
+
+  return {original,dubs,subs};
+}
+function trackButtonHtmlV22(t){
+  const badge=mediaLangBadgeV22(t.label,t.group==='sub'?'sub':'dub'),cls=['watch-track-button-v22',t.active?'active':'',t.original?'original':'',t.kind==='sub-off'?'subtitle-off':'',t.kind==='subtitle-release'?'subtitle-release':''].filter(Boolean).join(' ');
+  watchTrackRegistryV22.set(t.id,t);
+  return `<button type="button" class="${cls}" data-media-track-v22="${esc(t.id)}" title="${esc(t.note||'')}"><span class="watch-track-icon-v22">${esc(badge)}</span><span class="watch-track-copy-v22"><b>${esc(t.label)}</b><small>${esc(t.note||audioTrackNoteV22(t))}</small></span><span class="watch-track-check-v22">${t.active?'✓':''}</span></button>`;
+}
+function renderMediaDeckV22(){
+  if(!watchStateV15?.entry||$('#watchModal')?.classList.contains('hidden'))return;watchTrackRegistryV22=new Map();const tracks=collectMediaTracksV22();
+  const setList=(id,list,emptyId,countId)=>{const el=$('#'+id),empty=$('#'+emptyId),count=$('#'+countId);if(el)el.innerHTML=list.map(trackButtonHtmlV22).join('');empty?.classList.toggle('hidden',!!list.length);if(count)count.textContent=String(list.length)};
+  setList('watchOriginalTrackListV22',tracks.original,'watchOriginalEmptyV22','watchOriginalCountV22');setList('watchDubTrackListV22',tracks.dubs,'watchDubEmptyV22','watchDubCountV22');
+  const subEl=$('#watchSubtitleTrackListV22');if(subEl)subEl.innerHTML=tracks.subs.map(trackButtonHtmlV22).join('');$('#watchSubtitleEmptyV22')?.classList.toggle('hidden',!!tracks.subs.length);if($('#watchSubtitleCountV22'))$('#watchSubtitleCountV22').textContent=String(Math.max(0,tracks.subs.filter(x=>x.value!=='off').length));
+  const count=tracks.original.length+tracks.dubs.length+Math.max(0,tracks.subs.filter(x=>x.value!=='off').length);if($('#watchTrackCountV22'))$('#watchTrackCountV22').textContent=String(count);
+  const parts=watchPartsV15(watchStateV15.entry),part=parts[watchStateV15.season]||parts[0],eps=Math.max(1,Number(part?.episodes||1));if($('#watchEpisodeCountV22'))$('#watchEpisodeCountV22').textContent=String(eps);
+  const activeAudio=[...tracks.original,...tracks.dubs].find(x=>x.active)?.label||providerFriendlyCurrentV22();const activeSub=tracks.subs.find(x=>x.active)?.label||'Без субтитров';if($('#watchNowAudioV22'))$('#watchNowAudioV22').textContent=activeAudio;if($('#watchNowSubsV22'))$('#watchNowSubsV22').textContent=activeSub;
+  const status=$('#watchMediaStatusTextV22'),hint=$('#watchMediaStatusHintV22'),bar=$('#watchProviderBar');const resolver=String(watchResolverV19?.active||''),hasMedia=typeof hasWatchMediaV201==='function'&&hasWatchMediaV201(),stateName=resolver==='none'?'error':hasMedia?'ready':'loading';if(bar)bar.dataset.state=stateName;if(status)status.textContent=stateName==='error'?'Нет подходящего потока':stateName==='ready'?'Media Resolver готов':'Ищу дорожки…';if(hint)hint.textContent=`${tracks.original.length+tracks.dubs.length} аудио · ${Math.max(0,tracks.subs.filter(x=>x.value!=='off').length)} субтитров · источники скрыты под капотом`;
+  const rs=$('#watchResolverStatus');if(rs){const strong=rs.querySelector('strong'),state=rs.querySelector('span'),small=rs.querySelector('small');if(strong)strong.textContent='Media Resolver';if(state)state.textContent=stateName==='error'?'нет потока':stateName==='ready'?'готов':'поиск';if(small)small.textContent=count?'Показываю только реально найденные дорожки для этой серии.':'Ищу реальные аудио- и субтитровые дорожки для серии.'}
+}
+function queueMediaDeckRenderV22(delay=0){if(watchDeckRenderQueuedV22)return;watchDeckRenderQueuedV22=true;setTimeout(()=>{watchDeckRenderQueuedV22=false;renderMediaDeckV22()},delay)}
+function setWatchDeckTabV22(tab='tracks',{scroll=false,focusGroup=''}={}){
+  tab=tab==='episodes'?'episodes':'tracks';watchDeckTabV22=tab;document.querySelectorAll('#watchDeckTabsV22 [data-deck-tab]').forEach(b=>b.classList.toggle('active',b.dataset.deckTab===tab));$('#watchDeckTracksV22')?.classList.toggle('active',tab==='tracks');$('#watchDeckEpisodesV22')?.classList.toggle('active',tab==='episodes');if($('#watchDeckTitleV22'))$('#watchDeckTitleV22').textContent=tab==='tracks'?'Дорожки':'Серии';
+  if(scroll&&innerWidth<980)$('#watchDeckTabsV22')?.scrollIntoView({behavior:'smooth',block:'start'});if(focusGroup){const el=document.querySelector(`.watch-track-group-v22.${focusGroup}`);el?.animate?.([{background:'color-mix(in srgb, var(--accent2) 9%, transparent)'},{background:'transparent'}],{duration:650})}
+}
+window.setWatchDeckTabV22=setWatchDeckTabV22;
+
+async function activateMediaTrackV22(t){
+  if(!t)return;
+  if(t.action==='select-audio'){
+    const s=$('#watchDub');if(!s||![...s.options].some(o=>o.value===t.value))return;s.value=t.value;s.dispatchEvent(new Event('change',{bubbles:true}));patchWatchPrefsV18?.({dub:t.value});queueMediaDeckRenderV22(30);return;
+  }
+  if(t.action==='select-sub'){
+    const s=$('#watchSubs');if(!s)return;if(![...s.options].some(o=>o.value===t.value))return;s.value=t.value;patchWatchPrefsV18?.({subs:t.value});s.dispatchEvent(new Event('change',{bubbles:true}));setTimeout(()=>activateSubtitleV18?.(),0);queueMediaDeckRenderV22(40);return;
+  }
+  if(t.action==='provider:aniliberty'){await switchUnifiedTrackV21?.('aniliberty','switch:aniliberty');queueMediaDeckRenderV22(120);return}
+  if(t.action==='provider:animevost'){await switchUnifiedTrackV21?.('animevost','switch:animevost');queueMediaDeckRenderV22(120);return}
+  if(t.action==='kodik-audio'){$('#watchSubs')&&($('#watchSubs').value='off');await switchUnifiedTrackV21?.('kodik',t.value);queueMediaDeckRenderV22(120);return}
+  if(t.action==='kodik-sub'){$('#watchSubs')&&($('#watchSubs').value='off');await switchUnifiedTrackV21?.('kodik',t.value);queueMediaDeckRenderV22(120);return}
+}
+
+function installMediaDeckV22(){
+  if(document.body.dataset.mediaDeckV22==='1')return;document.body.dataset.mediaDeckV22='1';
+  $('#watchDeckTabsV22')?.addEventListener('click',e=>{const b=e.target.closest('[data-deck-tab]');if(b)setWatchDeckTabV22(b.dataset.deckTab)});
+  $('#watchMediaDeckV22');
+  for(const id of ['watchOriginalTrackListV22','watchDubTrackListV22','watchSubtitleTrackListV22'])$('#'+id)?.addEventListener('click',e=>{const b=e.target.closest('[data-media-track-v22]');if(!b)return;activateMediaTrackV22(watchTrackRegistryV22.get(b.dataset.mediaTrackV22))});
+  $('#watchDeckSettingsV22')?.addEventListener('click',()=>openSourcesV19?.());
+  $('#watchSmartTrackV22')?.addEventListener('click',()=>{try{localStorage.setItem(WATCH_PROVIDER_KEY_V17,'auto');localStorage.removeItem(WATCH_AUDIO_PROVIDER_KEY_V211)}catch{}profileToastV16?.('✦ Умный выбор','Вернул автоматический подбор доступной дорожки');loadWatchEpisodeV15({autoplay:false,preserveTime:true,forceResolver:false})});
+  for(const id of ['watchDub','watchSubs','watchQuality']){$('#'+id)?.addEventListener('change',()=>queueMediaDeckRenderV22(20));const el=$('#'+id);if(el)new MutationObserver(()=>queueMediaDeckRenderV22(30)).observe(el,{childList:true,subtree:true,attributes:true,attributeFilter:['selected','disabled']})}
+  setWatchDeckTabV22(watchDeckTabV22);queueMediaDeckRenderV22(0);
+}
+
+/* In-player AUDIO/CC buttons open our Media Deck instead of a generic select popup. Quality keeps the compact menu. */
+const openPlayerSelectMenuBeforeV22=typeof openPlayerSelectMenuV201==='function'?openPlayerSelectMenuV201:null;
+if(openPlayerSelectMenuBeforeV22){openPlayerSelectMenuV201=function(kind){if(kind==='dub'){setWatchDeckTabV22('tracks',{scroll:true,focusGroup:'dubs'});return}if(kind==='subs'){setWatchDeckTabV22('tracks',{scroll:true,focusGroup:'subs'});return}return openPlayerSelectMenuBeforeV22(kind)}}
+
+/* Provider names are diagnostics, not navigation. */
+const updateWatchPlayerMetaBeforeV22=typeof updateWatchPlayerMetaV201==='function'?updateWatchPlayerMetaV201:null;
+if(updateWatchPlayerMetaBeforeV22){updateWatchPlayerMetaV201=function(){updateWatchPlayerMetaBeforeV22();const p=$('#watchPlayerProviderLabel');if(p)p.innerHTML='<span class="watch-player-status-dot"></span>Media'}}
+const syncPlayerChromeBeforeV22=typeof syncPlayerChromeV201==='function'?syncPlayerChromeV201:null;
+if(syncPlayerChromeBeforeV22){syncPlayerChromeV201=function(){syncPlayerChromeBeforeV22();const p=$('#watchPlayerProviderLabel');if(p)p.innerHTML='<span class="watch-player-status-dot"></span>Media';queueMediaDeckRenderV22(0)}}
+
+/* Keep the deck live as resolvers and HLS/subtitle discovery finish asynchronously. */
+const renderWatchShellBeforeV22=renderWatchShellV15;
+renderWatchShellV15=function(){renderWatchShellBeforeV22();setWatchDeckTabV22(watchDeckTabV22);queueMediaDeckRenderV22(0)};
+const loadWatchEpisodeBeforeV22=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){const out=await loadWatchEpisodeBeforeV22(opts);queueMediaDeckRenderV22(80);setTimeout(()=>queueMediaDeckRenderV22(0),450);setTimeout(()=>queueMediaDeckRenderV22(0),1200);return out};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+const mergeUnifiedTracksBeforeV22=mergeUnifiedTracksV21;
+mergeUnifiedTracksV21=function(){const r=mergeUnifiedTracksBeforeV22();queueMediaDeckRenderV22(0);return r};window.mergeUnifiedTracksV21=mergeUnifiedTracksV21;
+const mergeExternalSubtitleOptionsBeforeV22=mergeExternalSubtitleOptionsV18;
+mergeExternalSubtitleOptionsV18=function(){const r=mergeExternalSubtitleOptionsBeforeV22();queueMediaDeckRenderV22(0);return r};
+const populateHlsSelectorsBeforeV22=populateHlsSelectorsV151;
+populateHlsSelectorsV151=function(h,p){const r=populateHlsSelectorsBeforeV22(h,p);queueMediaDeckRenderV22(0);return r};
+const setResolverStatusBeforeV22=typeof setResolverStatusV19==='function'?setResolverStatusV19:null;
+if(setResolverStatusBeforeV22){setResolverStatusV19=function(...args){const r=setResolverStatusBeforeV22(...args);queueMediaDeckRenderV22(25);return r}}
+
+/* Better wording in the source settings: original audio and subtitles are first-class tracks. */
+const syncProviderConfigUiBeforeV22=syncProviderConfigUiV19;
+syncProviderConfigUiV19=function(){syncProviderConfigUiBeforeV22();const card=$('#watchKodikToken')?.closest('.watch-setting-card');const help=card?.querySelector('.watch-setting-help');if(help)help.textContent='Плеер собирает аудио и субтитры в единый Media Deck. AniLiberty и AnimeVost дают свои озвучки; Kodik после API-доступа добавит переводы и субтитровые релизы; HLS/Manifest могут дать отдельную оригинальную JP-дорожку. Оригинал показывается только когда он реально доступен.';};
+
+installMediaDeckV22();
+setTimeout(()=>{installMediaDeckV22();syncProviderConfigUiV19();queueMediaDeckRenderV22(0)},260);
+console.info(`Anime list V${V220_TAG}: Media Deck + original audio/dubs/subtitles + provider-agnostic player UI`);
+
+/* ===== V23 · Accounts + safe cloud sync (Supabase Auth / RLS) ===== */
+const ACCOUNT_SESSION_KEY_V23='animeAccountSessionV23';
+const ACCOUNT_PRE_CLOUD_BACKUP_V23='animeAccountPreCloudBackupV23';
+const ACCOUNT_LAST_SYNC_V23='animeAccountLastSyncV23';
+let accountSessionV23=null;
+let accountSyncTimerV23=null;
+let accountSyncingV23=false;
+let accountApplyingRemoteV23=false;
+let accountRecoveryV23=false;
+
+function accountConfigV23(){
+  const c=window.ANIME_AUTH_CONFIG||{};
+  return {url:String(c.supabaseUrl||'').trim().replace(/\/$/,''),key:String(c.supabaseAnonKey||'').trim()};
+}
+function accountConfiguredV23(){const c=accountConfigV23();return /^https:\/\//i.test(c.url)&&c.key.length>20}
+function accountReadSessionV23(){try{return JSON.parse(localStorage.getItem(ACCOUNT_SESSION_KEY_V23)||'null')}catch{return null}}
+function accountWriteSessionV23(s){accountSessionV23=s||null;try{if(s)localStorage.setItem(ACCOUNT_SESSION_KEY_V23,JSON.stringify(s));else localStorage.removeItem(ACCOUNT_SESSION_KEY_V23)}catch{}renderAccountChromeV23()}
+function accountDisplayNameV23(user=accountSessionV23?.user){return String(user?.user_metadata?.display_name||user?.user_metadata?.name||uiSettings?.nickname||user?.email?.split('@')[0]||'Пользователь').trim()||'Пользователь'}
+function accountInitialV23(name=accountDisplayNameV23()){return [...String(name).trim()][0]?.toUpperCase()||'•'}
+function accountMessageV23(text,type='info'){const el=$('#accountMessage');if(!el)return;el.textContent=String(text||'');el.className=`account-message ${type}${text?'':' hidden'}`}
+function accountSetBusyV23(busy){['#accountLoginSubmit','#accountRegisterSubmit','#accountSyncNow','#accountLogout'].forEach(sel=>{const x=$(sel);if(x)x.disabled=!!busy})}
+function accountExpiryV23(data){const sec=Number(data?.expires_in||3600);return Date.now()+Math.max(60,sec-15)*1000}
+function accountSessionFromResponseV23(data){if(!data?.access_token)return null;return {access_token:data.access_token,refresh_token:data.refresh_token||'',expires_at:accountExpiryV23(data),user:data.user||null}}
+function accountAuthHeadersV23(token=''){const c=accountConfigV23();return {'Content-Type':'application/json','apikey':c.key,'Authorization':`Bearer ${token||c.key}`}}
+async function accountJsonFetchV23(url,options={}){
+  const r=await fetch(url,options);let data=null;const text=await r.text();try{data=text?JSON.parse(text):null}catch{data={message:text||`HTTP ${r.status}`}}
+  if(!r.ok){const msg=data?.msg||data?.message||data?.error_description||data?.error||`HTTP ${r.status}`;const e=new Error(msg);e.status=r.status;e.data=data;throw e}return data;
+}
+async function accountRefreshV23(){
+  if(!accountConfiguredV23()||!accountSessionV23?.refresh_token)return null;
+  const c=accountConfigV23();
+  try{const d=await accountJsonFetchV23(`${c.url}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({refresh_token:accountSessionV23.refresh_token})});const s=accountSessionFromResponseV23(d);if(s){accountWriteSessionV23(s);return s}}catch(e){console.warn('V23 refresh',e);accountWriteSessionV23(null)}return null;
+}
+async function accountValidSessionV23(){
+  if(!accountSessionV23)accountSessionV23=accountReadSessionV23();
+  if(!accountSessionV23?.access_token)return null;
+  if(Number(accountSessionV23.expires_at||0)<Date.now()+60000)return await accountRefreshV23();
+  return accountSessionV23;
+}
+async function accountFetchUserV23(){
+  const s=await accountValidSessionV23();if(!s)return null;const c=accountConfigV23();
+  try{const u=await accountJsonFetchV23(`${c.url}/auth/v1/user`,{headers:accountAuthHeadersV23(s.access_token)});s.user=u;accountWriteSessionV23(s);return u}catch(e){if(e.status===401){const r=await accountRefreshV23();if(r)return accountFetchUserV23()}throw e}
+}
+function accountExtraSnapshotV23(){
+  const get=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
+  const extras={};
+  if(typeof WATCH_PREF_KEY_V15!=='undefined')extras.watchPrefs=get(WATCH_PREF_KEY_V15);
+  if(typeof WATCH_RESUME_KEY_V15!=='undefined')extras.watchResume=get(WATCH_RESUME_KEY_V15);
+  if(typeof WATCH_COMMENTS_KEY_V151!=='undefined')extras.watchComments=get(WATCH_COMMENTS_KEY_V151);
+  return extras;
+}
+function accountSnapshotV23(){return {version:23,data:clone(latestData),settings:clone(uiSettings||{}),extras:accountExtraSnapshotV23(),savedAt:new Date().toISOString()}}
+function accountSetLocalExtraV23(key,value){if(value==null)return;try{localStorage.setItem(key,JSON.stringify(value))}catch{}}
+function accountApplySnapshotV23(payload){
+  if(!payload?.data)return false;accountApplyingRemoteV23=true;
+  try{
+    try{if(!localStorage.getItem(ACCOUNT_PRE_CLOUD_BACKUP_V23))localStorage.setItem(ACCOUNT_PRE_CLOUD_BACKUP_V23,JSON.stringify(accountSnapshotV23()))}catch{}
+    latestData=clone(payload.data);latestData.sections||={};Object.keys(SECTION_TITLES).forEach(k=>latestData.sections[k]||=[]);latestData.next_queue||=[];localStorage.setItem(STORAGE_KEY,JSON.stringify(latestData));
+    if(payload.settings){uiSettings={...DEFAULT_SETTINGS,...payload.settings};localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));applySettings(uiSettings)}
+    const ex=payload.extras||{};if(typeof WATCH_PREF_KEY_V15!=='undefined')accountSetLocalExtraV23(WATCH_PREF_KEY_V15,ex.watchPrefs);if(typeof WATCH_RESUME_KEY_V15!=='undefined')accountSetLocalExtraV23(WATCH_RESUME_KEY_V15,ex.watchResume);if(typeof WATCH_COMMENTS_KEY_V151!=='undefined')accountSetLocalExtraV23(WATCH_COMMENTS_KEY_V151,ex.watchComments);
+    try{migrateV3()}catch{}try{renderAll()}catch(e){console.warn('V23 render after cloud load',e)}try{renderProfileChromeV16()}catch{}try{renderSidebarProfileV13()}catch{}
+    return true;
+  }finally{accountApplyingRemoteV23=false}
+}
+async function accountRestV23(path,{method='GET',body=null,prefer=''}={}){
+  const s=await accountValidSessionV23();if(!s)throw new Error('Сессия закончилась. Войди снова.');const c=accountConfigV23();const h=accountAuthHeadersV23(s.access_token);if(prefer)h.Prefer=prefer;return accountJsonFetchV23(`${c.url}/rest/v1/${path}`,{method,headers:h,body:body==null?undefined:JSON.stringify(body)});
+}
+async function accountPullCloudV23({firstLogin=false}={}){
+  const user=await accountFetchUserV23();if(!user)return false;
+  const rows=await accountRestV23(`user_state?user_id=eq.${encodeURIComponent(user.id)}&select=payload,updated_at&limit=1`);
+  if(Array.isArray(rows)&&rows[0]?.payload?.data){accountApplySnapshotV23(rows[0].payload);localStorage.setItem(ACCOUNT_LAST_SYNC_V23,new Date().toISOString());renderAccountChromeV23();return true}
+  if(firstLogin||!rows?.length){await accountPushCloudV23({force:true});return true}return false;
+}
+async function accountPushCloudV23({force=false}={}){
+  if(accountApplyingRemoteV23||accountSyncingV23)return false;if(!accountSessionV23&&!force)return false;
+  const s=await accountValidSessionV23();if(!s)return false;const user=s.user||await accountFetchUserV23();if(!user)return false;
+  accountSyncingV23=true;renderAccountChromeV23();
+  try{await accountRestV23('user_state?on_conflict=user_id',{method:'POST',body:{user_id:user.id,payload:accountSnapshotV23()},prefer:'resolution=merge-duplicates,return=minimal'});localStorage.setItem(ACCOUNT_LAST_SYNC_V23,new Date().toISOString());renderAccountChromeV23();return true}
+  catch(e){console.warn('V23 cloud push',e);renderAccountChromeV23();return false}finally{accountSyncingV23=false;renderAccountChromeV23()}
+}
+function scheduleAccountCloudSyncV23(delay=1400){if(accountApplyingRemoteV23||!accountSessionV23?.access_token)return;clearTimeout(accountSyncTimerV23);accountSyncTimerV23=setTimeout(()=>accountPushCloudV23(),delay)}
+window.scheduleAccountCloudSyncV23=scheduleAccountCloudSyncV23;
+
+function renderAccountChromeV23(){
+  const signed=!!accountSessionV23?.access_token,name=accountDisplayNameV23(),btn=$('#profileAccountBtn'),side=$('#profileFutureBtn'),status=document.querySelector('.sidebar-status'),statusText=status?.querySelector('.sidebar-label-text'),kicker=document.querySelector('.profile-kicker');
+  if(btn){btn.textContent=signed?(accountSyncingV23?'☁ Сохраняю…':'☁ Аккаунт'):'☁ Войти';btn.classList.toggle('account-online',signed);btn.classList.toggle('account-syncing',accountSyncingV23)}
+  side?.classList.toggle('account-online',signed);status?.classList.toggle('account-cloud',signed);if(statusText)statusText.textContent=signed?(accountSyncingV23?'Синхронизация…':'Данные в облаке'):'Данные локально';if(kicker)kicker.textContent=signed?'ACCOUNT PROFILE · V23':'LOCAL PROFILE · V23';
+  const guest=$('#accountGuestView'),userView=$('#accountUserView'),setup=$('#accountSetupNotice');setup?.classList.toggle('hidden',accountConfiguredV23());guest?.classList.toggle('hidden',signed||accountRecoveryV23);userView?.classList.toggle('hidden',!signed||accountRecoveryV23);$('#accountRecoveryView')?.classList.toggle('hidden',!accountRecoveryV23);
+  if(signed){const u=accountSessionV23.user||{};const n=$('#accountUserName'),em=$('#accountUserEmail'),av=$('#accountUserAvatar');if(n)n.textContent=name;if(em)em.textContent=u.email||'';if(av)av.textContent=accountInitialV23(name);const last=localStorage.getItem(ACCOUNT_LAST_SYNC_V23);if($('#accountSyncTitle'))$('#accountSyncTitle').textContent=accountSyncingV23?'Сохраняю изменения…':'Синхронизация включена';if($('#accountSyncText'))$('#accountSyncText').textContent=last?`Последняя синхронизация: ${new Date(last).toLocaleString('ru-RU')}`:'Локальные данные будут перенесены в аккаунт.'}
+}
+function openAccountV23(){accountMessageV23('');renderAccountChromeV23();$('#accountModal')?.classList.remove('hidden');document.body.style.overflow='hidden';if(!accountSessionV23&&!accountRecoveryV23)setTimeout(()=>$('#accountLoginEmail')?.focus(),60)}
+function closeAccountV23(){$('#accountModal')?.classList.add('hidden');if($('#profileModal')?.classList.contains('hidden'))document.body.style.overflow=''}
+window.openAccountV23=openAccountV23;
+function setAccountTabV23(tab){const login=tab!=='register';$('#accountTabLogin')?.classList.toggle('active',login);$('#accountTabRegister')?.classList.toggle('active',!login);$('#accountLoginForm')?.classList.toggle('hidden',!login);$('#accountRegisterForm')?.classList.toggle('hidden',login);accountMessageV23('')}
+async function accountLoginV23(email,password){
+  if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');const c=accountConfigV23();const d=await accountJsonFetchV23(`${c.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password})});const s=accountSessionFromResponseV23(d);if(!s)throw new Error('Сервер не вернул сессию.');accountWriteSessionV23(s);await accountPullCloudV23({firstLogin:true});return s;
+}
+async function accountRegisterV23(name,email,password){
+  if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');const c=accountConfigV23();const redirect=location.href.split('#')[0];const d=await accountJsonFetchV23(`${c.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,data:{display_name:name}})});const s=accountSessionFromResponseV23(d);if(s){accountWriteSessionV23(s);uiSettings.nickname=name;saveSettings();await accountPullCloudV23({firstLogin:true});return {signed:true}}return {signed:false,user:d?.user||null};
+}
+async function accountLogoutV23(){
+  const s=await accountValidSessionV23();if(s){try{const c=accountConfigV23();await fetch(`${c.url}/auth/v1/logout`,{method:'POST',headers:accountAuthHeadersV23(s.access_token)})}catch{}}accountWriteSessionV23(null);accountMessageV23('Ты вышел. Локальная копия списка на этом устройстве сохранена.','success');renderAccountChromeV23();
+}
+async function accountRecoverV23(email){if(!accountConfiguredV23())throw new Error('Backend аккаунтов пока не подключён.');const c=accountConfigV23(),redirect=location.href.split('#')[0];await accountJsonFetchV23(`${c.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email})});}
+async function accountSetRecoveredPasswordV23(password){const s=await accountValidSessionV23();if(!s)throw new Error('Ссылка восстановления устарела. Запроси новую.');const c=accountConfigV23();await accountJsonFetchV23(`${c.url}/auth/v1/user`,{method:'PUT',headers:accountAuthHeadersV23(s.access_token),body:JSON.stringify({password})});accountRecoveryV23=false;history.replaceState(null,'',location.pathname+location.search);renderAccountChromeV23()}
+function accountReadRecoveryHashV23(){
+  const h=new URLSearchParams(location.hash.replace(/^#/,''));if(h.get('type')!=='recovery'||!h.get('access_token'))return false;accountRecoveryV23=true;accountWriteSessionV23({access_token:h.get('access_token'),refresh_token:h.get('refresh_token')||'',expires_at:Date.now()+Number(h.get('expires_in')||3600)*1000,user:null});setTimeout(()=>{openAccountV23();renderAccountChromeV23()},50);return true;
+}
+
+$('#profileAccountBtn')?.addEventListener('click',e=>{e.stopPropagation();openAccountV23()});
+$('#accountClose')?.addEventListener('click',closeAccountV23);$('#accountContinueGuest')?.addEventListener('click',closeAccountV23);$('#accountModal')?.addEventListener('click',e=>{if(e.target===$('#accountModal'))closeAccountV23()});
+$('#accountTabLogin')?.addEventListener('click',()=>setAccountTabV23('login'));$('#accountTabRegister')?.addEventListener('click',()=>setAccountTabV23('register'));
+document.querySelectorAll('[data-password-toggle]').forEach(b=>b.addEventListener('click',()=>{const i=$(`#${b.dataset.passwordToggle}`);if(!i)return;i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'◉':'◌'}));
+$('#accountLoginForm')?.addEventListener('submit',async e=>{e.preventDefault();accountSetBusyV23(true);accountMessageV23('Входим…','info');try{await accountLoginV23($('#accountLoginEmail').value.trim(),$('#accountLoginPassword').value);accountMessageV23('Готово. Список подключён к аккаунту ☁','success');renderAccountChromeV23()}catch(err){accountMessageV23(err.message||'Не удалось войти.','error')}finally{accountSetBusyV23(false)}});
+$('#accountRegisterForm')?.addEventListener('submit',async e=>{e.preventDefault();const name=$('#accountRegisterName').value.trim(),email=$('#accountRegisterEmail').value.trim(),p1=$('#accountRegisterPassword').value,p2=$('#accountRegisterPassword2').value;if(p1!==p2){accountMessageV23('Пароли не совпадают.','error');return}accountSetBusyV23(true);accountMessageV23('Создаю аккаунт…','info');try{const r=await accountRegisterV23(name,email,p1);accountMessageV23(r.signed?'Аккаунт создан. Твои локальные данные уже в облаке ☁':'Аккаунт создан. Проверь почту и подтверди email, потом войди.','success');renderAccountChromeV23()}catch(err){accountMessageV23(err.message||'Не удалось создать аккаунт.','error')}finally{accountSetBusyV23(false)}});
+$('#accountForgotBtn')?.addEventListener('click',async()=>{const email=$('#accountLoginEmail')?.value.trim();if(!email){accountMessageV23('Сначала введи email от аккаунта.','info');$('#accountLoginEmail')?.focus();return}accountSetBusyV23(true);try{await accountRecoverV23(email);accountMessageV23('Письмо для восстановления отправлено. Проверь почту.','success')}catch(err){accountMessageV23(err.message||'Не удалось отправить письмо.','error')}finally{accountSetBusyV23(false)}});
+$('#accountRecoveryForm')?.addEventListener('submit',async e=>{e.preventDefault();accountSetBusyV23(true);try{await accountSetRecoveredPasswordV23($('#accountRecoveryPassword').value);accountMessageV23('Пароль изменён. Ты уже вошёл в аккаунт.','success');await accountFetchUserV23();await accountPullCloudV23({firstLogin:true})}catch(err){accountMessageV23(err.message||'Не удалось изменить пароль.','error')}finally{accountSetBusyV23(false)}});
+$('#accountSyncNow')?.addEventListener('click',async()=>{accountSetBusyV23(true);accountMessageV23('Синхронизирую…','info');try{const ok=await accountPushCloudV23({force:true});accountMessageV23(ok?'Готово. Облако обновлено.':'Не удалось синхронизировать.','success')}catch(err){accountMessageV23(err.message||'Ошибка синхронизации.','error')}finally{accountSetBusyV23(false)}});
+$('#accountLogout')?.addEventListener('click',async()=>{accountSetBusyV23(true);try{await accountPushCloudV23({force:true});await accountLogoutV23()}finally{accountSetBusyV23(false)}});
+$('#accountOpenProfile')?.addEventListener('click',()=>{closeAccountV23();openProfileV16()});
+
+// Cloud-sync the small pieces that live outside latestData.
+if(typeof saveWatchPrefsV15==='function'){const baseSaveWatchPrefsV23=saveWatchPrefsV15;saveWatchPrefsV15=function(...args){const r=baseSaveWatchPrefsV23(...args);scheduleAccountCloudSyncV23();return r}}
+if(typeof persistWatchResumeV15==='function'){const basePersistResumeV23=persistWatchResumeV15;persistWatchResumeV15=function(...args){const r=basePersistResumeV23(...args);scheduleAccountCloudSyncV23(3500);return r}}
+if(typeof saveCommentsStoreV151==='function'){const baseSaveCommentsV23=saveCommentsStoreV151;saveCommentsStoreV151=function(...args){const r=baseSaveCommentsV23(...args);scheduleAccountCloudSyncV23();return r}}
+
+async function initAccountsV23(){
+  accountSessionV23=accountReadSessionV23();accountReadRecoveryHashV23();renderAccountChromeV23();if(!accountConfiguredV23()||accountRecoveryV23)return;if(accountSessionV23?.access_token){try{await accountFetchUserV23();await accountPullCloudV23();}catch(e){console.warn('V23 account init',e);if(e.status===401)accountWriteSessionV23(null)}renderAccountChromeV23()}
+}
+initAccountsV23();

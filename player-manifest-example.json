@@ -12,13 +12,15 @@
           "opening": {"start": 42, "end": 132},
           "ending": {"start": 1328, "end": 1418},
           "streams": [
-            {"name": "HLS master", "type": "hls", "provider": "MyProvider", "dub": "Master", "quality": "auto", "url": "https://example.com/episode-01/master.m3u8"},
-            {"name": "Russian dub", "type": "video", "provider": "MyProvider", "dub": "Русская", "quality": "1080p", "url": "https://example.com/episode-01-ru-1080.mp4"},
-            {"name": "Original", "type": "video", "provider": "MyProvider", "dub": "Оригинал", "quality": "1080p", "url": "https://example.com/episode-01-jp-1080.mp4"}
+            {"name": "HLS master", "type": "hls", "provider": "LicensedProvider", "dub": "Оригинал", "quality": "auto", "url": "https://example.com/episode-01/master.m3u8"},
+            {"name": "Russian dub", "type": "video", "provider": "LicensedProvider", "dub": "Русская", "quality": "1080p", "url": "https://example.com/episode-01-ru-1080.mp4", "downloadUrl": "https://example.com/download/episode-01-ru-1080.mp4", "downloadName": "ExampleAnime-S01E01-RU-1080p.mp4"}
           ],
           "subtitles": [
             {"id": "ru", "label": "Русские", "url": "https://example.com/episode-01-ru.vtt"},
-            {"id": "en", "label": "English", "url": "https://example.com/episode-01-en.srt"}
+            {"id": "en", "label": "English", "url": "https://example.com/episode-01-en.vtt"}
+          ],
+          "downloads": [
+            {"provider": "LicensedProvider", "dub": "Оригинал", "quality": "1080p", "label": "Original 1080p", "filename": "ExampleAnime-S01E01-JP-1080p.mp4", "url": "https://example.com/download/episode-01-jp-1080p.mp4"}
           ]
         }
       ]
