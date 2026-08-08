@@ -1,3 +1,6 @@
+My Anime List V24.3
+Clean Steam Layer: account isolation migration, auto-layout profile, clean social workspace, unified public profiles.
+
 My Anime List V23.6 — Account First + Profile Titles
 
 - Гостевой режим теперь показывает пустую личную библиотеку и большой CTA входа/регистрации; старые локальные данные не удаляются, но гостю не показываются.

@@ -7901,3 +7901,139 @@ setTimeout(()=>{socialFixVisibilityV242();injectAccountResetV242()},140);
 
 console.info(`Anime list V${V242_TAG}: isolated accounts + public profiles + founder identity + social visibility fix`);
 
+
+
+/* ===== V24.3: account quarantine + clean Steam UI + unified public profiles ===== */
+const V243_TAG='24.3';
+const ACCOUNT_ISOLATION_VERSION_V243=243;
+
+function accountPayloadTitleCountV243(payload){
+  const s=payload?.data?.sections||{};const arr=[];for(const v of Object.values(s))if(Array.isArray(v))arr.push(...v);
+  const seen=new Set(arr.map(e=>String(e?.anilist_id||e?.mal_id||e?.title||Math.random())));return seen.size;
+}
+function accountLegacyCloneLikelyV243(payload,meta){
+  if(!payload?.data)return false;if(Number(payload.isolationVersion||0)>=ACCOUNT_ISOLATION_VERSION_V243)return false;
+  if(meta?.role==='founder'||Number(meta?.founder_no)>0)return false;
+  const count=accountPayloadTitleCountV243(payload);if(count<10)return false;
+  const p=payload.data.profile_v16||{};
+  const verified=Object.values(p.episodeLedger||{}).filter(x=>x?.verified).length;
+  const achievements=Object.keys(p.achievements||{}).length;
+  const collection=(p.collection||[]).length;
+  const quiet=(Number(p.level||1)<=1&&Number(p.stars||0)===0&&verified===0&&achievements===0&&collection===0);
+  return quiet;
+}
+async function accountOwnMetaV243(id){
+  try{const rows=await accountRestV23(`profiles?id=eq.${encodeURIComponent(id)}&select=role,founder_no,created_at,display_name&limit=1`);return rows?.[0]||{}}
+  catch{return {}}
+}
+const accountSnapshotBeforeV243=accountSnapshotV23;
+accountSnapshotV23=function(){const snap=accountSnapshotBeforeV243();snap.ownerId=accountSessionV23?.user?.id||snap.ownerId||null;snap.accountVersion=24.3;snap.isolationVersion=ACCOUNT_ISOLATION_VERSION_V243;return snap};
+
+accountPullCloudV23=async function({firstLogin=false}={}){
+  const user=await accountFetchUserV23();if(!user)return false;
+  const rows=await accountRestV23(`user_state?user_id=eq.${encodeURIComponent(user.id)}&select=payload,updated_at&limit=1`);
+  if(Array.isArray(rows)&&rows[0]?.payload?.data){
+    const payload=rows[0].payload,meta=await accountOwnMetaV243(user.id);
+    if(accountLegacyCloneLikelyV243(payload,meta)){
+      accountInstallFreshLocalV242(user,{keepSettings:true});accountSetLocalOwnerV242(user.id);
+      await accountPushCloudV23({force:true});
+      accountMessageV23('✓ Нашёл старую копию чужой библиотеки и очистил её. Этот аккаунт теперь отдельный.','success');
+      try{profileToastV16('Аккаунт отделён','Старый общий список не переносится между пользователями.')}catch{}
+      return true;
+    }
+    accountApplySnapshotV23(payload);accountSetLocalOwnerV242(user.id);localStorage.setItem(ACCOUNT_LAST_SYNC_V23,new Date().toISOString());renderAccountChromeV23();return true;
+  }
+  accountInstallFreshLocalV242(user,{keepSettings:true});accountSetLocalOwnerV242(user.id);await accountPushCloudV23({force:true});return true;
+};
+window.accountPullCloudV23=accountPullCloudV23;
+
+/* Default profile layout uses auto-height until the owner intentionally saves a free layout. */
+function profileUsesCustomLayoutV243(){return !!ensureProfilePrefsV162().layoutCustomizedV243}
+const applyProfileLayoutBeforeV243=applyProfileLayoutV235;
+applyProfileLayoutV235=function(){
+  const host=$('#profileOverviewBlocks');if(!host)return;
+  const custom=profileLayoutEditingV235||profileUsesCustomLayoutV243();
+  host.classList.toggle('profile-default-layout-v243',!custom);
+  if(!custom){
+    for(const m of Object.values(profileCanvasMetaV235())){const el=$('#'+m.id);if(!el)continue;el.style.removeProperty('grid-column');el.style.removeProperty('grid-row')}
+    host.style.removeProperty('--profile-canvas-rows');host.style.removeProperty('min-height');return;
+  }
+  return applyProfileLayoutBeforeV243();
+};
+window.applyProfileLayoutV235=applyProfileLayoutV235;
+function profileMarkCustomOnSaveV243(){if(profileLayoutEditingV235){ensureProfilePrefsV162().layoutCustomizedV243=true;profileStudioSessionV235&&(profileStudioSessionV235.dirty=true)}}
+function profileMarkDefaultOnResetV243(){ensureProfilePrefsV162().layoutCustomizedV243=false;setTimeout(()=>applyProfileLayoutV235(),0)}
+setTimeout(()=>{
+  ['profileStudioSaveV235','profileLayoutSaveFloatV235'].forEach(id=>$('#'+id)?.addEventListener('click',profileMarkCustomOnSaveV243,true));
+  ['profileStudioResetV235','profileLayoutResetFloatV235'].forEach(id=>$('#'+id)?.addEventListener('click',profileMarkDefaultOnResetV243,true));
+  applyProfileLayoutV235();
+},220);
+
+/* Social is still one tab: hide empty utility cards until they are useful. */
+const socialRenderBeforeV243=socialRenderV241;
+socialRenderV241=function(){
+  socialRenderBeforeV243();
+  const cols=$('.social-columns-v241'),cards=cols?[...cols.querySelectorAll(':scope > .social-card-v241')]:[];
+  const searchCard=cards[0],requestCard=cards[1];
+  const q=String($('#socialSearchInputV241')?.value||'').trim();
+  searchCard?.classList.toggle('social-auto-hidden-v243',!q&&!socialStateV241.search.length);
+  requestCard?.classList.toggle('social-auto-hidden-v243',!socialStateV241.incoming.length);
+};
+window.socialRenderV241=socialRenderV241;
+
+/* Rich public payload for the same profile language as the owner page. */
+const socialBuildPublicPayloadBeforeV243=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){
+  const pp=socialBuildPublicPayloadBeforeV243();const pref=ensureProfilePrefsV162();
+  const all=typeof profileAllEntriesV162==='function'?profileAllEntriesV162():[];
+  pp.library=all.slice(0,16).map(x=>({title:x.entry?.title||'',cover:x.entry?.cover||'',emoji:x.entry?.emoji||'🎌',section:x.section,progress:Number(x.entry?.progress||0),episodes:Number(x.entry?.episodes||0)}));
+  pp.appearance={accent:String(pref.accent||''),accent2:String(pref.accent2||''),radius:Number(pref.radius||22),layoutCustomized:!!pref.layoutCustomizedV243};
+  pp.verifiedEpisodes=typeof verifiedEpisodeCountV16==='function'?verifiedEpisodeCountV16():0;
+  pp.achievements=Object.keys(ensureProfileV16().achievements||{}).length;
+  pp.ownerLayout=cloneJsonV235(pref.layoutV235||{});
+  return pp;
+};
+
+function publicAnimeCardsV243(items,limit=6){
+  const a=(items||[]).slice(0,limit);if(!a.length)return '<div class="public-profile-empty-v242">Пока ничего не выставлено.</div>';
+  return `<div class="public-anime-grid-v243">${a.map(x=>`<div class="public-anime-card-v243">${x.cover?`<img src="${esc(x.cover)}" alt="">`:`<i>${esc(x.emoji||'🎌')}</i>`}<b>${esc(x.title||'')}</b><small>${x.episodes?`${Number(x.progress||0)} / ${Number(x.episodes||0)}`:(x.section?esc(x.section):'')}</small></div>`).join('')}</div>`;
+}
+function publicLibraryRowsV243(items){
+  const a=(items||[]).slice(0,12);if(!a.length)return '<div class="public-profile-empty-v242">Список пока пуст.</div>';
+  const names={watching:'Сейчас',planned:'Посмотреть',completed:'Посмотрел',movies:'Фильм',paused:'Отложено'};
+  return `<div class="public-library-list-v243">${a.map(x=>`<div class="public-library-row-v243">${x.cover?`<img src="${esc(x.cover)}" alt="">`:`<i>${esc(x.emoji||'🎌')}</i>`}<div><b>${esc(x.title||'')}</b><small>${esc(names[x.section]||x.section||'')}</small></div><small>${x.episodes?`${Number(x.progress||0)}/${Number(x.episodes||0)}`:''}</small></div>`).join('')}</div>`;
+}
+function publicTierV243(tier){
+  if(!tier?.tiers?.length)return '<div class="public-profile-empty-v242">Тир-лист пока не создан.</div>';
+  return `<div class="public-profile-tier-v242">${tier.tiers.map(t=>`<div><b>${esc(t.label)}</b><span>${Number(t.count)||0}</span></div>`).join('')}</div>`;
+}
+
+socialOpenPublicProfileV242=async function(id){
+  ensurePublicProfileModalV242();const modal=$('#publicProfileModalV242'),shell=modal?.querySelector('.public-profile-shell-v242'),body=$('#publicProfileBodyV242');
+  shell?.classList.add('public-profile-shell-v243');modal.classList.remove('hidden');body.innerHTML='<div class="public-profile-loading-v242">Загружаю профиль…</div>';
+  try{
+    let p=socialStateV241.profiles.get(id);if(!p?.public_payload){const q=new URLSearchParams();q.set('id',`eq.${id}`);q.set('limit','1');p=(await socialFetchProfilesV242(q.toString()))?.[0]||p}if(!p)throw new Error('Профиль не найден');socialStateV241.profiles.set(id,p);
+    const me=socialMeV241(),isMe=id===me,isFriend=socialStateV241.friends.includes(id),isFollowing=socialStateV241.following.includes(id),pp=p.public_payload||{};
+    let following=0,followers=0,activity=[];try{const [fo,fr,ac]=await Promise.all([socialRestV241(`follows?follower_id=eq.${id}&select=following_id`),socialRestV241(`follows?following_id=eq.${id}&select=follower_id`),socialRestV241(`social_activity?actor_id=eq.${id}&select=id,icon,title,detail,created_at&order=created_at.desc&limit=10`)]);following=fo?.length||0;followers=fr?.length||0;activity=ac||[]}catch{}
+    const actions=isMe?`<button type="button" onclick="document.querySelector('#publicProfileModalV242').classList.add('hidden');setProfileTabV16('overview')">Открыть мой профиль</button>`:`${isFriend?'<span class="public-profile-friend-state-v242">✓ В друзьях</span>':`<button type="button" onclick="socialFriendRequestV241('${id}')">＋ Друг</button>`}<button class="secondary" type="button" onclick="socialToggleFollowV241('${id}',${isFollowing?'false':'true'})">${isFollowing?'✓ Подписан':'☆ Подписаться'}</button>${isFriend?`<button class="secondary" type="button" onclick="document.querySelector('#publicProfileModalV242').classList.add('hidden');socialOpenChatV241('${id}')">💬 Написать</button>`:''}`;
+    const cover=(pp.favorites||[]).find(x=>x.cover)?.cover||(pp.watching||[]).find(x=>x.cover)?.cover||'';
+    body.innerHTML=`<div class="public-profile-page-v243">
+      <div class="public-profile-cover-v243">${cover?`<img src="${esc(cover)}" alt="">`:''}</div>
+      <div class="public-profile-canvas-v243">
+        <section class="public-widget-v243 public-avatar-widget-v243"><div class="public-profile-avatar-v242">${socialAvatarV241(p)}</div></section>
+        <section class="public-widget-v243 public-identity-widget-v243"><span class="profile-card-kicker">PUBLIC PROFILE</span><div class="public-profile-name-row-v242"><h2>${esc(p.display_name||'Пользователь')}</h2>${socialFounderBadgeV242(p)}</div><div class="public-handle-v243">${esc(socialHandleV241(p))}</div>${p.headline?`<p>${esc(p.headline)}</p>`:''}${p.status_text?`<div class="public-status-v243">● ${esc(p.status_text)}</div>`:''}<div class="public-actions-v243">${actions}</div></section>
+        <section class="public-widget-v243 public-progress-widget-v243"><div class="public-progress-top-v243"><div><span>УРОВЕНЬ</span><b>${Number(pp.level||1)}</b></div><small>${Number(pp.xp||0)} XP</small></div><div class="public-kpis-v243"><div><b>${Number(pp.verifiedEpisodes||0)}</b><span>серий</span></div><div><b>${Number(pp.completed||0)}</b><span>тайтлов</span></div><div><b>${followers}</b><span>подписчиков</span></div><div><b>${following}</b><span>подписок</span></div></div></section>
+        <section class="public-widget-v243 public-favorites-widget-v243"><div class="public-widget-head-v243"><div><span>ВИТРИНА</span><h3>Любимые аниме</h3></div>${pp.cardTitle?`<div class="public-profile-title-chip-v242">◆ ${esc(pp.cardTitle)}</div>`:''}</div>${publicAnimeCardsV243(pp.favorites,8)}</section>
+        <section class="public-widget-v243 public-stats-widget-v243"><div class="public-widget-head-v243"><div><span>СВОДКА</span><h3>Активность</h3></div></div><div class="public-stats-grid-v243"><div><b>${Number(pp.watchingCount||0)}</b><span>сейчас смотрит</span></div><div><b>${Number(pp.completed||0)}</b><span>просмотрено</span></div><div><b>${Number(pp.achievements||0)}</b><span>достижений</span></div><div><b>${followers}</b><span>читателей</span></div></div>${p.bio||pp.bio?`<p style="margin:12px 2px 0;color:var(--muted);line-height:1.55;font-size:10px">${esc(p.bio||pp.bio)}</p>`:''}</section>
+        <section class="public-widget-v243 public-activity-widget-v243"><div class="public-widget-head-v243"><div><span>ЛЕНТА</span><h3>Последнее</h3></div></div><div class="public-activity-list-v243">${activity.length?activity.map(x=>`<div><span>${esc(x.icon||'◆')}</span><div><b>${esc(x.title||'')}</b><p>${esc(x.detail||'')}</p><time>${socialFmtTimeV241(x.created_at)}</time></div></div>`).join(''):'<div class="public-profile-empty-v242">Пока тихо.</div>'}</div></section>
+        <section class="public-widget-v243 public-watching-widget-v243"><div class="public-widget-head-v243"><div><span>СЕЙЧАС</span><h3>Смотрит сейчас</h3></div></div>${publicAnimeCardsV243(pp.watching,8)}</section>
+        <section class="public-widget-v243 public-library-widget-v243"><div class="public-widget-head-v243"><div><span>БИБЛИОТЕКА</span><h3>Аниме-лист</h3></div><small>${Number((pp.library||[]).length)} на витрине</small></div>${publicLibraryRowsV243(pp.library||[])}</section>
+        <section class="public-widget-v243 public-tier-widget-v243"><div class="public-widget-head-v243"><div><span>ЛИЧНЫЙ РЕЙТИНГ</span><h3>${esc(pp.tier?.title||'Мой тир-лист')}</h3></div></div>${publicTierV243(pp.tier)}</section>
+      </div></div>`;
+  }catch(e){body.innerHTML=`<div class="public-profile-loading-v242">Не удалось открыть профиль: ${esc(e.message||String(e))}</div>`}
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+/* Re-sync rich public payload once after V24.3 loads. */
+setTimeout(()=>{if(socialSignedV241())socialSyncPublicProfileV242().catch?.(()=>{})},600);
+console.info(`Anime list V${V243_TAG}: clean account isolation migration + responsive default profile + unified Steam-style social/public profile`);
