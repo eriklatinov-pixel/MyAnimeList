@@ -7652,3 +7652,252 @@ function socialBindV241(){if(document.body.dataset.socialBoundV241==='1')return;
 setTimeout(socialBindV241,160);
 
 console.info(`Anime list V${V241_TAG}: strict genre paging + Profile Studio readability + friends/follows/DM social layer`);
+
+
+/* ===== V24.2: account isolation + public profiles + founder identity ===== */
+const V242_TAG='24.2';
+const ACCOUNT_LOCAL_OWNER_V242='animeAccountLocalOwnerV242';
+
+function accountFreshDataV242(){
+  return {sections:{watching:[],planned:[],movies:[],completed:[],paused:[]},next_queue:[]};
+}
+function accountLocalOwnerV242(){try{return localStorage.getItem(ACCOUNT_LOCAL_OWNER_V242)||''}catch{return ''}}
+function accountSetLocalOwnerV242(id){try{id?localStorage.setItem(ACCOUNT_LOCAL_OWNER_V242,String(id)):localStorage.removeItem(ACCOUNT_LOCAL_OWNER_V242)}catch{}}
+const accountSnapshotBeforeV242=accountSnapshotV23;
+accountSnapshotV23=function(){const snap=accountSnapshotBeforeV242();snap.ownerId=accountSessionV23?.user?.id||accountLocalOwnerV242()||null;snap.accountVersion=24.2;return snap};
+
+function accountInstallFreshLocalV242(user,{keepSettings=true}={}){
+  accountApplyingRemoteV23=true;
+  try{
+    latestData=accountFreshDataV242();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(latestData));
+    if(!keepSettings){
+      uiSettings={...DEFAULT_SETTINGS,nickname:accountDisplayNameV23(user)};
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));
+      applySettings(uiSettings);
+    }else if(uiSettings){
+      uiSettings.nickname=accountDisplayNameV23(user);
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));
+    }
+    try{if(typeof WATCH_RESUME_KEY_V15!=='undefined')localStorage.removeItem(WATCH_RESUME_KEY_V15)}catch{}
+    try{if(typeof WATCH_COMMENTS_KEY_V151!=='undefined')localStorage.removeItem(WATCH_COMMENTS_KEY_V151)}catch{}
+    try{migrateV3()}catch{}
+    try{renderAll()}catch{}
+    try{renderProfileChromeV16()}catch{}
+    try{renderSidebarProfileV13()}catch{}
+  }finally{accountApplyingRemoteV23=false}
+}
+const accountApplySnapshotBeforeV242=accountApplySnapshotV23;
+accountApplySnapshotV23=function(payload){
+  const ok=accountApplySnapshotBeforeV242(payload);
+  if(ok&&accountSessionV23?.user?.id)accountSetLocalOwnerV242(accountSessionV23.user.id);
+  return ok;
+};
+
+accountPullCloudV23=async function({firstLogin=false}={}){
+  const user=await accountFetchUserV23();if(!user)return false;
+  const rows=await accountRestV23(`user_state?user_id=eq.${encodeURIComponent(user.id)}&select=payload,updated_at&limit=1`);
+  if(Array.isArray(rows)&&rows[0]?.payload?.data){
+    accountApplySnapshotV23(rows[0].payload);
+    accountSetLocalOwnerV242(user.id);
+    localStorage.setItem(ACCOUNT_LAST_SYNC_V23,new Date().toISOString());
+    renderAccountChromeV23();
+    return true;
+  }
+  // V24.2: a brand-new account is always born clean. Never upload another account's local library.
+  accountInstallFreshLocalV242(user,{keepSettings:true});
+  accountSetLocalOwnerV242(user.id);
+  await accountPushCloudV23({force:true});
+  return true;
+};
+window.accountPullCloudV23=accountPullCloudV23;
+
+async function accountResetThisAccountV242(){
+  const s=await accountValidSessionV23();if(!s?.user)return;
+  if(!confirm('Очистить список, прогресс, карточки и профиль ТОЛЬКО у этого аккаунта? Другие аккаунты не пострадают.'))return;
+  if(!confirm('Точно? Это заменит облачные данные этого аккаунта на чистые.'))return;
+  accountInstallFreshLocalV242(s.user,{keepSettings:true});
+  accountSetLocalOwnerV242(s.user.id);
+  await accountPushCloudV23({force:true});
+  accountMessageV23('✓ Этот аккаунт теперь чистый. Можно собирать новый список с нуля.','success');
+  try{socialSyncPublicProfileV242?.()}catch{}
+  renderAccountChromeV23();
+}
+window.accountResetThisAccountV242=accountResetThisAccountV242;
+
+function injectAccountResetV242(){
+  const actions=document.querySelector('.account-user-actions');if(!actions||$('#accountResetDataV242'))return;
+  const b=document.createElement('button');b.id='accountResetDataV242';b.className='ghost account-reset-v242';b.type='button';b.textContent='Очистить этот аккаунт';
+  b.addEventListener('click',accountResetThisAccountV242);actions.appendChild(b);
+}
+setTimeout(injectAccountResetV242,120);
+
+/* Public social profile */
+function socialProfileFieldsV242(){return 'id,display_name,handle,avatar_url,headline,status_text,bio,last_seen,role,founder_no,public_payload'}
+async function socialFetchProfilesV242(query){
+  try{return await socialRestV241(`profiles?${query}&select=${encodeURIComponent(socialProfileFieldsV242())}`)}
+  catch(e){
+    if(/public_payload|founder_no|role|bio.*column|column .* does not exist/i.test(String(e?.message||e))){
+      socialNoticeV241('Нужен SUPABASE_PATCH_V242.sql — он добавляет публичные профили и Founder ID.');
+      const stripped=query.replace(/&?select=[^&]*/,'');
+      return await socialRestV241(`profiles?${stripped}&select=id,display_name,handle,avatar_url,headline,status_text,last_seen`);
+    }
+    throw e;
+  }
+}
+socialProfilesByIdsV241=async function(ids){
+  ids=[...new Set((ids||[]).filter(Boolean))];if(!ids.length)return [];
+  const p=new URLSearchParams();p.set('id',`in.(${ids.join(',')})`);
+  const rows=await socialFetchProfilesV242(p.toString());
+  for(const x of rows||[])socialStateV241.profiles.set(x.id,x);
+  return rows||[];
+};
+socialEnsureOwnV241=async function(){
+  const me=socialMeV241();if(!me)return null;
+  const pms=new URLSearchParams();pms.set('id',`eq.${me}`);pms.set('limit','1');
+  let rows=await socialFetchProfilesV242(pms.toString()),p=rows?.[0];if(!p)return null;
+  if(!p.handle){
+    const h=`${socialSlugV241(p.display_name||accountDisplayNameV23())}-${me.slice(0,4)}`;
+    try{await socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}`,{method:'PATCH',body:{handle:h,last_seen:new Date().toISOString()},prefer:'return=minimal'});p.handle=h}catch{}
+  }else socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}`,{method:'PATCH',body:{last_seen:new Date().toISOString()},prefer:'return=minimal'}).catch(()=>{});
+  socialStateV241.own=p;socialStateV241.profiles.set(me,p);return p;
+};
+socialSearchV241=async function(){
+  const q=String($('#socialSearchInputV241')?.value||'').trim();
+  if(q.length<2){socialStateV241.search=[];socialRenderV241();return}
+  try{
+    const p=new URLSearchParams();const clean=q.replace(/[,*()]/g,'').replace(/^@/,'');
+    p.set('or',`(display_name.ilike.*${clean}*,handle.ilike.*${clean}*)`);
+    p.set('id',`neq.${socialMeV241()}`);p.set('limit','20');
+    const rows=await socialFetchProfilesV242(p.toString());socialStateV241.search=rows||[];
+    for(const x of rows||[])socialStateV241.profiles.set(x.id,x);socialRenderV241();
+  }catch(e){socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e))}
+};
+
+function socialFounderBadgeV242(p){
+  return p?.role==='founder'||Number(p?.founder_no)>0
+    ? `<span class="social-founder-badge-v242">👑 FOUNDER #${String(Number(p.founder_no)||1).padStart(4,'0')}</span>`:'';
+}
+socialPersonCardV241=function(p,{context='search',requestId=''}={}){
+  if(!p)return'';const me=socialMeV241(),isFriend=socialStateV241.friends.includes(p.id),isFollowing=socialStateV241.following.includes(p.id);let acts='';
+  const profileBtn=`<button class="ghost" type="button" onclick="socialOpenPublicProfileV242('${p.id}')">Профиль</button>`;
+  if(context==='request')acts=`${profileBtn}<button type="button" onclick="socialRespondV241('${p.id}','${requestId}',true)">✓ Принять</button><button class="ghost" type="button" onclick="socialRespondV241('${p.id}','${requestId}',false)">✕</button>`;
+  else if(context==='friend')acts=`${profileBtn}<button type="button" onclick="socialOpenChatV241('${p.id}')">💬 Написать</button><button class="ghost" type="button" onclick="socialRemoveFriendV241('${p.id}')">Убрать</button>`;
+  else if(p.id!==me)acts=`${profileBtn}${isFriend?'<span class="social-mini-state-v241">✓ друг</span>':`<button type="button" onclick="socialFriendRequestV241('${p.id}')">＋ Друг</button>`}<button class="secondary" type="button" onclick="socialToggleFollowV241('${p.id}',${isFollowing?'false':'true'})">${isFollowing?'✓ Подписан':'☆ Подписаться'}</button>`;
+  return `<div class="social-person-v241"><button class="social-person-avatar-v241 social-profile-open-v242" type="button" onclick="socialOpenPublicProfileV242('${p.id}')">${socialAvatarV241(p)}</button><button class="social-person-main-v241 social-profile-open-v242" type="button" onclick="socialOpenPublicProfileV242('${p.id}')"><b>${esc(p.display_name||'Пользователь')} ${socialFounderBadgeV242(p)}</b><span>${esc(socialHandleV241(p))}${p.status_text?` · ${esc(p.status_text)}`:''}</span></button><div class="social-person-actions-v241">${acts}</div></div>`;
+};
+
+function socialBuildPublicPayloadV242(){
+  const p=ensureProfileV16(),pref=ensureProfilePrefsV162();
+  const all=typeof profileAllEntriesV162==='function'?profileAllEntriesV162():[];
+  const byKey=new Map(all.map(x=>[String(x.key),x]));
+  const fav=(p.favorites||[]).map(k=>byKey.get(String(k))).filter(Boolean).slice(0,6).map(x=>({title:x.entry.title,cover:x.entry.cover||'',emoji:x.entry.emoji||'🎌',section:x.section}));
+  const watching=(latestData.sections?.watching||[]).slice(0,6).map(e=>({title:e.title,cover:e.cover||'',emoji:e.emoji||'🎌',progress:Number(e.progress||0),episodes:Number(e.episodes||0)}));
+  const char=(p.collection||[]).find(x=>String(x.characterId)===String(p.equipped?.avatarCharacterId));
+  const tier=ensureTierListV240?.();
+  return {
+    v:1,level:Number(p.level||1),xp:Number(p.xp||0),totalXp:Number(p.totalXp||0),stars:Number(p.stars||0),
+    completed:Number((latestData.sections?.completed||[]).length),watchingCount:Number((latestData.sections?.watching||[]).length),
+    favorites:fav,watching,profileTitle:String(pref.title||''),status:String(pref.status||''),bio:String(pref.bio||''),
+    cardTitle:char?avatarCardTitleV236?.(char)||char.name||'':'',
+    tier:tier?{title:tier.title,tiers:(tier.tiers||[]).map(t=>({label:t.label,count:(t.items||[]).length})).filter(x=>x.count).slice(0,8)}:null
+  };
+}
+async function socialSyncPublicProfileV242(){
+  if(!socialSignedV241())return false;
+  try{
+    const p=ensureProfileV16(),pref=ensureProfilePrefsV162(),char=(p.collection||[]).find(x=>String(x.characterId)===String(p.equipped?.avatarCharacterId));
+    const custom=String(pref.customAvatar||'');const avatar=/^https?:\/\//i.test(custom)?custom:(char?.image||socialStateV241.own?.avatar_url||'');
+    const body={display_name:profileNicknameV16(),headline:String(pref.title||'').slice(0,120),status_text:String(pref.status||'').slice(0,160),bio:String(pref.bio||'').slice(0,600),public_payload:socialBuildPublicPayloadV242(),last_seen:new Date().toISOString()};
+    if(avatar)body.avatar_url=avatar;
+    await socialRestV241(`profiles?id=eq.${socialMeV241()}`,{method:'PATCH',body,prefer:'return=minimal'});
+    if(socialStateV241.own)Object.assign(socialStateV241.own,body);
+    return true;
+  }catch(e){if(!/public_payload|founder_no|role|column/i.test(String(e?.message||e)))console.warn('V24.2 public profile sync',e);return false}
+}
+window.socialSyncPublicProfileV242=socialSyncPublicProfileV242;
+
+function ensurePublicProfileModalV242(){
+  if($('#publicProfileModalV242'))return;
+  document.body.insertAdjacentHTML('beforeend',`<div id="publicProfileModalV242" class="public-profile-modal-v242 hidden"><div class="public-profile-shell-v242"><button id="publicProfileCloseV242" class="public-profile-close-v242" type="button">✕</button><div id="publicProfileBodyV242"></div></div></div>`);
+  $('#publicProfileCloseV242').onclick=()=>$('#publicProfileModalV242').classList.add('hidden');
+  $('#publicProfileModalV242').addEventListener('click',e=>{if(e.target===$('#publicProfileModalV242'))e.currentTarget.classList.add('hidden')});
+}
+function publicProfileMiniCardsV242(items){
+  return (items||[]).length?`<div class="public-profile-anime-grid-v242">${items.map(x=>`<div><div>${x.cover?`<img src="${esc(x.cover)}" alt="">`:`<span>${esc(x.emoji||'🎌')}</span>`}</div><b>${esc(x.title||'')}</b></div>`).join('')}</div>`:'<div class="public-profile-empty-v242">Пока ничего не выставлено.</div>';
+}
+async function socialOpenPublicProfileV242(id){
+  ensurePublicProfileModalV242();const modal=$('#publicProfileModalV242'),body=$('#publicProfileBodyV242');modal.classList.remove('hidden');body.innerHTML='<div class="public-profile-loading-v242">Загружаю профиль…</div>';
+  try{
+    let p=socialStateV241.profiles.get(id);
+    if(!p?.public_payload){const q=new URLSearchParams();q.set('id',`eq.${id}`);q.set('limit','1');p=(await socialFetchProfilesV242(q.toString()))?.[0]||p}
+    if(!p)throw new Error('Профиль не найден');
+    socialStateV241.profiles.set(id,p);
+    const me=socialMeV241(),isMe=id===me,isFriend=socialStateV241.friends.includes(id),isFollowing=socialStateV241.following.includes(id),pp=p.public_payload||{};
+    let followCount=0,followerCount=0,activity=[];
+    try{
+      const [fo,fr,ac]=await Promise.all([
+        socialRestV241(`follows?follower_id=eq.${id}&select=following_id`),
+        socialRestV241(`follows?following_id=eq.${id}&select=follower_id`),
+        socialRestV241(`social_activity?actor_id=eq.${id}&select=id,icon,title,detail,created_at&order=created_at.desc&limit=8`)
+      ]);followCount=fo?.length||0;followerCount=fr?.length||0;activity=ac||[];
+    }catch{}
+    const actions=isMe?`<button type="button" onclick="document.querySelector('#publicProfileModalV242').classList.add('hidden');setProfileTabV16('overview')">Это ты</button>`:
+      `${isFriend?'<span class="public-profile-friend-state-v242">✓ В друзьях</span>':`<button type="button" onclick="socialFriendRequestV241('${id}')">＋ Друг</button>`}<button class="secondary" type="button" onclick="socialToggleFollowV241('${id}',${isFollowing?'false':'true'})">${isFollowing?'✓ Подписан':'☆ Подписаться'}</button>${isFriend?`<button class="secondary" type="button" onclick="document.querySelector('#publicProfileModalV242').classList.add('hidden');socialOpenChatV241('${id}')">💬 Написать</button>`:''}`;
+    body.innerHTML=`<header class="public-profile-hero-v242"><div class="public-profile-avatar-v242">${socialAvatarV241(p)}</div><div class="public-profile-identity-v242"><div class="public-profile-name-row-v242"><h2>${esc(p.display_name||'Пользователь')}</h2>${socialFounderBadgeV242(p)}</div><b>${esc(socialHandleV241(p))}</b>${p.headline?`<p>${esc(p.headline)}</p>`:''}${p.status_text?`<span>● ${esc(p.status_text)}</span>`:''}</div><div class="public-profile-actions-v242">${actions}</div></header>
+      <div class="public-profile-kpis-v242"><div><b>${Number(pp.level||1)}</b><span>уровень</span></div><div><b>${Number(pp.completed||0)}</b><span>просмотрено</span></div><div><b>${followerCount}</b><span>подписчиков</span></div><div><b>${followCount}</b><span>подписок</span></div></div>
+      ${p.bio||pp.bio?`<section class="public-profile-section-v242"><span>О СЕБЕ</span><p>${esc(p.bio||pp.bio)}</p></section>`:''}
+      <section class="public-profile-section-v242"><span>СЕЙЧАС СМОТРИТ</span>${publicProfileMiniCardsV242(pp.watching||[])}</section>
+      <section class="public-profile-section-v242"><span>ЛЮБИМЫЕ АНИМЕ</span>${publicProfileMiniCardsV242(pp.favorites||[])}</section>
+      ${pp.cardTitle?`<section class="public-profile-section-v242"><span>ТИТУЛ</span><div class="public-profile-title-chip-v242">◆ ${esc(pp.cardTitle)}</div></section>`:''}
+      ${pp.tier?.tiers?.length?`<section class="public-profile-section-v242"><span>${esc(pp.tier.title||'ТИР-ЛИСТ')}</span><div class="public-profile-tier-v242">${pp.tier.tiers.map(t=>`<div><b>${esc(t.label)}</b><span>${Number(t.count)||0}</span></div>`).join('')}</div></section>`:''}
+      <section class="public-profile-section-v242"><span>АКТИВНОСТЬ</span><div class="public-profile-activity-v242">${activity.length?activity.map(x=>`<div><span>${esc(x.icon||'◆')}</span><div><b>${esc(x.title||'')}</b><p>${esc(x.detail||'')}</p><time>${socialFmtTimeV241(x.created_at)}</time></div></div>`).join(''):'<div class="public-profile-empty-v242">Пока тихо.</div>'}</div></section>`;
+  }catch(e){body.innerHTML=`<div class="public-profile-loading-v242">Не удалось открыть профиль: ${esc(e.message||String(e))}</div>`}
+}
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+const socialRenderBeforeV242=socialRenderV241;
+socialRenderV241=function(){
+  socialRenderBeforeV242();
+  const own=socialStateV241.own,input=$('#socialHandleInputV241'),save=$('#socialHandleSaveV241');
+  let badge=$('#socialFounderOwnV242');
+  if(own&&(own.role==='founder'||Number(own.founder_no)>0)){
+    if(input){input.value=own.handle||'senite';input.readOnly=true}
+    if(save){save.disabled=true;save.textContent='Эксклюзивный ID'}
+    if(!badge){badge=document.createElement('div');badge.id='socialFounderOwnV242';badge.className='social-founder-own-v242';document.querySelector('.social-own-handle-v241')?.appendChild(badge)}
+    if(badge)badge.innerHTML=`👑 FOUNDER #${String(Number(own.founder_no)||1).padStart(4,'0')} · @${esc(own.handle||'senite')}`;
+  }else{
+    if(input)input.readOnly=false;if(save){save.disabled=false;save.textContent='Сохранить'};badge?.remove();
+  }
+};
+window.socialRenderV241=socialRenderV241;
+
+const socialLoadBeforeV242=socialLoadV241;
+socialLoadV241=async function(){
+  const r=await socialLoadBeforeV242();
+  if(socialSignedV241())setTimeout(()=>socialSyncPublicProfileV242(),50);
+  return r;
+};
+window.socialLoadV241=socialLoadV241;
+
+const accountPushCloudBeforeV242=accountPushCloudV23;
+accountPushCloudV23=async function(opts={}){
+  const ok=await accountPushCloudBeforeV242(opts);
+  if(ok&&socialSignedV241())setTimeout(()=>socialSyncPublicProfileV242(),20);
+  return ok;
+};
+window.accountPushCloudV23=accountPushCloudV23;
+
+/* Always hide the wrong social state; V24.1 relied on .hidden but its specific CSS was missing. */
+function socialFixVisibilityV242(){
+  const guest=$('#socialGuestV241'),app=$('#socialAppV241'),signed=socialSignedV241();
+  if(guest)guest.classList.toggle('hidden',signed);
+  if(app)app.classList.toggle('hidden',!signed);
+}
+const renderAccountChromeBeforeV242=renderAccountChromeV23;
+renderAccountChromeV23=function(){renderAccountChromeBeforeV242();socialFixVisibilityV242();injectAccountResetV242();if(socialSignedV241()&&typeof profileActiveTabV16!=='undefined'&&profileActiveTabV16==='social')setTimeout(()=>socialLoadV241(),0)};
+window.renderAccountChromeV23=renderAccountChromeV23;
+setTimeout(()=>{socialFixVisibilityV242();injectAccountResetV242()},140);
+
+console.info(`Anime list V${V242_TAG}: isolated accounts + public profiles + founder identity + social visibility fix`);
+
