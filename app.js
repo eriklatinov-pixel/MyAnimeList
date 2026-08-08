@@ -7282,3 +7282,91 @@ catalogApplyPresetV10=function(name){
 
 setTimeout(()=>{renderAccountChromeV23();applyGuestChromeV236();renderProfileChromeV16();},160);
 console.info(`Anime list V${V236_TAG}: adaptive profile studio + guest contrast fix + account-first library`);
+
+/* ===== V23.8: guest / empty-watching hero uses current top anime openings ===== */
+const V238_TOP_HERO_CACHE_KEY='animeTopHeroV238';
+const TOP_HERO_QUERY_V238=`query{Page(page:1,perPage:24){media(type:ANIME,isAdult:false,format_not:OVA,sort:[TRENDING_DESC,POPULARITY_DESC]){id idMal format status episodes seasonYear averageScore popularity trending title{romaji english native} coverImage{extraLarge large medium} bannerImage}}}`;
+let topHeroListV238=[],topHeroIndexV238=0,topHeroPromiseV238=null,topHeroTimerV238=null;
+
+function heroNeedsTopFallbackV238(){
+  // Guest pages never expose the local pre-account "Сейчас" list. Signed-in users
+  // also get the public top feed when their real "Сейчас" section is empty.
+  const signed=(typeof accountSignedInV236==='function')?accountSignedInV236():!!accountSessionV23?.access_token;
+  const watching=signed?(latestData?.sections?.watching||[]).filter(Boolean):[];
+  return !signed||!watching.length;
+}
+function topHeroEntryFromMediaV238(m){
+  if(!m?.id||!m?.idMal)return null;
+  return {title:pickTitle(m),anilist_id:Number(m.id)||null,mal_id:Number(m.idMal)||null,cover:m.coverImage?.extraLarge||m.coverImage?.large||m.coverImage?.medium||'',episodes:Number(m.episodes||0),progress:0,descriptor:'топ сейчас',year:m.seasonYear||null,_topHeroV238:true};
+}
+function readTopHeroCacheV238(){
+  try{const c=JSON.parse(localStorage.getItem(V238_TOP_HERO_CACHE_KEY)||'null');if(c&&Date.now()-Number(c.ts||0)<3*3600000&&Array.isArray(c.items))return c.items.filter(Boolean)}catch{}return [];
+}
+async function loadTopHeroListV238(force=false){
+  if(topHeroListV238.length&&!force)return topHeroListV238;
+  if(topHeroPromiseV238&&!force)return topHeroPromiseV238;
+  const cached=!force?readTopHeroCacheV238():[];if(cached.length){topHeroListV238=cached;return topHeroListV238;}
+  topHeroPromiseV238=(async()=>{
+    try{
+      const p=await anilistFetch(TOP_HERO_QUERY_V238,{}),raw=p?.data?.Page?.media||[];
+      topHeroListV238=raw.map(topHeroEntryFromMediaV238).filter(Boolean).slice(0,18);
+      try{localStorage.setItem(V238_TOP_HERO_CACHE_KEY,JSON.stringify({ts:Date.now(),items:topHeroListV238}))}catch{}
+      return topHeroListV238;
+    }catch(e){console.warn('V23.8 top hero',e);topHeroListV238=cached;return topHeroListV238;}
+    finally{topHeroPromiseV238=null;}
+  })();
+  return topHeroPromiseV238;
+}
+async function topHeroWithOpeningV238(){
+  const list=await loadTopHeroListV238();if(!list.length)return null;
+  topHeroIndexV238=((topHeroIndexV238%list.length)+list.length)%list.length;
+  // Some top titles do not have a usable AnimeThemes video. Walk a few spots
+  // instead of leaving the guest hero as a static image.
+  const tries=Math.min(8,list.length);
+  for(let n=0;n<tries;n++){
+    const idx=(topHeroIndexV238+n)%list.length,entry=list[idx];
+    try{const videoInfo=await fetchAnimeThemesHeroV14(entry);if(videoInfo?.url){topHeroIndexV238=idx;return {entry,videoInfo};}}catch{}
+  }
+  return {entry:list[topHeroIndexV238],videoInfo:null};
+}
+function rotateTopHeroV238(step=1){
+  if(!heroNeedsTopFallbackV238())return;
+  const len=topHeroListV238.length||1;topHeroIndexV238=((topHeroIndexV238+step)%len+len)%len;
+  heroTrailerKeyV13='';scheduleHeroTrailerV13();
+}
+window.rotateTopHeroV238=rotateTopHeroV238;
+function restartTopHeroTimerV238(){
+  clearInterval(topHeroTimerV238);topHeroTimerV238=setInterval(()=>{if(document.hidden||document.body.classList.contains('catalog-mode')||!heroNeedsTopFallbackV238())return;rotateTopHeroV238(1)},22000);
+}
+
+const renderHeroAnimeBeforeV238=renderHeroAnimeV14;
+async function renderHeroAnimeV238(){
+  if(uiSettings?.heroTrailer===false)return clearHeroTrailerV13();
+  if(!heroNeedsTopFallbackV238())return renderHeroAnimeBeforeV238();
+  const layer=$('#heroTrailerLayer'),badge=$('#heroTrailerBadge');if(!layer)return;
+  const req=++heroTrailerRequestV13;layer.classList.remove('has-video');layer.classList.add('video-loading');layer.innerHTML='';if(badge)badge.classList.add('hidden');
+  const picked=await topHeroWithOpeningV238();if(req!==heroTrailerRequestV13)return;
+  const entry=picked?.entry||null,videoInfo=picked?.videoInfo||null;
+  if(!entry){layer.classList.remove('video-loading');layer.style.backgroundImage='';return;}
+  const key=`v238-top:${entry.mal_id||entry.anilist_id||entry.title}:${topHeroIndexV238}`;heroTrailerKeyV13=key;
+  const fallback=entry.cover||'';if(fallback)layer.style.backgroundImage=`url("${String(fallback).replaceAll('"','%22')}")`;else layer.style.backgroundImage='';
+  let m=null;try{m=await heroMediaV13(entry)}catch{}if(req!==heroTrailerRequestV13)return;
+  const bg=m?.bannerImage||fallback;if(bg)layer.style.backgroundImage=`url("${String(bg).replaceAll('"','%22')}")`;
+  layer.classList.remove('video-loading');if(!videoInfo?.url)return;
+  const bgv=document.createElement('video');bgv.className='hero-anime-video-bg';bgv.autoplay=true;bgv.muted=true;bgv.loop=true;bgv.playsInline=true;bgv.preload='metadata';bgv.disablePictureInPicture=true;bgv.setAttribute('aria-hidden','true');bgv.tabIndex=-1;
+  const v=document.createElement('video');v.className='hero-anime-video';v.autoplay=true;v.muted=true;v.loop=true;v.playsInline=true;v.preload='metadata';v.disablePictureInPicture=true;v.setAttribute('aria-hidden','true');v.tabIndex=-1;
+  let settled=false;const fail=()=>{if(settled)return;settled=true;v.remove();bgv.remove();layer.classList.remove('has-video');if(badge)badge.classList.add('hidden')};
+  v.addEventListener('loadeddata',()=>{if(req!==heroTrailerRequestV13)return fail();settled=true;v.classList.add('is-ready');bgv.classList.add('is-ready');layer.classList.add('has-video');if(badge){badge.textContent=`🔥 Топ сейчас · ${videoInfo.type||'OP'} · ${entry.title} · без звука`;badge.classList.remove('hidden')}try{bgv.currentTime=v.currentTime||0}catch{}bgv.play().catch(()=>{});v.play().catch(()=>{})},{once:true});
+  v.addEventListener('timeupdate',()=>{if(Math.abs((bgv.currentTime||0)-(v.currentTime||0))>.35){try{bgv.currentTime=v.currentTime}catch{}}});
+  v.addEventListener('error',fail,{once:true});bgv.src=videoInfo.url;v.src=videoInfo.url;layer.appendChild(bgv);layer.appendChild(v);setTimeout(()=>{if(!settled&&v.readyState<2)fail()},12000);
+}
+renderHeroAnimeV14=renderHeroAnimeV238;
+renderHeroTrailerV13=renderHeroAnimeV238;
+scheduleHeroTrailerV13=function(){clearTimeout(heroTrailerTimerV13);heroTrailerTimerV13=setTimeout(renderHeroAnimeV238,100)};
+
+// Auth changes can switch the source between personal "Сейчас" and public top.
+const renderAccountChromeBeforeV238=renderAccountChromeV23;
+renderAccountChromeV23=function(){renderAccountChromeBeforeV238();heroTrailerKeyV13='';setTimeout(()=>scheduleHeroTrailerV13(),20)};
+
+restartTopHeroTimerV238();setTimeout(()=>{loadTopHeroListV238();heroTrailerKeyV13='';scheduleHeroTrailerV13()},180);
+console.info('Anime list V23.8: guest/empty hero = current top anime openings');
