@@ -6904,11 +6904,12 @@ function profileDefaultLayoutV235(){return {
 function ensureProfileLayoutV235(){
   const pref=ensureProfilePrefsV162();
   pref.layoutV235 ||= cloneJsonV235(profileDefaultLayoutV235());
-  const d=profileDefaultLayoutV235();
+  const d=profileDefaultLayoutV235(),meta=profileCanvasMetaV235();
   for(const [k,base] of Object.entries(d)){
-    const v=pref.layoutV235[k] ||= {...base};
-    v.w=Math.max(1,Math.min(12,Number(v.w)||base.w));v.h=Math.max(1,Math.min(12,Number(v.h)||base.h));
-    v.x=Math.max(1,Math.min(13-v.w,Number(v.x)||base.x));v.y=Math.max(1,Math.min(40,Number(v.y)||base.y));
+    const v=pref.layoutV235[k] ||= {...base},m=meta[k]||{};
+    const minW=Math.max(1,Number(m.minW)||1),minH=Math.max(1,Number(m.minH)||1);
+    v.w=Math.max(minW,Math.min(12,Number(v.w)||base.w));v.h=Math.max(minH,Math.min(40,Number(v.h)||base.h));
+    v.x=Math.max(1,Math.min(13-v.w,Number(v.x)||base.x));v.y=Math.max(1,Number(v.y)||base.y);
   }
   return pref.layoutV235;
 }
@@ -6956,8 +6957,8 @@ function relocateProfileInfoV235(){
   if(!grid.children.length)grid.remove();else grid.classList.add('hidden');
 }
 function profileCanvasMetaV235(){return {
-  avatar:{id:'profileBlockAvatarV235',label:'Аватар'},identity:{id:'profileBlockIdentityV235',label:'Профиль'},progress:{id:'profileBlockProgressV235',label:'Уровень'},
-  favorites:{id:'profileBlockFavorites',label:'Любимые'},stats:{id:'profileBlockStats',label:'Статистика'},list:{id:'profileBlockList',label:'Аниме-лист'},comments:{id:'profileBlockComments',label:'Комментарии'}
+  avatar:{id:'profileBlockAvatarV235',label:'Аватар',minW:2,minH:2},identity:{id:'profileBlockIdentityV235',label:'Профиль',minW:3,minH:2},progress:{id:'profileBlockProgressV235',label:'Уровень',minW:5,minH:2},
+  favorites:{id:'profileBlockFavorites',label:'Любимые',minW:5,minH:3},stats:{id:'profileBlockStats',label:'Статистика',minW:4,minH:3},list:{id:'profileBlockList',label:'Аниме-лист',minW:7,minH:5},comments:{id:'profileBlockComments',label:'Комментарии',minW:5,minH:3}
 }}
 function ensureProfileCanvasV235(){
   const host=$('#profileOverviewBlocks');if(!host)return;
@@ -6976,14 +6977,37 @@ function ensureProfileCanvasV235(){
   applyProfileLayoutV235();bindProfileCanvasPointersV235();
 }
 function applyProfileLayoutV235(){
-  const host=$('#profileOverviewBlocks');if(!host)return;const layout=ensureProfileLayoutV235(),meta=profileCanvasMetaV235();let maxRow=1;
+  const host=$('#profileOverviewBlocks');if(!host)return;profileNormalizeLayoutV237();const layout=ensureProfileLayoutV235(),meta=profileCanvasMetaV235();let maxRow=1;
   for(const [key,m] of Object.entries(meta)){
     const el=$('#'+m.id),v=layout[key];if(!el||!v)continue;
     el.style.gridColumn=`${v.x} / span ${v.w}`;el.style.gridRow=`${v.y} / span ${v.h}`;maxRow=Math.max(maxRow,v.y+v.h-1);
   }
-  host.style.setProperty('--profile-canvas-rows',String(maxRow));
+  host.style.setProperty('--profile-canvas-rows',String(maxRow));host.style.minHeight=`${Math.max(72,maxRow*84-12)}px`;
 }
 function profileWidgetKeyFromElV235(el){for(const [k,m] of Object.entries(profileCanvasMetaV235()))if(m.id===el?.id)return k;return ''}
+function profileRectsOverlapV237(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function profileResolveCollisionsV237(activeKey){
+  const layout=ensureProfileLayoutV235(),keys=Object.keys(profileCanvasMetaV235());
+  const queue=[activeKey],guard=120;let steps=0;
+  while(queue.length&&steps++<guard){
+    const sourceKey=queue.shift(),source=layout[sourceKey];if(!source)continue;
+    for(const key of keys){
+      if(key===sourceKey||key===activeKey)continue;const other=layout[key];if(!other||!profileRectsOverlapV237(source,other))continue;
+      const newY=source.y+source.h; if(other.y!==newY){other.y=newY;queue.push(key)}
+    }
+  }
+}
+function profileNormalizeLayoutV237(){
+  const layout=ensureProfileLayoutV235(),keys=Object.keys(profileCanvasMetaV235()).filter(k=>layout[k]);
+  let changed=true,guard=0;
+  while(changed&&guard++<60){
+    changed=false;keys.sort((a,b)=>layout[a].y-layout[b].y||layout[a].x-layout[b].x);
+    for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
+      const a=layout[keys[i]],b=layout[keys[j]];if(!profileRectsOverlapV237(a,b))continue;
+      b.y=a.y+a.h;changed=true;
+    }
+  }
+}
 function profilePointerStartV235(e,mode,item){
   if(!profileLayoutEditingV235||!item)return;e.preventDefault();e.stopPropagation();
   const key=profileWidgetKeyFromElV235(item),layout=ensureProfileLayoutV235(),v=layout[key];if(!key||!v)return;
@@ -6991,12 +7015,13 @@ function profilePointerStartV235(e,mode,item){
   try{e.currentTarget.setPointerCapture?.(e.pointerId)}catch{}
 }
 function profilePointerMoveV235(e){
-  const d=profileDragStateV235;if(!d)return;const host=$('#profileOverviewBlocks'),rect=host?.getBoundingClientRect();if(!rect)return;const layout=ensureProfileLayoutV235(),v=layout[d.key],gap=12,colW=(rect.width-gap*11)/12,rowH=84;
+  const d=profileDragStateV235;if(!d)return;const host=$('#profileOverviewBlocks'),rect=host?.getBoundingClientRect();if(!rect)return;const layout=ensureProfileLayoutV235(),v=layout[d.key],gap=12,colW=(rect.width-gap*11)/12,rowH=84,m=profileCanvasMetaV235()[d.key]||{};
   if(d.mode==='move'){
-    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;v.x=Math.max(1,Math.min(13-v.w,Math.round((d.start.x-1)+dx/(colW+gap))+1));v.y=Math.max(1,Math.min(40,Math.round((d.start.y-1)+dy/rowH)+1));
+    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;v.x=Math.max(1,Math.min(13-v.w,Math.round((d.start.x-1)+dx/(colW+gap))+1));v.y=Math.max(1,Math.round((d.start.y-1)+dy/rowH)+1);
   }else{
-    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;v.w=Math.max(1,Math.min(13-v.x,Math.round(d.start.w+dx/(colW+gap))));v.h=Math.max(1,Math.min(12,Math.round(d.start.h+dy/rowH)));
+    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;const minW=Math.max(1,Number(m.minW)||1),minH=Math.max(1,Number(m.minH)||1);v.w=Math.max(minW,Math.min(13-v.x,Math.round(d.start.w+dx/(colW+gap))));v.h=Math.max(minH,Math.min(40,Math.round(d.start.h+dy/rowH)));
   }
+  profileResolveCollisionsV237(d.key);
   profileStudioSessionV235&&(profileStudioSessionV235.dirty=true);applyProfileLayoutV235();profileStudioUpdateUiV235();
 }
 function profilePointerEndV235(){if(profileDragStateV235?.item)profileDragStateV235.item.classList.remove('dragging-v235');profileDragStateV235=null}
@@ -7009,10 +7034,10 @@ function bindProfileCanvasPointersV235(){
   });
   window.addEventListener('pointermove',profilePointerMoveV235,{passive:false});window.addEventListener('pointerup',profilePointerEndV235);window.addEventListener('pointercancel',profilePointerEndV235);
 }
-function profileLayoutEditStartV235(){profileStudioBeginV235();profileLayoutEditingV235=true;setProfileTabV16('overview');$('#profileModal')?.classList.add('profile-layout-edit-v235');ensureProfileCanvasV235();profileStudioUpdateUiV235();profileToastV16('Режим макета','Тяни блок за ⠿. Аватар можно тащить прямо мышкой. Угол блока меняет размер.')}
+function profileLayoutEditStartV235(){profileStudioBeginV235();profileLayoutEditingV235=true;setProfileTabV16('overview');$('#profileModal')?.classList.add('profile-layout-edit-v235');ensureProfileCanvasV235();profileStudioUpdateUiV235();profileToastV16('Режим макета','Тяни блок за ⠿ — соседние блоки сами отодвинутся вниз. Угол меняет размер, но ниже удобного минимума блок не сожмётся. Полотно растёт вниз автоматически.')}
 function injectProfileStudioV235(){
   const grid=$('#profileTabCustomize .profile-customize-grid');if(grid&&!$('#profileStudioCardV235'))grid.insertAdjacentHTML('afterbegin',`<article id="profileStudioCardV235" class="profile-custom-card profile-custom-wide profile-studio-card-v235"><div><div class="profile-card-kicker">PROFILE STUDIO</div><h3>Собери страницу как хочешь</h3><p class="profile-custom-help">Блоки не привязаны к одному порядку: аватар, любимые, статистику, список и комментарии можно перетаскивать по 12-колоночному полотну и менять их размер.</p></div><div class="profile-studio-actions-v235"><span id="profileStudioStateV235">✓ Сохранено</span><button id="profileLayoutEditV235" class="secondary" type="button">⠿ Расставить блоки</button><button id="profileStudioResetV235" class="ghost" type="button">Сбросить макет</button><button id="profileStudioCancelV235" class="secondary" type="button">Отменить</button><button id="profileStudioSaveV235" type="button">✓ Сохранить профиль</button></div></article>`);
-  if(!$('#profileLayoutFloatV235'))$('.profile-shell')?.insertAdjacentHTML('beforeend',`<div id="profileLayoutFloatV235" class="profile-layout-float-v235 hidden"><div><b>⠿ Редактор расположения</b><span>перетаскивай · тяни угол для размера</span></div><button type="button" id="profileLayoutBackV235" class="secondary">Настройки</button><button type="button" id="profileLayoutResetFloatV235" class="ghost">Сбросить</button><button type="button" id="profileLayoutCancelFloatV235" class="secondary">Отмена</button><button type="button" id="profileLayoutSaveFloatV235">✓ Сохранить</button></div>`);
+  if(!$('#profileLayoutFloatV235'))$('.profile-shell')?.insertAdjacentHTML('beforeend',`<div id="profileLayoutFloatV235" class="profile-layout-float-v235 hidden"><div><b>⠿ Редактор расположения</b><span>автораскладка · полотно растёт вниз</span></div><button type="button" id="profileLayoutBackV235" class="secondary">Настройки</button><button type="button" id="profileLayoutResetFloatV235" class="ghost">Сбросить</button><button type="button" id="profileLayoutCancelFloatV235" class="secondary">Отмена</button><button type="button" id="profileLayoutSaveFloatV235">✓ Сохранить</button></div>`);
   $('#profileLayoutEditV235')?.addEventListener('click',profileLayoutEditStartV235);$('#profileStudioResetV235')?.addEventListener('click',profileStudioResetLayoutV235);$('#profileStudioSaveV235')?.addEventListener('click',profileStudioCommitV235);$('#profileStudioCancelV235')?.addEventListener('click',()=>profileStudioCancelV235());
   $('#profileLayoutBackV235')?.addEventListener('click',()=>{profileLayoutEditingV235=false;$('#profileModal')?.classList.remove('profile-layout-edit-v235');setProfileTabV16('customize');profileStudioUpdateUiV235()});
   $('#profileLayoutResetFloatV235')?.addEventListener('click',profileStudioResetLayoutV235);$('#profileLayoutCancelFloatV235')?.addEventListener('click',()=>profileStudioCancelV235());$('#profileLayoutSaveFloatV235')?.addEventListener('click',profileStudioCommitV235);
@@ -7064,7 +7089,7 @@ setTimeout(()=>{ensureProfileCanvasV235();applyProfileLayoutV235()},700);
 
 
 /* ===== V23.6: account-first guest library + avatar card titles + strict short filter ===== */
-const V236_TAG='23.6';
+const V236_TAG='23.7';
 let guestSurfaceStateV236=null;
 
 function accountSignedInV236(){return !!accountSessionV23?.access_token;}
@@ -7256,4 +7281,4 @@ catalogApplyPresetV10=function(name){
 };window.catalogApplyPresetV10=catalogApplyPresetV10;
 
 setTimeout(()=>{renderAccountChromeV23();applyGuestChromeV236();renderProfileChromeV16();},160);
-console.info(`Anime list V${V236_TAG}: account-first guest library + profile card titles + completed-only short filter`);
+console.info(`Anime list V${V236_TAG}: adaptive profile studio + guest contrast fix + account-first library`);

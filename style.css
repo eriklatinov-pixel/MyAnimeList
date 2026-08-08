@@ -1200,3 +1200,26 @@ body.sidebar-collapsed .sidebar-profile-copy{display:none!important;}
 .avatar-card-title-v236{display:inline-flex!important;align-items:center;max-width:min(420px,70vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:4px 9px!important;background:rgba(255,255,255,.035);font-size:10px!important;font-weight:900!important}.avatar-title-rare-v236{border-color:rgba(102,188,255,.38)!important}.avatar-title-epic-v236{border-color:rgba(168,106,255,.52)!important;color:#d9bdff!important}.avatar-title-legendary-v236{border-color:rgba(255,193,74,.55)!important;color:#ffd77e!important;background:rgba(255,193,74,.07)!important}.sidebar-card-title-v236{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:9px;color:var(--muted)}.sidebar-card-title-v236.avatar-title-epic-v236{color:#cdb0ff!important}.sidebar-card-title-v236.avatar-title-legendary-v236{color:#ffd77e!important;background:none!important;border:0!important}
 #avatarEffectsV205 .avatar-effect-pick-v205 b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.guest-library-v236{grid-template-columns:1fr;padding:22px}.guest-library-copy-v236 h2{font-size:32px}.guest-home-v236{align-items:flex-start;flex-direction:column}.guest-home-actions-v236{justify-content:flex-start}}
+
+
+/* ===== V23.7 adaptive Profile Studio + guest contrast fix ===== */
+/* In guest mode the old home-pulse shade sat above our new content and made the center look dim. */
+.account-guest-v236 #homePulse::after{display:none!important}
+.account-guest-v236 #homePulse{background:radial-gradient(circle at 82% 0,color-mix(in srgb,var(--accent2) 10%,transparent),transparent 42%),linear-gradient(145deg,color-mix(in srgb,var(--panel2) 94%,transparent),color-mix(in srgb,var(--panel) 98%,transparent))}
+.guest-home-v236{position:relative;z-index:2}
+
+/* Dashboard behaves like a page builder: content has sensible minimums and the canvas may grow downward. */
+.profile-public-canvas-v235{grid-auto-rows:72px;overflow:visible!important;padding-bottom:4px}
+.profile-public-canvas-v235>.profile-canvas-item-v235{overflow:hidden}
+.profile-public-canvas-v235>#profileBlockAvatarV235{min-width:0;min-height:156px}
+.profile-public-canvas-v235>#profileBlockIdentityV235{min-height:156px}
+.profile-public-canvas-v235>#profileBlockProgressV235{min-height:156px}
+.profile-public-canvas-v235>#profileBlockFavorites{min-height:240px}
+.profile-public-canvas-v235>#profileBlockStats{min-height:240px}
+.profile-public-canvas-v235>#profileBlockComments{min-height:240px}
+.profile-public-canvas-v235>#profileBlockList{min-height:408px}
+.profile-layout-edit-v235 .profile-public-canvas-v235{background-image:linear-gradient(to right,color-mix(in srgb,var(--accent) 6%,transparent) 1px,transparent 1px),linear-gradient(to bottom,color-mix(in srgb,var(--accent) 5%,transparent) 1px,transparent 1px);background-size:calc((100% - 132px)/12 + 12px) 84px;background-position:0 0;border-radius:18px}
+.profile-layout-edit-v235 .profile-canvas-item-v235{transition:grid-row .16s ease,grid-column .16s ease,box-shadow .16s ease}
+.profile-layout-edit-v235 .profile-canvas-item-v235.dragging-v235{transition:none}
+.profile-layout-edit-v235 .profile-widget-resize-v235{width:22px;height:22px}
+@media(max-width:900px){.profile-public-canvas-v235>#profileBlockFavorites,.profile-public-canvas-v235>#profileBlockStats,.profile-public-canvas-v235>#profileBlockComments,.profile-public-canvas-v235>#profileBlockList{min-height:unset}}
