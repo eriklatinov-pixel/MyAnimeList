@@ -6780,13 +6780,16 @@ window.catalogFetchPageV10=catalogFetchPageV10;
 setTimeout(()=>{catalogLoadUniverseV12(false);catalogRefreshCountV232();updateSidebarStatsV12?.();},80);
 
 
-/* ===== V23.3: cover doctor — broken/404 posters + automatic missing-cover repair ===== */
+/* ===== V23.4: cover doctor — broken/404 posters + exact repair for stubborn legacy entries ===== */
 const COVER_KNOWN_ANILIST_V233 = new Map([
   ['chainsmoker cat',207141],['табакошка chainsmoker cat',207141],['yani neko',207141],
   ['your name',21519],['your name.',21519],['kimi no na wa',21519],
   ['a silent voice',20954],['koe no katachi',20954],
   ['spirited away',199],['sen to chihiro no kamikakushi',199],
-  ['the seven deadly sins',20789],['nanatsu no taizai',20789]
+  ['the seven deadly sins',20789],['nanatsu no taizai',20789],
+  ['witch hat atelier',147105],['tongari boushi no atelier',147105],
+  ['terror in resonance',20661],['zankyou no terror',20661],
+  ['future diary',10620],['the future diary',10620],['mirai nikki',10620]
 ]);
 const coverRepairRunningV233=new Set();
 let coverDoctorStartedV233=false;
@@ -6852,7 +6855,7 @@ async function coverDoctorPassV233(){
   let done=0;
   for(const [section,index,force] of jobs){
     await repairAnimeCoverV233(section,index,{force,quiet:true});done++;
-    if(done>=30)break; // avoid hammering AniList on a huge imported list; remaining covers repair on error/manual refresh.
+    if(done>=120)break; // V23.4: repair the whole normal-sized library in one gentle pass; huge imports are still capped.
     await new Promise(r=>setTimeout(r,180));
   }
 }
