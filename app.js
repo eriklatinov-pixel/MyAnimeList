@@ -8037,3 +8037,129 @@ window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
 /* Re-sync rich public payload once after V24.3 loads. */
 setTimeout(()=>{if(socialSignedV241())socialSyncPublicProfileV242().catch?.(()=>{})},600);
 console.info(`Anime list V${V243_TAG}: clean account isolation migration + responsive default profile + unified Steam-style social/public profile`);
+
+
+/* ===== V24.4: public profile parity + adaptive custom layout + Founder DM ===== */
+const V244_TAG='24.4';
+
+function socialFounderSelfV244(){
+  const p=socialStateV241?.own||{};
+  return p.role==='founder'||Number(p.founder_no||0)===1||String(p.handle||'').toLowerCase()==='senite';
+}
+
+/* Founder can start DMs immediately in the UI. The matching server rule lives in SUPABASE_PATCH_V244.sql. */
+const socialRenderMessagesBeforeV244=socialRenderMessagesV241;
+socialRenderMessagesV241=function(){
+  socialRenderMessagesBeforeV244();
+  if(!socialFounderSelfV244()||!socialStateV241.selected)return;
+  const comp=$('#socialComposerV241'),input=$('#socialMessageInputV241'),send=$('#socialMessageSendV241');
+  comp?.classList.remove('locked');
+  if(comp)comp.dataset.lockText='';
+  if(input){input.disabled=false;input.placeholder='Сообщение…'}
+  if(send)send.disabled=false;
+  if($('#socialChatLevelV241'))$('#socialChatLevelV241').textContent='👑 Founder · можно писать';
+};
+window.socialRenderMessagesV241=socialRenderMessagesV241;
+
+/* Public payload now contains the actual tier cards and collection showcase, not just counters. */
+const socialBuildPublicPayloadBeforeV244=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){
+  const pp=socialBuildPublicPayloadBeforeV244();
+  const p=ensureProfileV16();
+  try{
+    const tier=tierCleanAgainstLibraryV240(ensureTierListV240()),map=tierCompletedMapV240();
+    pp.tier={
+      title:String(tier.title||'Мой тир-лист'),
+      tiers:(tier.tiers||[]).map(t=>({
+        label:String(t.label||''),tone:String(t.tone||''),
+        items:(t.items||[]).map(k=>map.get(String(k))).filter(Boolean).slice(0,30).map(r=>({
+          title:r.entry?.title||'',cover:r.entry?.cover||'',emoji:r.entry?.emoji||'🎌'
+        }))
+      }))
+    };
+  }catch{}
+  pp.cardShowcase=(p.collection||[]).filter(c=>c?.showcase).slice(0,10).map(c=>({
+    characterId:String(c.characterId||''),name:String(c.name||''),image:String(c.image||''),animeTitle:String(c.animeTitle||''),
+    rarity:String(c.rarity||'common'),ticketType:String(c.ticketType||'')
+  }));
+  return pp;
+};
+
+publicTierV243=function(tier){
+  if(!tier?.tiers?.length)return '<div class="public-profile-empty-v242">Тир-лист пока не создан.</div>';
+  const hasCards=tier.tiers.some(t=>Array.isArray(t.items)&&t.items.length);
+  if(!hasCards){
+    return `<div class="public-profile-tier-v242">${tier.tiers.map(t=>`<div><b>${esc(t.label)}</b><span>${Number(t.count)||0}</span></div>`).join('')}</div>`;
+  }
+  return `<div class="public-tier-board-v244">${tier.tiers.map(t=>`<div class="public-tier-row-v244 tone-${esc(t.tone||'x')}"><b class="public-tier-label-v244">${esc(t.label||'')}</b><div class="public-tier-items-v244">${(t.items||[]).length?(t.items||[]).map(x=>`<article class="public-tier-card-v244" title="${esc(x.title||'')}">${x.cover?`<img src="${esc(x.cover)}" alt="">`:`<i>${esc(x.emoji||'🎌')}</i>`}<span>${esc(x.title||'')}</span></article>`).join(''):'<small>пусто</small>'}</div></div>`).join('')}</div>`;
+};
+window.publicTierV243=publicTierV243;
+
+function publicCardShowcaseV244(cards){
+  if(!cards?.length)return '';
+  return `<div class="public-card-showcase-v244"><div class="public-card-showcase-head-v244"><span>КАРТОЧКИ НА ВИТРИНЕ</span><small>${cards.length}</small></div><div class="public-card-showcase-grid-v244">${cards.map(c=>`<article class="public-showcase-card-v244 ${c.ticketType==='waifu'?'waifu':''}"><div class="public-showcase-card-image-v244">${c.image?`<img src="${esc(c.image)}" alt="">`:'<i>🎴</i>'}<em class="${rarityClassV16(c.rarity)}">${esc(String(c.rarity||'common').toUpperCase())}</em></div><b>${esc(c.name||'Персонаж')}</b><small>${esc(c.animeTitle||'')}</small></article>`).join('')}</div></div>`;
+}
+
+function publicApplyOwnerLayoutV244(pp){
+  const canvas=$('.public-profile-canvas-v243');if(!canvas)return;
+  const layout=pp?.ownerLayout||{},custom=!!pp?.appearance?.layoutCustomized;
+  canvas.classList.toggle('public-profile-custom-layout-v244',custom);
+  if(!custom)return;
+  const map={
+    avatar:'.public-avatar-widget-v243',identity:'.public-identity-widget-v243',progress:'.public-progress-widget-v243',
+    favorites:'.public-favorites-widget-v243',stats:'.public-stats-widget-v243',comments:'.public-activity-widget-v243',
+    list:'.public-library-widget-v243',tierlist:'.public-tier-widget-v243'
+  };
+  let maxOrder=0;
+  for(const [key,sel] of Object.entries(map)){
+    const el=canvas.querySelector(sel),v=layout[key];if(!el||!v)continue;
+    const x=Math.max(1,Math.min(12,Number(v.x)||1)),w=Math.max(1,Math.min(13-x,Number(v.w)||12));
+    el.style.gridColumn=`${x} / span ${w}`;el.style.gridRow='auto';el.style.order=String((Number(v.y)||1)*20+x);maxOrder=Math.max(maxOrder,(Number(v.y)||1)*20+x);
+  }
+  const watching=canvas.querySelector('.public-watching-widget-v243');if(watching){watching.style.gridColumn='1 / span 12';watching.style.gridRow='auto';watching.style.order=String(maxOrder+5)}
+}
+
+const socialOpenPublicProfileBeforeV244=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){
+  await socialOpenPublicProfileBeforeV244(id);
+  const p=socialStateV241.profiles.get(id),pp=p?.public_payload||{};
+  const fav=$('.public-favorites-widget-v243');
+  if(fav&&pp.cardShowcase?.length&&!fav.querySelector('.public-card-showcase-v244'))fav.insertAdjacentHTML('beforeend',publicCardShowcaseV244(pp.cardShowcase));
+  publicApplyOwnerLayoutV244(pp);
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+/* Saved custom profiles keep horizontal placement/order, but widget height is content-driven. No nested vertical scrollbars. */
+const applyProfileLayoutBeforeV244=applyProfileLayoutV235;
+applyProfileLayoutV235=function(){
+  const host=$('#profileOverviewBlocks');if(!host)return;
+  const adaptive=!profileLayoutEditingV235&&profileUsesCustomLayoutV243();
+  host.classList.toggle('profile-adaptive-custom-v244',adaptive);
+  if(!adaptive){
+    for(const m of Object.values(profileCanvasMetaV235())){const el=$('#'+m.id);if(el)el.style.removeProperty('order')}
+    return applyProfileLayoutBeforeV244();
+  }
+  host.classList.remove('profile-default-layout-v243');
+  const layout=ensureProfileLayoutV235(),meta=profileCanvasMetaV235();
+  for(const [key,m] of Object.entries(meta)){
+    const el=$('#'+m.id),v=layout[key];if(!el||!v)continue;
+    const x=Math.max(1,Math.min(12,Number(v.x)||1)),w=Math.max(1,Math.min(13-x,Number(v.w)||12));
+    el.style.gridColumn=`${x} / span ${w}`;el.style.removeProperty('grid-row');el.style.order=String((Number(v.y)||1)*20+x);
+  }
+  host.style.removeProperty('--profile-canvas-rows');host.style.removeProperty('min-height');
+};
+window.applyProfileLayoutV235=applyProfileLayoutV235;
+
+function schedulePublicSyncV244(delay=500){
+  clearTimeout(schedulePublicSyncV244.t);schedulePublicSyncV244.t=setTimeout(()=>{if(socialSignedV241())socialSyncPublicProfileV242().catch(()=>{})},delay);
+}
+const toggleCardShowcaseBeforeV244=toggleCardShowcaseV166;
+toggleCardShowcaseV166=function(...args){const r=toggleCardShowcaseBeforeV244(...args);schedulePublicSyncV244(250);return r};
+window.toggleCardShowcaseV166=toggleCardShowcaseV166;
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('#profileTierSaveV240,#profileStudioSaveV235,#profileLayoutSaveFloatV235'))schedulePublicSyncV244(700);
+});
+
+setTimeout(()=>{applyProfileLayoutV235();schedulePublicSyncV244(900)},300);
+console.info(`Anime list V${V244_TAG}: public tier/cards + adaptive no-scroll profile widgets + Founder DM`);
