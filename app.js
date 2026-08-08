@@ -6709,3 +6709,163 @@ async function initAccountsV23(){
   accountSessionV23=accountReadSessionV23();accountReadRecoveryHashV23();renderAccountChromeV23();if(!accountConfiguredV23()||accountRecoveryV23)return;if(accountSessionV23?.access_token){try{await accountFetchUserV23();await accountPullCloudV23();}catch(e){console.warn('V23 account init',e);if(e.status===401)accountWriteSessionV23(null)}renderAccountChromeV23()}
 }
 initAccountsV23();
+
+/* ===== V23.2: full catalog universe (beyond AniList's 5k single-query ceiling) ===== */
+const CATALOG_COUNT_CACHE_V232='animeCatalogUniverseV232';
+const CATALOG_COUNT_TTL_V232=1000*60*60*24;
+const CATALOG_COUNT_SLICES_V232=[
+  {key:'b0',from:2040,to:2099,label:'2040+'},
+  {key:'b1',from:2030,to:2039,label:'2030-е'},
+  {key:'b2',from:2025,to:2029,label:'2025–2029'},
+  {key:'b3',from:2020,to:2024,label:'2020–2024'},
+  {key:'b4',from:2015,to:2019,label:'2015–2019'},
+  {key:'b5',from:2010,to:2014,label:'2010–2014'},
+  {key:'b6',from:2005,to:2009,label:'2005–2009'},
+  {key:'b7',from:2000,to:2004,label:'2000–2004'},
+  {key:'b8',from:1995,to:1999,label:'1995–1999'},
+  {key:'b9',from:1990,to:1994,label:'1990–1994'},
+  {key:'b10',from:1980,to:1989,label:'1980-е'},
+  {key:'b11',from:1970,to:1979,label:'1970-е'},
+  {key:'b12',from:1960,to:1969,label:'1960-е'},
+  {key:'b13',from:1900,to:1959,label:'до 1960'}
+];
+const CATALOG_COUNT_QUERY_V232=`query{
+${CATALOG_COUNT_SLICES_V232.map((b,i)=>` c${i}:Page(page:1,perPage:1){pageInfo{total}media(type:ANIME,isAdult:false,startDate_greater:${b.from}0101,startDate_lesser:${b.to}1231){id}}`).join('\n')}
+}`;
+function catalogCompactCountV232(n){n=Number(n||0);if(n>=10000)return `${Math.floor(n/1000)}k+`;return fmtNumV12(n);}
+function catalogIsBroadV232(f){return !f?.search&&!f?.format&&!f?.status&&!f?.genre&&!f?.yearFrom&&!f?.yearTo&&!Number(f?.score||0)&&!f?.length;}
+function catalogResultTextV232(){
+  const f=catalogStateV10.filters||catalogReadFormV10?.()||{};
+  const shown=(catalogStateV10.items||[]).length,total=Number(catalogStateV10.total||0),universe=Number(catalogUniverseV12.total||0);
+  if(catalogStateV10.mode==='recommendations')return `${shown} рекомендаций`;
+  if(catalogIsBroadV232(f)&&universe>5000)return `${shown} показано · ${fmtNumV12(universe)}+ в базе`;
+  if(total>=5000)return `${shown} показано · ${fmtNumV12(total)}+ совпадений`;
+  if(total>0)return `${shown} показано · ~${fmtNumV12(total)} совпадений`;
+  return `${shown} показано`;
+}
+function catalogRefreshCountV232(){
+  const el=$('#catalogResultCount');if(!el||catalogStateV10.loading)return;
+  const note=el.querySelector?.('.catalog-source-note')?.textContent||$('#catalogSourceStatus')?.textContent||'';
+  el.innerHTML=`${catalogResultTextV232()}${note?`<span class="catalog-source-note">${esc(note)}</span>`:''}`;
+}
+function catalogUpdateUniverseUIV232(){
+  const n=Number(catalogUniverseV12.total||0);if(!n)return;
+  const a=$('#catalogUniverseCount');if(a)a.textContent=`${fmtNumV12(n)}+ тайтлов в каталоге`;
+  const b=$('#sidebarCatalogTotal');if(b)b.textContent=catalogCompactCountV232(n);
+  catalogRefreshCountV232();
+}
+const catalogLoadUniverseBeforeV232=catalogLoadUniverseV12;
+catalogLoadUniverseV12=async function(force=false){
+  if(!force){try{const c=JSON.parse(localStorage.getItem(CATALOG_COUNT_CACHE_V232)||'null');if(c&&Date.now()-Number(c.ts||0)<CATALOG_COUNT_TTL_V232&&Number(c.total)>5000){catalogUniverseV12=c;catalogUpdateUniverseUIV232();return c;}}catch{}}
+  try{
+    const p=await anilistFetchDirectV20(CATALOG_COUNT_QUERY_V232,{}),d=p?.data||{},buckets=CATALOG_COUNT_SLICES_V232.map((b,i)=>({...b,total:Number(d[`c${i}`]?.pageInfo?.total||0)})),total=buckets.reduce((n,b)=>n+b.total,0);
+    if(total>5000){catalogUniverseV12={total,buckets,ts:Date.now()};try{localStorage.setItem(CATALOG_COUNT_CACHE_V232,JSON.stringify(catalogUniverseV12));}catch{}catalogUpdateUniverseUIV232();return catalogUniverseV12;}
+  }catch(e){console.warn('V23.2 universe count',e);}
+  try{const old=await catalogLoadUniverseBeforeV232(force);if(old?.total){catalogUniverseV12=old;catalogUpdateUniverseUIV232();}return old;}catch{return catalogUniverseV12;}
+};
+window.catalogLoadUniverseV12=catalogLoadUniverseV12;
+
+const catalogFetchPageBeforeV232=catalogFetchPageV10;
+catalogFetchPageV10=async function(opts={}){
+  // Count the real universe in parallel; don't make catalog cards wait for it.
+  const universePromise=catalogLoadUniverseV12(false).catch(()=>null);
+  const result=await catalogFetchPageBeforeV232(opts);
+  await universePromise;
+  catalogRefreshCountV232();
+  return result;
+};
+window.catalogFetchPageV10=catalogFetchPageV10;
+
+// Refresh old cached screens immediately after upgrading from V23.1.
+setTimeout(()=>{catalogLoadUniverseV12(false);catalogRefreshCountV232();updateSidebarStatsV12?.();},80);
+
+
+/* ===== V23.3: cover doctor — broken/404 posters + automatic missing-cover repair ===== */
+const COVER_KNOWN_ANILIST_V233 = new Map([
+  ['chainsmoker cat',207141],['табакошка chainsmoker cat',207141],['yani neko',207141],
+  ['your name',21519],['your name.',21519],['kimi no na wa',21519],
+  ['a silent voice',20954],['koe no katachi',20954],
+  ['spirited away',199],['sen to chihiro no kamikakushi',199],
+  ['the seven deadly sins',20789],['nanatsu no taizai',20789]
+]);
+const coverRepairRunningV233=new Set();
+let coverDoctorStartedV233=false;
+function coverNormV233(v){return normalize(String(v||'').replace(/[\/|]+/g,' ').replace(/[.]+$/g,'')).replace(/\s+/g,' ').trim();}
+function coverKnownIdV233(entry){
+  const names=[entry?.title,...(entry?.aliases||[])].filter(Boolean);
+  for(const raw of names){
+    const n=coverNormV233(raw);if(COVER_KNOWN_ANILIST_V233.has(n))return COVER_KNOWN_ANILIST_V233.get(n);
+    for(const [k,id] of COVER_KNOWN_ANILIST_V233){if(n===k||n.includes(k))return id;}
+  }
+  return null;
+}
+function coverPlaceholderV233(entry){const d=document.createElement('div');d.className='card-cover placeholder cover-broken-v233';d.innerHTML=`<span>${esc(entry?.emoji||'🎌')}</span>`;d.title='Обложка обновляется…';return d;}
+async function coverFetchExactV233(entry,id){
+  const p=await anilistFetch(DETAIL_BY_ID_QUERY,{id:Number(id)}),m=p?.data?.Media;if(!m)throw new Error('AniList не вернул тайтл');
+  // For curated matches we deliberately replace an old/broken URL instead of ||=.
+  entry.anilist_id=Number(m.id||id);entry.mal_id=m.idMal||entry.mal_id||null;
+  entry.cover=m.coverImage?.extraLarge||m.coverImage?.large||m.coverImage?.medium||null;
+  entry.year=entry.year||m.seasonYear||null;entry.aliases=[...new Set([...(entry.aliases||[]),...aliasesForMedia(m),...(m.synonyms||[])].filter(Boolean))];
+  entry.cover_checked=!!entry.cover;return !!entry.cover;
+}
+async function repairAnimeCoverV233(section,index,{force=false,quiet=false}={}){
+  const entry=latestData?.sections?.[section]?.[index];if(!entry)return false;
+  const key=`${section}:${index}:${coverNormV233(entry.title)}`;if(coverRepairRunningV233.has(key))return false;coverRepairRunningV233.add(key);
+  try{
+    const known=coverKnownIdV233(entry);let ok=false;
+    if(known){if(force||!entry.cover||Number(entry.anilist_id)!==known)entry.cover=null;ok=await coverFetchExactV233(entry,known);}
+    else{
+      if(force){entry.cover=null;entry.cover_checked=false;}
+      const m=await resolveEntryV3(entry);ok=!!(entry.cover||m?.coverImage?.extraLarge||m?.coverImage?.large||m?.coverImage?.medium);
+    }
+    saveData();renderAll();if(!quiet&&ok)setMessage(`Обложка «${entry.title}» восстановлена.`,'ok');return ok;
+  }catch(e){console.warn('V23.3 cover repair',entry.title,e);if(!quiet)setMessage(`Не удалось обновить обложку «${entry.title}».`,'error');return false;}
+  finally{coverRepairRunningV233.delete(key);}
+}
+window.repairAnimeCoverV233=repairAnimeCoverV233;
+window.handleAnimeCoverErrorV233=function(img,section,index){
+  if(!img||img.dataset.coverDoctor==='1')return;img.dataset.coverDoctor='1';const entry=latestData?.sections?.[section]?.[index];
+  try{img.replaceWith(coverPlaceholderV233(entry));}catch{img.style.visibility='hidden';}
+  if(entry){entry.cover=null;entry.cover_checked=false;saveData();setTimeout(()=>repairAnimeCoverV233(section,index,{force:true,quiet:true}),30);}
+};
+
+// Re-render list cards with an actual network-error fallback. A dead poster can no longer
+// remain as the browser's broken-image icon; it immediately becomes a placeholder and self-heals.
+animeCard=function(e,s,i){
+  const img=e.cover?`<img class="card-cover" src="${esc(e.cover)}" alt="${esc(e.title)}" loading="lazy" onerror="handleAnimeCoverErrorV233(this,'${s}',${i})">`:`<div class="card-cover placeholder"><span>${esc(e.emoji||'🎌')}</span></div>`;
+  const score=e.score?`<span class="user-score-badge">⭐ ${esc(e.score)}/10</span>`:'';
+  const bundled=!!(e.franchise_parts?.length>1||e.is_franchise&&e.franchise_count>1),count=Number(e.franchise_parts?.length||e.franchise_count||0),eps=e.franchise_unknown_episodes&&e.episodes?`${e.episodes}+ эпизодов`:(e.episodes_text||episodesText(e.episodes,false));
+  const info=bundled?`<div class="card-line card-bundle-meta"><span>TV</span><span>·</span><strong>${esc(eps)}</strong>${e.year?`<span>·</span><span>${esc(e.year)}</span>`:''}<span>·</span><span class="sum-word">суммарно</span></div><div class="card-franchise-badge">◉ Все сезоны вместе · ${count} ${partsWordV91(count)}</div><div class="card-line card-descriptor-line">${esc(e.descriptor||'интересное')}</div>`:`<div class="card-line">${esc(e.episodes_text)} · ${esc(e.descriptor)}${e.year?` · ${e.year}`:''}</div>`;
+  return `<article class="anime-card ${bundled?'franchise-card':''}"><button class="card-cover-click" onclick="openDetails('${s}',${i})" title="Открыть ${esc(e.title)}">${img}</button><div><div class="card-topline"><button class="card-title-button" onclick="openDetails('${s}',${i})">${esc(e.emoji)} ${esc(e.title)}</button>${score}</div>${info}${cardProgress(e)}${e.note?`<div class="card-line">${esc(e.note)}</div>`:''}<div class="card-actions"><button onclick="openMove('${s}',${i})">Переместить</button><button onclick="editEntry('${s}',${i})">✏️ Изменить</button><button onclick="toggleQueue('${s}',${i})">🗓️ Далее</button><button class="danger" onclick="deleteEntry('${s}',${i})">Удалить</button></div></div></article>`;
+};
+
+async function coverDoctorPassV233(){
+  if(coverDoctorStartedV233)return;coverDoctorStartedV233=true;
+  const jobs=[];
+  for(const section of Object.keys(SECTION_TITLES))for(let i=0;i<(latestData.sections?.[section]||[]).length;i++){
+    const e=latestData.sections[section][i],known=coverKnownIdV233(e);
+    // Known problematic titles are refreshed even if an old URL exists (fixes the 404 poster case).
+    if(known&&(!e.cover||Number(e.anilist_id)!==known))jobs.unshift([section,i,true]);
+    else if(!e.cover)jobs.push([section,i,false]);
+  }
+  // First repair curated/problematic entries immediately, then gently fill old null covers.
+  let done=0;
+  for(const [section,index,force] of jobs){
+    await repairAnimeCoverV233(section,index,{force,quiet:true});done++;
+    if(done>=30)break; // avoid hammering AniList on a huge imported list; remaining covers repair on error/manual refresh.
+    await new Promise(r=>setTimeout(r,180));
+  }
+}
+
+// Upgrade the existing "Обновить данные" button too: it now retries broken known covers,
+// not only entries where cover === null.
+const enrichMissingCoversBeforeV233=enrichMissingCovers;
+enrichMissingCovers=async function(){
+  for(const section of Object.keys(SECTION_TITLES))for(let i=0;i<(latestData.sections?.[section]||[]).length;i++){
+    const e=latestData.sections[section][i],known=coverKnownIdV233(e);if(known&&Number(e.anilist_id)!==known)await repairAnimeCoverV233(section,i,{force:true,quiet:true});
+  }
+  return enrichMissingCoversBeforeV233();
+};
+window.enrichMissingCovers=enrichMissingCovers;
+setTimeout(()=>coverDoctorPassV233(),900);
+setTimeout(()=>renderAll(),80);
