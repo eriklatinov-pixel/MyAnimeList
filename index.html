@@ -193,14 +193,23 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <div class="footer-brand-line"><span class="footer-mark">🎌</span><strong id="footerSiteName">My Anime List</strong></div>
-        <p id="footerTagline">Мой личный аниме-трекер.</p>
+        <p id="footerTagline">Твоя аниме-библиотека, профиль и тусовка в одном месте.</p>
         <button class="footer-top-btn" type="button" onclick="scrollToV8('top')">↑ Наверх</button>
       </div>
       <div class="footer-col"><h4>Навигация</h4><button onclick="scrollToV8('top')">Главная</button><button id="footerCatalogBtn" type="button">Каталог</button><button onclick="scrollToV8('searchSection')">Поиск аниме</button><button onclick="scrollToV8('queueSection')">Очередь «Далее»</button></div>
       <div class="footer-col"><h4>Мой список</h4><button onclick="scrollSectionV8('watching')">Сейчас</button><button onclick="scrollSectionV8('planned')">Посмотреть</button><button onclick="scrollSectionV8('completed')">Посмотрел</button><button onclick="scrollSectionV8('paused')">Отложено</button></div>
-      <div class="footer-col"><h4>Локально</h4><span>Данные хранятся в браузере</span><span>AniList + MyAnimeList/Jikan</span><button onclick="document.getElementById('settingsBtn').click()">⚙️ Настроить вид</button></div>
+      <div class="footer-col"><h4>Аккаунт</h4><span>Список и профиль синхронизируются между устройствами</span><span>AniList + MyAnimeList/Jikan + облако</span><button onclick="document.getElementById('settingsBtn').click()">⚙️ Настроить вид</button></div>
     </div>
-    <div class="footer-bottom"><span id="footerCopyright">© 2026 My Anime List</span><span>Сделано для личного использования · без аккаунта и сервера</span></div>
+    <div class="footer-creator-v245">
+      <div class="footer-creator-mark-v245">✦</div>
+      <div class="footer-creator-copy-v245">
+        <span>СОЗДАТЕЛЬ ПРОЕКТА</span>
+        <strong>SeNite <i>✦ CREATOR · #0001</i></strong>
+        <small>@senite · первый аккаунт платформы</small>
+      </div>
+      <button id="footerCreatorProfileV245" type="button">Открыть профиль создателя →</button>
+    </div>
+    <div class="footer-bottom"><span id="footerCopyright">© 2026 My Anime List</span><span>Сделано людьми, которые слишком много смотрят аниме.</span></div>
   </footer>
 
   <div id="mascotDock" class="mascot-dock hidden" aria-label="Персональная картинка">
@@ -575,7 +584,7 @@
           <div>
             <div class="profile-kicker">LOCAL PROFILE · V20.5</div>
             <h2 id="profileName">Профиль</h2>
-            <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span></div>
+            <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span><span id="profileCreatorBadgeV245" class="profile-creator-badge-v245 hidden">✦ CREATOR · #0001</span></div>
           </div>
         </div>
         <div class="profile-head-actions">

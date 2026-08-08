@@ -4472,13 +4472,99 @@ function closeFavoritePickerV162(){$('#profileFavoritePicker').classList.add('hi
 function renderFavoritePickerV162(){const p=ensureProfileV16(),pref=ensureProfilePrefsV162(),q=String($('#profileFavoriteSearch')?.value||'').trim().toLowerCase(),all=profileAllEntriesV162().filter(x=>!q||String(x.entry.title||'').toLowerCase().includes(q)||(x.entry.aliases||[]).some(a=>String(a).toLowerCase().includes(q)));$('#profileFavoritePickerHint').textContent=`${p.favorites.length} / ${pref.favoriteLimit} выбрано`;$('#profileFavoritePickerGrid').innerHTML=all.map(x=>{const selected=p.favorites.includes(x.key),cover=profileCoverV162(x.entry);return `<button type="button" class="favorite-pick-card ${selected?'selected':''}" onclick="toggleFavoriteV162('${esc(x.key)}')">${cover?`<img src="${esc(cover)}" alt="">`:'<span></span>'}<span><strong>${esc(x.entry.emoji||'')} ${esc(x.entry.title)}</strong><small>${esc(profileSectionShortV162(x.section))} · ${esc(x.entry.episodes_text||'')}</small></span><span class="favorite-pick-check">${selected?'★':'☆'}</span></button>`}).join('')||'<div class="profile-empty">Ничего не нашлось.</div>'}
 function toggleFavoriteV162(key){const p=ensureProfileV16(),pref=ensureProfilePrefsV162(),at=p.favorites.indexOf(String(key));if(at>=0)p.favorites.splice(at,1);else{if(p.favorites.length>=pref.favoriteLimit){profileToastV16('Витрина заполнена',`Сейчас максимум ${pref.favoriteLimit}. Лимит можно увеличить во вкладке «Мой профиль».`);return}p.favorites.push(String(key))}saveData();renderFavoritePickerV162();renderProfileFavoritesV162();applyProfileAppearanceV162()}window.toggleFavoriteV162=toggleFavoriteV162;
 function bindProfilePrefsControlsV162(){
-  const pref=ensureProfilePrefsV162();const map={profileCustomTitle:['title','value'],profileCustomStatus:['status','value'],profileCustomBio:['bio','value'],profileAccentColor:['accent','value'],profileAccent2Color:['accent2','value'],profileRadius:['radius','number'],profileSurfaceStyle:['surface','value'],profileBackgroundMode:['backgroundMode','value'],profileBackgroundPosition:['backgroundPosition','value'],profileBackgroundDim:['backgroundDim','number'],profileBackgroundBlur:['backgroundBlur','number'],profileFavoriteLimit:['favoriteLimit','number'],profileListLimit:['listLimit','number'],profileFavoriteStyle:['favoriteStyle','value'],profileShowFavorites:['showFavorites','checked'],profileShowList:['showList','checked'],profileShowStats:['showStats','checked']};
-  for(const [id,[key,type]] of Object.entries(map)){const el=$('#'+id);if(!el)continue;el[type==='checked'?'checked':'value']=pref[key];const evt=(el.type==='range'||el.type==='color'||el.tagName==='TEXTAREA'||el.tagName==='INPUT'&&el.type==='text')?'input':'change';el.addEventListener(evt,()=>{let v=type==='checked'?el.checked:type==='number'?Number(el.value):el.value;if(key==='favoriteLimit'){v=Math.max(3,Math.min(12,v));if(ensureProfileV16().favorites.length>v)ensureProfileV16().favorites=ensureProfileV16().favorites.slice(0,v)}pref[key]=v;saveData();updateProfilePrefLabelsV162();renderProfileExtrasV162();renderFavoritePickerV162()})}
-  $('#profileChooseFavorites')?.addEventListener('click',openFavoritePickerV162);$('#profileFavoritePickerClose')?.addEventListener('click',closeFavoritePickerV162);$('#profileFavoritePicker')?.addEventListener('click',e=>{if(e.target===$('#profileFavoritePicker'))closeFavoritePickerV162()});$('#profileFavoriteSearch')?.addEventListener('input',renderFavoritePickerV162);
-  $('#profileBackgroundUploadBtn')?.addEventListener('click',()=>$('#profileBackgroundFile')?.click());$('#profileAvatarUploadBtn')?.addEventListener('click',()=>$('#profileAvatarFile')?.click());$('#profileBackgroundClearBtn')?.addEventListener('click',()=>{pref.customBackground='';if(pref.backgroundMode==='custom')pref.backgroundMode='gradient';$('#profileBackgroundMode').value=pref.backgroundMode;saveData();renderProfileExtrasV162()});$('#profileAvatarClearBtn')?.addEventListener('click',()=>{pref.customAvatar='';saveData();renderProfileV16()});
-  $('#profileBackgroundFile')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;pref.customBackground=await compressProfileImageV162(f,1600,900,.8);pref.backgroundMode='custom';$('#profileBackgroundMode').value='custom';saveData();renderProfileExtrasV162();e.target.value=''});$('#profileAvatarFile')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;pref.customAvatar=await compressProfileImageV162(f,512,512,.9,true);saveData();renderProfileV16();e.target.value=''});
-  const nick=$('#profileCustomNickname');if(nick){nick.value=profileNicknameV16();nick.addEventListener('input',()=>{uiSettings.nickname=nick.value.trim()||'Гость';saveSettings();renderProfileChromeV16();saveData()})}
-  updateProfilePrefLabelsV162();renderProfileOrderV162();
+  const initialPref=ensureProfilePrefsV162();
+  const map={
+    profileCustomTitle:['title','value'],
+    profileCustomStatus:['status','value'],
+    profileCustomBio:['bio','value'],
+    profileAccentColor:['accent','value'],
+    profileAccent2Color:['accent2','value'],
+    profileRadius:['radius','number'],
+    profileSurfaceStyle:['surface','value'],
+    profileBackgroundMode:['backgroundMode','value'],
+    profileBackgroundPosition:['backgroundPosition','value'],
+    profileBackgroundDim:['backgroundDim','number'],
+    profileBackgroundBlur:['backgroundBlur','number'],
+    profileFavoriteLimit:['favoriteLimit','number'],
+    profileListLimit:['listLimit','number'],
+    profileFavoriteStyle:['favoriteStyle','value'],
+    profileShowFavorites:['showFavorites','checked'],
+    profileShowList:['showList','checked'],
+    profileShowStats:['showStats','checked']
+  };
+
+  for(const [id,[key,type]] of Object.entries(map)){
+    const el=$('#'+id); if(!el)continue;
+    el[type==='checked'?'checked':'value']=initialPref[key];
+    const evt=(el.type==='range'||el.type==='color'||el.tagName==='TEXTAREA'||(el.tagName==='INPUT'&&el.type==='text'))?'input':'change';
+
+    el.addEventListener(evt,()=>{
+      // IMPORTANT: never use a profilePrefs object captured when the page booted.
+      // Account switching / cloud restore / Studio Cancel can replace profilePrefs entirely.
+      // Always resolve the CURRENT object before writing.
+      const pref=ensureProfilePrefsV162();
+      let v=type==='checked'?el.checked:type==='number'?Number(el.value):el.value;
+
+      if(key==='favoriteLimit'){
+        v=Math.max(3,Math.min(12,v));
+        if(ensureProfileV16().favorites.length>v)ensureProfileV16().favorites=ensureProfileV16().favorites.slice(0,v);
+      }
+
+      pref[key]=v;
+      saveData();
+      updateProfilePrefLabelsV162();
+      renderProfileExtrasV162();
+      renderFavoritePickerV162();
+    });
+  }
+
+  $('#profileChooseFavorites')?.addEventListener('click',openFavoritePickerV162);
+  $('#profileFavoritePickerClose')?.addEventListener('click',closeFavoritePickerV162);
+  $('#profileFavoritePicker')?.addEventListener('click',e=>{if(e.target===$('#profileFavoritePicker'))closeFavoritePickerV162()});
+  $('#profileFavoriteSearch')?.addEventListener('input',renderFavoritePickerV162);
+
+  $('#profileBackgroundUploadBtn')?.addEventListener('click',()=>$('#profileBackgroundFile')?.click());
+  $('#profileAvatarUploadBtn')?.addEventListener('click',()=>$('#profileAvatarFile')?.click());
+
+  $('#profileBackgroundClearBtn')?.addEventListener('click',()=>{
+    const pref=ensureProfilePrefsV162();
+    pref.customBackground='';
+    if(pref.backgroundMode==='custom')pref.backgroundMode='gradient';
+    const mode=$('#profileBackgroundMode'); if(mode)mode.value=pref.backgroundMode;
+    saveData(); renderProfileExtrasV162();
+  });
+
+  $('#profileAvatarClearBtn')?.addEventListener('click',()=>{
+    ensureProfilePrefsV162().customAvatar='';
+    saveData(); renderProfileV16();
+  });
+
+  $('#profileBackgroundFile')?.addEventListener('change',async e=>{
+    const f=e.target.files?.[0]; if(!f)return;
+    const pref=ensureProfilePrefsV162();
+    pref.customBackground=await compressProfileImageV162(f,1600,900,.8);
+    pref.backgroundMode='custom';
+    const mode=$('#profileBackgroundMode'); if(mode)mode.value='custom';
+    saveData(); renderProfileExtrasV162(); e.target.value='';
+  });
+
+  $('#profileAvatarFile')?.addEventListener('change',async e=>{
+    const f=e.target.files?.[0]; if(!f)return;
+    ensureProfilePrefsV162().customAvatar=await compressProfileImageV162(f,512,512,.9,true);
+    saveData(); renderProfileV16(); e.target.value='';
+  });
+
+  const nick=$('#profileCustomNickname');
+  if(nick){
+    nick.value=profileNicknameV16();
+    nick.addEventListener('input',()=>{
+      uiSettings.nickname=nick.value.trim()||'Гость';
+      saveSettings(); renderProfileChromeV16(); saveData();
+    });
+  }
+
+  updateProfilePrefLabelsV162();
+  renderProfileOrderV162();
 }
 function updateProfilePrefLabelsV162(){const p=ensureProfilePrefsV162();const vals={profileRadiusValue:`${p.radius}px`,profileDimValue:`${p.backgroundDim}%`,profileBlurValue:`${p.backgroundBlur}px`,profileFavoriteLimitValue:p.favoriteLimit,profileListLimitValue:p.listLimit};for(const [id,v] of Object.entries(vals)){const e=$('#'+id);if(e)e.textContent=v}}
 function compressProfileImageV162(file,maxW,maxH,q=.82,preserveAlpha=false){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const s=Math.min(1,maxW/img.naturalWidth,maxH/img.naturalHeight),w=Math.max(1,Math.round(img.naturalWidth*s)),h=Math.max(1,Math.round(img.naturalHeight*s)),c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');if(!preserveAlpha){ctx.fillStyle='#11131a';ctx.fillRect(0,0,w,h)}ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);resolve(c.toDataURL('image/webp',q))}catch(err){URL.revokeObjectURL(url);reject(err)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image'))};img.src=url})}
@@ -8163,3 +8249,130 @@ document.addEventListener('click',e=>{
 
 setTimeout(()=>{applyProfileLayoutV235();schedulePublicSyncV244(900)},300);
 console.info(`Anime list V${V244_TAG}: public tier/cards + adaptive no-scroll profile widgets + Founder DM`);
+
+/* V24.4.1 PROFILE PREFS FIX: profile fields always write into the current account's profilePrefs object. */
+
+
+/* ===== V24.5: creator identity, founder-only Admin, creator profile footer ===== */
+const V245_TAG='24.5';
+const CREATOR_HANDLE_V245='senite';
+const CREATOR_EMAIL_V245='eriklatinov@gmail.com';
+
+function founderSessionV245(){
+  if(!accountSignedInV236?.())return false;
+  const email=String(accountSessionV23?.user?.email||'').toLowerCase();
+  const own=socialStateV241?.own||{};
+  return own.role==='founder'||Number(own.founder_no||0)===1||String(own.handle||'').toLowerCase()===CREATOR_HANDLE_V245||email===CREATOR_EMAIL_V245;
+}
+
+/* Replace old nickname-based local Admin check.
+   The button and all existing Admin actions now resolve through the Founder account only. */
+isLocalAdminV164=function(){return founderSessionV245()};
+
+function renderCreatorIdentityV245(){
+  const founder=founderSessionV245();
+  const badge=$('#profileCreatorBadgeV245');
+  if(badge){
+    badge.classList.toggle('hidden',!founder);
+    if(founder){
+      const no=Number(socialStateV241?.own?.founder_no||1);
+      badge.textContent=`✦ CREATOR · #${String(no).padStart(4,'0')}`;
+      badge.title='Создатель проекта · первый аккаунт платформы';
+    }
+  }
+  const kicker=document.querySelector('.profile-kicker');
+  if(kicker){
+    kicker.classList.toggle('creator-v245',founder);
+    if(founder)kicker.textContent='✦ CREATOR PROFILE · FOUNDER #0001';
+    else kicker.textContent=accountSignedInV236?.()?'ACCOUNT PROFILE · V23':'LOCAL PROFILE · V23';
+  }
+  adminSyncButtonV164?.();
+}
+
+const renderProfileChromeBeforeV245=renderProfileChromeV16;
+renderProfileChromeV16=function(){
+  renderProfileChromeBeforeV245();
+  renderCreatorIdentityV245();
+};
+
+/* Use a distinct system identity instead of an avatar frame/crown. */
+socialFounderBadgeV242=function(p){
+  return p?.role==='founder'||Number(p?.founder_no)>0
+    ? `<span class="social-founder-badge-v242">✦ CREATOR · #${String(Number(p.founder_no)||1).padStart(4,'0')}</span>`:'';
+};
+
+/* Creator marker in the compact friends/chat surfaces too. */
+socialRenderChatsV241=function(){
+  const box=$('#socialChatsV241');if(!box)return;
+  const friends=socialStateV241.friends.map(id=>socialStateV241.profiles.get(id)).filter(Boolean);
+  box.innerHTML=friends.length?friends.map(p=>{
+    const creator=(p.role==='founder'||Number(p.founder_no)>0)?'<em class="creator-mini-v245">✦ CREATOR</em>':'';
+    return `<button type="button" class="social-chat-person-v241 ${socialStateV241.selected===p.id?'active':''}" onclick="socialOpenChatV241('${p.id}')"><span>${socialAvatarV241(p)}</span><b>${esc(p.display_name||p.handle||'Пользователь')}${creator}</b></button>`;
+  }).join(''):'<div class="social-empty-v241">Чат появится после добавления друзей.</div>';
+  socialRenderMessagesV241();
+};
+
+const socialOpenChatBeforeV245=socialOpenChatV241;
+socialOpenChatV241=async function(id){
+  await socialOpenChatBeforeV245(id);
+  const p=socialStateV241.profiles.get(id);
+  if(p&&$('#socialChatTitleV241')){
+    const mark=(p.role==='founder'||Number(p.founder_no)>0)?' · ✦ CREATOR':'';
+    $('#socialChatTitleV241').textContent=`Чат · ${p.display_name||p.handle||'Пользователь'}${mark}`;
+  }
+};
+window.socialOpenChatV241=socialOpenChatV241;
+
+socialRenderFeedV241=function(){
+  const box=$('#socialFeedV241');if(!box)return;
+  box.innerHTML=socialStateV241.feed.length?socialStateV241.feed.map(x=>{
+    const p=socialStateV241.profiles.get(x.actor_id);
+    return `<div class="social-feed-item-v241"><span>${esc(x.icon||'◆')}</span><div><b>${esc(p?.display_name||p?.handle||'Пользователь')} ${socialFounderBadgeV242(p)} · ${esc(x.title)}</b><p>${esc(x.detail||'')}</p><time>${socialFmtTimeV241(x.created_at)}</time></div></div>`;
+  }).join(''):'<div class="social-empty-v241">Лента пока пустая. Подпишись на кого-нибудь или опубликуй статус.</div>';
+};
+
+/* Guest-safe public profile lookup used by the permanent creator card in the footer. */
+async function publicAnonProfileV245(handle=CREATOR_HANDLE_V245){
+  if(!accountConfiguredV23())throw new Error('Аккаунты ещё не подключены.');
+  const c=accountConfigV23(),q=new URLSearchParams();
+  q.set('handle',`eq.${handle}`);q.set('select',socialProfileFieldsV242());q.set('limit','1');
+  const token=accountSessionV23?.access_token||'';
+  const rows=await accountJsonFetchV23(`${c.url}/rest/v1/profiles?${q.toString()}`,{headers:accountAuthHeadersV23(token)});
+  return rows?.[0]||null;
+}
+
+async function openCreatorProfileV245(){
+  try{
+    const p=await publicAnonProfileV245();
+    if(!p)throw new Error('Профиль создателя пока не найден.');
+    socialStateV241.profiles.set(p.id,p);
+    await socialOpenPublicProfileV242(p.id);
+  }catch(e){
+    try{profileToastV16?.('Профиль создателя',e.message||String(e))}catch{}
+  }
+}
+window.openCreatorProfileV245=openCreatorProfileV245;
+
+/* Any public profile may be viewed as a guest; social actions ask for login instead of failing. */
+const socialOpenPublicProfileBeforeV245=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){
+  await socialOpenPublicProfileBeforeV245(id);
+  if(!accountSignedInV236?.()){
+    const actions=document.querySelector('#publicProfileBodyV242 .public-actions-v243');
+    if(actions)actions.innerHTML='<button type="button" onclick="openAccountV23()">☁ Войти, чтобы добавить в друзья</button>';
+  }
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+$('#footerCreatorProfileV245')?.addEventListener('click',openCreatorProfileV245);
+
+/* Re-evaluate after account/social bootstrap. */
+const socialEnsureOwnBeforeV245=socialEnsureOwnV241;
+socialEnsureOwnV241=async function(){
+  const out=await socialEnsureOwnBeforeV245();
+  renderCreatorIdentityV245();
+  return out;
+};
+
+setTimeout(()=>{renderCreatorIdentityV245();adminSyncButtonV164?.()},220);
+console.info(`Anime list V${V245_TAG}: Creator identity + founder-only Admin + permanent creator profile footer`);

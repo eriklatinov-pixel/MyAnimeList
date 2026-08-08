@@ -102,3 +102,9 @@ V24.1 SOCIAL / STEAM LAYER
 - Friends, follows, user search, activity feed, friend-only DMs.
 - New DM starts at LVL 10; lower levels can reply to incoming chats.
 IMPORTANT: run SOCIAL_SETUP_V241.sql once in Supabase SQL Editor before using the social tab.
+
+
+V24.5
+- Founder/Admin UI is tied to @senite / Founder #0001, not nickname.
+- Creator identity badge and creator profile footer card.
+- Guest-safe creator public profile link.
