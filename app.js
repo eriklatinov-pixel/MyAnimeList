@@ -5330,3 +5330,531 @@ $('#watchTestSources')?.addEventListener('click',async e=>{if(!backendBaseV20())
 
 syncBackendSettingsV20();
 if(backendBaseV20())backendHealthV20().then(()=>syncProviderConfigUiV19()).catch(()=>{});
+
+/* ===== V20.1 · PLAYER POLISH / CUSTOM CONTROLS ===== */
+const WATCH_PLAYER_UI_KEY_V201='animeWatchPlayerUiV201';
+let watchControlsHideTimerV201=null;
+let watchSeekToastTimerV201=null;
+let watchAutonextTimerV201=null;
+let watchAutonextLeftV201=0;
+let watchAutonextRestoreV201=null;
+let watchDemoModeV201=false;
+let watchProgressDraggingV201=false;
+
+function fmtWatchTimeV201(sec){
+  sec=Math.max(0,Number(sec)||0);const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);
+  return h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+}
+function watchPlayerPrefsV201(){const p=watchPrefsV15();return {...p,autoHideControls:p.autoHideControls!==false,doubleSeek:p.doubleSeek!==false,showBuffer:p.showBuffer!==false}}
+function patchWatchPlayerPrefsV201(x){patchWatchPrefsV18(x);syncWatchPlayerSettingsV201()}
+function syncWatchPlayerSettingsV201(){
+  const p=watchPlayerPrefsV201();
+  const map={watchAutoHideControls:p.autoHideControls,watchDoubleSeek:p.doubleSeek,watchShowBuffer:p.showBuffer};
+  Object.entries(map).forEach(([id,val])=>{const el=$('#'+id);if(el)el.checked=!!val});
+  const buf=$('#watchBufferedBar');if(buf)buf.style.display=p.showBuffer?'block':'none';
+}
+function hasWatchMediaV201(){const v=$('#watchVideo');return !!(v&&!v.classList.contains('hidden')&&(v.currentSrc||v.getAttribute('src')||watchStateV15.hls))}
+function updateWatchPlayerMetaV201(){
+  const e=watchStateV15.entry;if(!e)return;
+  const parts=watchPartsV15(e),part=parts[watchStateV15.season]||e;
+  const label=$('#watchPlayerEpisodeLabel'),provider=$('#watchPlayerProviderLabel');
+  if(label)label.textContent=`${part?.title||e.title||'Аниме'} · S${watchStateV15.season+1}E${watchStateV15.episode}`;
+  if(provider){const active=watchResolverV19?.active||watchProviderV17?.()||'auto';provider.innerHTML=`<span class="watch-player-status-dot"></span>${esc(active==='aniliberty'?'AniLiberty':active==='kodik'?'Kodik':active==='direct'?'Direct':'Авто')}`}
+}
+function syncWatchChipsV201(){
+  const dub=$('#watchDub'),subs=$('#watchSubs'),q=$('#watchQuality');
+  const d=$('#watchTrackChip'),s=$('#watchCcChip'),qq=$('#watchQualityChip');
+  if(d)d.textContent=dub?.selectedOptions?.[0]?.textContent?.trim()||'Дорожка';
+  if(s)s.textContent=subs?.value&&subs.value!=='off'?(subs.selectedOptions?.[0]?.textContent?.trim()||'Вкл'):'Выкл';
+  if(qq)qq.textContent=q?.selectedOptions?.[0]?.textContent?.trim()||'Auto';
+  $('#watchCcInline')?.classList.toggle('is-on',!!(subs?.value&&subs.value!=='off'));
+}
+function updateWatchPlayerStateV201(){
+  const v=$('#watchVideo'),w=$('#watchVideoWrap');if(!v||!w)return;
+  const media=hasWatchMediaV201();w.classList.toggle('has-video',media);w.classList.toggle('is-playing',media&&!v.paused&&!v.ended);w.classList.toggle('player-error',!!v.error&&media);
+  const btn=$('#watchPlayPause'),center=$('#watchCenterPlay');
+  const playing=media&&!v.paused&&!v.ended;
+  if(btn){btn.textContent=playing?'❚❚':'▶';btn.title=playing?'Пауза':'Воспроизвести'}
+  if(center){center.querySelector('span').textContent=playing?'❚❚':'▶';center.setAttribute('aria-label',playing?'Пауза':'Воспроизвести')}
+  updateVolumeV201();syncWatchChipsV201();updateWatchPlayerMetaV201();
+}
+function updateWatchTimelineV201(){
+  const v=$('#watchVideo');if(!v)return;const d=Number(v.duration)||0,c=Number(v.currentTime)||0,ratio=d?Math.max(0,Math.min(1,c/d)):0;
+  if(!watchProgressDraggingV201){const r=$('#watchProgress');if(r)r.value=String(Math.round(ratio*1000))}
+  const played=$('#watchPlayedBar');if(played)played.style.width=`${ratio*100}%`;
+  const time=$('#watchTime');if(time)time.textContent=`${fmtWatchTimeV201(c)} / ${fmtWatchTimeV201(d)}`;
+  const buf=$('#watchBufferedBar');if(buf&&watchPlayerPrefsV201().showBuffer){let end=0;try{for(let i=0;i<v.buffered.length;i++){if(v.buffered.start(i)<=c+.5)end=Math.max(end,v.buffered.end(i));}}catch{}buf.style.width=`${d?Math.min(100,end/d*100):0}%`}
+  updateSegmentMarkersV201();
+}
+function updateSegmentMarkersV201(){
+  const v=$('#watchVideo'),d=Number(v?.duration)||Number(currentManifestEpisodeV15()?.duration)||0,segs=currentSegmentsV18?.()||{};
+  for(const [type,id] of [['op','watchOpMarker'],['ed','watchEdMarker']]){const el=$('#'+id),seg=segs[type];if(!el)continue;if(!d||!seg){el.classList.add('hidden');continue}el.classList.remove('hidden');el.style.left=`${Math.max(0,Math.min(100,seg.start/d*100))}%`;el.style.width=`${Math.max(.25,Math.min(100,(seg.end-seg.start)/d*100))}%`}
+}
+function updateVolumeV201(){
+  const v=$('#watchVideo'),range=$('#watchVolume'),btn=$('#watchVolumeBtn');if(!v)return;
+  if(range&&!range.matches(':active'))range.value=String(v.muted?0:v.volume);
+  if(btn)btn.textContent=v.muted||v.volume===0?'🔇':v.volume<.45?'🔉':'🔊';
+}
+function setWatchControlsVisibleV201(show=true,linger=true){
+  const w=$('#watchVideoWrap');if(!w)return;clearTimeout(watchControlsHideTimerV201);w.classList.toggle('controls-visible',show);
+  if(show&&linger&&watchPlayerPrefsV201().autoHideControls){const v=$('#watchVideo');if(v&&!v.paused){watchControlsHideTimerV201=setTimeout(()=>w.classList.remove('controls-visible'),2600)}}
+}
+function toggleWatchPlaybackV201(){const v=$('#watchVideo');if(!v||!hasWatchMediaV201())return;v.paused?v.play().catch(()=>{}):v.pause();setWatchControlsVisibleV201(true)}
+function seekWatchV201(delta,side='right'){
+  const v=$('#watchVideo');if(!v||!Number.isFinite(v.duration))return;v.currentTime=Math.max(0,Math.min(v.duration,v.currentTime+delta));
+  const t=$('#watchSeekToast');if(t){t.textContent=`${delta>0?'+':''}${delta} сек`;t.className=`watch-seek-toast ${side}`;clearTimeout(watchSeekToastTimerV201);watchSeekToastTimerV201=setTimeout(()=>t.classList.add('hidden'),520)}
+}
+function watchProgressFromPointerV201(e){const shell=$('#watchProgressShell'),v=$('#watchVideo');if(!shell||!v?.duration)return 0;const r=shell.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));return x/r.width*v.duration}
+function showWatchProgressTipV201(e){const shell=$('#watchProgressShell'),tip=$('#watchProgressTip'),v=$('#watchVideo');if(!shell||!tip||!v?.duration)return;const r=shell.getBoundingClientRect(),px=Math.max(0,Math.min(r.width,e.clientX-r.left)),t=px/r.width*v.duration;tip.textContent=fmtWatchTimeV201(t);tip.style.left=`${px}px`;tip.classList.remove('hidden')}
+function showWatchLoadingV201(show=true,label='Загрузка…'){const el=$('#watchLoading');if(!el)return;el.querySelector('span').textContent=label;el.classList.toggle('hidden',!show)}
+function openSelectPickerV201(sel){if(!sel||sel.disabled)return;try{if(typeof sel.showPicker==='function')sel.showPicker();else{sel.focus();sel.click()}}catch{sel.focus()}}
+function forceMiniPlayerV201(){const w=$('#watchVideoWrap');if(!w||!hasWatchMediaV201())return;watchMiniSuppressedV18=false;w.classList.add('is-mini','controls-visible');$('#watchMiniClose')?.classList.remove('hidden')}
+
+function removeAutoNextOverlayV201(){clearInterval(watchAutonextTimerV201);watchAutonextTimerV201=null;$('#watchAutonextOverlayV201')?.remove()}
+function showAutoNextOverlayV201(){
+  removeAutoNextOverlayV201();if(!$('#watchAutoNext')?.checked)return;
+  const e=watchStateV15.entry,parts=watchPartsV15(e||{}),part=parts[watchStateV15.season]||{},eps=Math.max(1,Number(part.episodes)||1);
+  const hasNext=watchStateV15.episode<eps||watchStateV15.season<parts.length-1;if(!hasNext)return;
+  const w=$('#watchVideoWrap');if(!w)return;watchAutonextLeftV201=8;
+  const nextEp=watchStateV15.episode<eps?watchStateV15.episode+1:1;
+  const nextPart=watchStateV15.episode<eps?part:(parts[watchStateV15.season+1]||{});
+  const box=document.createElement('div');box.id='watchAutonextOverlayV201';box.className='watch-autonext-overlay';box.innerHTML=`<div class="watch-autonext-card"><div class="watch-autonext-ring" id="watchAutonextRingV201"><b>8</b></div><span>СЛЕДУЮЩАЯ СЕРИЯ</span><h3>${esc(nextPart?.title||e?.title||'Аниме')}</h3><p>Серия ${nextEp} запустится автоматически</p><div class="watch-autonext-actions"><button id="watchAutonextNowV201" type="button">▶ Смотреть сейчас</button><button id="watchAutonextCancelV201" class="secondary" type="button">Отмена</button></div></div>`;w.appendChild(box);
+  $('#watchAutonextNowV201')?.addEventListener('click',()=>{removeAutoNextOverlayV201();watchNextEpisodeV15()});
+  $('#watchAutonextCancelV201')?.addEventListener('click',removeAutoNextOverlayV201);
+  watchAutonextTimerV201=setInterval(()=>{watchAutonextLeftV201--;const ring=$('#watchAutonextRingV201');if(ring){ring.querySelector('b').textContent=String(Math.max(0,watchAutonextLeftV201));ring.style.setProperty('--autonext-progress',`${Math.max(0,watchAutonextLeftV201/8*100)}%`)}if(watchAutonextLeftV201<=0){removeAutoNextOverlayV201();watchNextEpisodeV15()}},1000);
+}
+
+function installAutoNextInterceptorV201(){
+  const v=$('#watchVideo');if(!v||v.dataset.v201Ended)return;v.dataset.v201Ended='1';
+  v.addEventListener('ended',()=>{const a=$('#watchAutoNext');if(!a?.checked)return;watchAutonextRestoreV201=true;a.checked=false;queueMicrotask(()=>{if(watchAutonextRestoreV201){a.checked=true;watchAutonextRestoreV201=null;showAutoNextOverlayV201()}})},true);
+}
+function installWatchPlayerEventsV201(){
+  const v=$('#watchVideo'),w=$('#watchVideoWrap'),progress=$('#watchProgress'),shell=$('#watchProgressShell');if(!v||!w||v.dataset.v201Ui)return;v.dataset.v201Ui='1';
+  $('#watchPlayPause')?.addEventListener('click',toggleWatchPlaybackV201);$('#watchCenterPlay')?.addEventListener('click',toggleWatchPlaybackV201);
+  $('#watchVolumeBtn')?.addEventListener('click',()=>{v.muted=!v.muted;updateVolumeV201()});$('#watchVolume')?.addEventListener('input',e=>{v.muted=false;v.volume=Math.max(0,Math.min(1,Number(e.target.value)||0));updateVolumeV201()});
+  $('#watchTrackBtn')?.addEventListener('click',()=>openSelectPickerV201($('#watchDub')));$('#watchCcInline')?.addEventListener('click',()=>{toggleSubsV18();syncWatchChipsV201()});$('#watchQualityInline')?.addEventListener('click',()=>openSelectPickerV201($('#watchQuality')));$('#watchSettingsInline')?.addEventListener('click',()=>$('#watchSettingsBtn')?.click());$('#watchPipInline')?.addEventListener('click',watchPipV18);$('#watchFullscreenInline')?.addEventListener('click',watchFullscreenV18);$('#watchPlayerMini')?.addEventListener('click',forceMiniPlayerV201);
+  progress?.addEventListener('input',e=>{watchProgressDraggingV201=true;if(v.duration){const t=Number(e.target.value)/1000*v.duration;const played=$('#watchPlayedBar');if(played)played.style.width=`${Number(e.target.value)/10}%`;const time=$('#watchTime');if(time)time.textContent=`${fmtWatchTimeV201(t)} / ${fmtWatchTimeV201(v.duration)}`}});
+  progress?.addEventListener('change',e=>{if(v.duration)v.currentTime=Number(e.target.value)/1000*v.duration;watchProgressDraggingV201=false;updateWatchTimelineV201()});
+  shell?.addEventListener('mousemove',showWatchProgressTipV201);shell?.addEventListener('mouseleave',()=>$('#watchProgressTip')?.classList.add('hidden'));
+  w.addEventListener('mousemove',()=>setWatchControlsVisibleV201(true));w.addEventListener('mouseleave',()=>{if(!v.paused)setWatchControlsVisibleV201(false,false)});w.addEventListener('touchstart',()=>setWatchControlsVisibleV201(true),{passive:true});
+  v.addEventListener('click',e=>{if(Date.now()-(v._watchLastClickV201||0)<260)return;v._watchLastClickV201=Date.now();setTimeout(()=>{if(Date.now()-(v._watchLastClickV201||0)>=250&&Date.now()>Number(v._watchSuppressClickV201Until||0))toggleWatchPlaybackV201()},270)});
+  v.addEventListener('dblclick',e=>{v._watchLastClickV201=Date.now();v._watchSuppressClickV201Until=Date.now()+450;if(!watchPlayerPrefsV201().doubleSeek)return;const r=v.getBoundingClientRect(),pos=(e.clientX-r.left)/r.width;if(pos<.38)seekWatchV201(-10,'left');else if(pos>.62)seekWatchV201(10,'right');else watchFullscreenV18()});
+  ['loadedmetadata','durationchange','timeupdate','progress'].forEach(ev=>v.addEventListener(ev,()=>{updateWatchTimelineV201();updateWatchPlayerStateV201()}));
+  v.addEventListener('play',()=>{updateWatchPlayerStateV201();setWatchControlsVisibleV201(true)});v.addEventListener('pause',()=>{updateWatchPlayerStateV201();setWatchControlsVisibleV201(true,false)});
+  ['waiting','stalled','loadstart'].forEach(ev=>v.addEventListener(ev,()=>{if(hasWatchMediaV201())showWatchLoadingV201(true,ev==='loadstart'?'Подключение…':'Буферизация…')}));
+  ['playing','canplay','canplaythrough'].forEach(ev=>v.addEventListener(ev,()=>showWatchLoadingV201(false)));
+  v.addEventListener('error',()=>{showWatchLoadingV201(false);updateWatchPlayerStateV201()});
+  v.addEventListener('volumechange',updateVolumeV201);document.addEventListener('fullscreenchange',()=>setWatchControlsVisibleV201(true));
+  ['watchDub','watchSubs','watchQuality'].forEach(id=>$('#'+id)?.addEventListener('change',()=>setTimeout(syncWatchChipsV201,0)));
+  installAutoNextInterceptorV201();
+}
+
+function demoSubtitleCuesV201(lang='ru'){return lang==='en'?[{start:1,end:5,text:'[DEMO] Subtitle track is working.'},{start:6,end:10,text:'Switch tracks without restarting the episode.'}]:[{start:1,end:5,text:'[DEMO] Субтитры работают.'},{start:6,end:10,text:'Дорожки можно переключать без перезапуска серии.'}]}
+function addDemoTracksV201(){
+  const d=$('#watchDub'),s=$('#watchSubs'),q=$('#watchQuality');if(!d||!s)return;watchDemoModeV201=true;
+  [['demo:original','🧪 Original · TEST'],['demo:dub','🧪 Dub · TEST']].forEach(([v,t])=>{if(![...d.options].some(o=>o.value===v)){const o=new Option(t,v);o.dataset.demo='1';d.add(o)}});
+  [['demo:ru','🧪 Русские · TEST'],['demo:en','🧪 English · TEST']].forEach(([v,t])=>{if(![...s.options].some(o=>o.value===v)){const o=new Option(t,v);o.dataset.demo='1';s.add(o)}});
+  if(q&&!['demo:4k'].some(v=>[...q.options].some(o=>o.value===v))){const o=new Option('🧪 4K UI · TEST','demo:4k');o.dataset.demo='1';q.add(o)}
+  profileToastV16?.('Демо-дорожки добавлены','Они тестируют только интерфейс; реальное видео/аудио не меняются.');syncWatchChipsV201();
+}
+function clearDemoTracksV201(){watchDemoModeV201=false;for(const sel of [$('#watchDub'),$('#watchSubs'),$('#watchQuality')]){if(!sel)continue;[...sel.options].filter(o=>o.dataset.demo==='1').forEach(o=>o.remove())}watchSubtitleStateV18={kind:'off',cues:[],fallbackNative:false,last:''};$('#watchSubtitleOverlay')?.classList.add('hidden');syncWatchChipsV201();profileToastV16?.('Демо очищено','Вернулись реальные дорожки источника.')}
+// Intercept demo options before legacy change handlers at target level.
+document.addEventListener('change',e=>{const el=e.target;if(!['watchDub','watchSubs','watchQuality'].includes(el?.id)||!String(el.value||'').startsWith('demo:'))return;e.stopPropagation();e.stopImmediatePropagation();if(el.id==='watchSubs'){const lang=el.value.endsWith(':en')?'en':'ru';watchSubtitleStateV18={kind:'external',cues:demoSubtitleCuesV201(lang),fallbackNative:false,last:''};patchWatchPrefsV18({subs:el.value});updateSubtitleOverlayV18()}syncWatchChipsV201()},true);
+
+$('#watchAutoHideControls')?.addEventListener('change',e=>patchWatchPlayerPrefsV201({autoHideControls:e.target.checked}));
+$('#watchDoubleSeek')?.addEventListener('change',e=>patchWatchPlayerPrefsV201({doubleSeek:e.target.checked}));
+$('#watchShowBuffer')?.addEventListener('change',e=>patchWatchPlayerPrefsV201({showBuffer:e.target.checked}));
+$('#watchDemoTracks')?.addEventListener('click',addDemoTracksV201);$('#watchClearDemoTracks')?.addEventListener('click',clearDemoTracksV201);
+
+const renderWatchShellV15BaseV201=renderWatchShellV15;
+renderWatchShellV15=function(){renderWatchShellV15BaseV201();updateWatchPlayerMetaV201();syncWatchChipsV201();syncWatchPlayerSettingsV201();updateWatchTimelineV201();updateWatchPlayerStateV201();setWatchControlsVisibleV201(true,false)};
+const loadWatchEpisodeV15BaseV201=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){removeAutoNextOverlayV201();showWatchLoadingV201(true,'Ищу источник…');const r=await loadWatchEpisodeV15BaseV201(opts);setTimeout(()=>{installWatchPlayerEventsV201();updateWatchPlayerMetaV201();syncWatchChipsV201();syncWatchPlayerSettingsV201();updateWatchTimelineV201();updateWatchPlayerStateV201();showWatchLoadingV201(false);setWatchControlsVisibleV201(true)},100);return r};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+const closeWatchPlayerV15BaseV201=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){removeAutoNextOverlayV201();clearTimeout(watchControlsHideTimerV201);clearTimeout(watchSeekToastTimerV201);return closeWatchPlayerV15BaseV201()};window.closeWatchPlayerV15=closeWatchPlayerV15;
+
+installWatchPlayerEventsV201();syncWatchPlayerSettingsV201();updateWatchPlayerStateV201();
+
+/* V20.1.1 · polished in-player menus + readable playback errors */
+function ensurePlayerMenuV201(){let m=$('#watchPlayerMenuV201');if(m)return m;const w=$('#watchVideoWrap');if(!w)return null;m=document.createElement('div');m.id='watchPlayerMenuV201';m.className='watch-player-menu hidden';m.innerHTML='<div class="watch-player-menu-head"><span id="watchPlayerMenuTitleV201">МЕНЮ</span><button id="watchPlayerMenuCloseV201" type="button">✕</button></div><div id="watchPlayerMenuListV201" class="watch-player-menu-list"></div>';w.appendChild(m);m.querySelector('#watchPlayerMenuCloseV201')?.addEventListener('click',()=>m.classList.add('hidden'));return m}
+function openPlayerSelectMenuV201(kind){
+  const cfg={dub:{id:'watchDub',title:'ОЗВУЧКА'},subs:{id:'watchSubs',title:'СУБТИТРЫ'},quality:{id:'watchQuality',title:'КАЧЕСТВО'}}[kind];if(!cfg)return;const sel=$('#'+cfg.id),m=ensurePlayerMenuV201();if(!sel||!m)return;
+  $('#watchPlayerMenuTitleV201').textContent=cfg.title;const list=$('#watchPlayerMenuListV201');
+  const opts=[...sel.options].filter(o=>!o.disabled);if(!opts.length){list.innerHTML='<div class="watch-player-menu-empty">Нет доступных вариантов</div>'}else list.innerHTML=opts.map(o=>`<button type="button" data-value="${esc(o.value)}" class="${o.value===sel.value?'active':''}"><span>${esc(o.textContent.trim())}</span><span>${o.value===sel.value?'✓':''}</span></button>`).join('');
+  list.querySelectorAll('button[data-value]').forEach(b=>b.addEventListener('click',()=>{sel.value=b.dataset.value;sel.dispatchEvent(new Event('change',{bubbles:true}));m.classList.add('hidden');syncWatchChipsV201()}));m.classList.remove('hidden');setWatchControlsVisibleV201(true,false)
+}
+function closePlayerMenuV201(){ensurePlayerMenuV201()?.classList.add('hidden')}
+for(const [id,kind] of [['watchTrackBtn','dub'],['watchCcInline','subs'],['watchQualityInline','quality']]){$('#'+id)?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openPlayerSelectMenuV201(kind)},true)}
+
+document.addEventListener('pointerdown',e=>{const m=$('#watchPlayerMenuV201');if(!m||m.classList.contains('hidden'))return;if(!m.contains(e.target)&&!e.target.closest?.('#watchTrackBtn,#watchCcInline,#watchQualityInline'))m.classList.add('hidden')},true);
+
+function ensurePlaybackErrorV201(){let e=$('#watchPlaybackErrorV201');if(e)return e;const w=$('#watchVideoWrap');if(!w)return null;e=document.createElement('div');e.id='watchPlaybackErrorV201';e.className='watch-playback-error hidden';e.innerHTML='<div class="watch-playback-error-icon">⚠</div><h4>Не удалось воспроизвести видео</h4><p id="watchPlaybackErrorTextV201">Источник временно недоступен.</p><div class="watch-playback-error-actions"><button id="watchPlaybackRetryV201" type="button">↻ Повторить</button><button id="watchPlaybackSourcesV201" class="secondary" type="button">⚙ Источники</button></div>';w.appendChild(e);e.querySelector('#watchPlaybackRetryV201')?.addEventListener('click',()=>{hidePlaybackErrorV201();loadWatchEpisodeV15({autoplay:false,preserveTime:true,forceResolver:true})});e.querySelector('#watchPlaybackSourcesV201')?.addEventListener('click',()=>{hidePlaybackErrorV201();openSourcesV19?.()});return e}
+function showPlaybackErrorV201(text='Источник временно недоступен.'){const e=ensurePlaybackErrorV201();if(!e)return;$('#watchPlaybackErrorTextV201').textContent=String(text||'Источник временно недоступен.');e.classList.remove('hidden');showWatchLoadingV201(false);setWatchControlsVisibleV201(true,false)}
+function hidePlaybackErrorV201(){ensurePlaybackErrorV201()?.classList.add('hidden')}
+$('#watchVideo')?.addEventListener('error',()=>{const v=$('#watchVideo');if(!hasWatchMediaV201()&&!v?.currentSrc)return;showPlaybackErrorV201(v?.error?.message||'Видеоисточник вернул ошибку. Можно повторить запрос или переключить источник.')},true);
+function bindHlsErrorsV201(){const h=watchStateV15.hls;if(!h||h._v201Bound||!window.Hls)return;h._v201Bound=true;h.on(Hls.Events.ERROR,(_ev,data)=>{if(data?.fatal)showPlaybackErrorV201(`HLS: ${data.details||data.type||'фатальная ошибка потока'}`);else if(data?.details==='bufferStalledError')showWatchLoadingV201(true,'Буферизация…')})}
+const loadWatchEpisodeV15BaseV2011=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){hidePlaybackErrorV201();closePlayerMenuV201();const r=await loadWatchEpisodeV15BaseV2011(opts);setTimeout(bindHlsErrorsV201,120);setTimeout(bindHlsErrorsV201,850);return r};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+/* ===== V20.2: stability pass — catalog/random/music/backend/provider polish ===== */
+const V202_TAG='20.2';
+
+/* Jikan objects now contain enough data to render a useful detail page even when AniList is unavailable. */
+function parseJikanDurationV202(v){
+  const s=String(v||'');
+  const h=Number((s.match(/(\d+)\s*hr/i)||[])[1]||0),m=Number((s.match(/(\d+)\s*min/i)||[])[1]||0);
+  const total=h*60+m;return total||null;
+}
+function fuzzyDateFromIsoV202(v){
+  if(!v)return null;const d=new Date(v);if(Number.isNaN(d.getTime()))return null;
+  return {year:d.getUTCFullYear(),month:d.getUTCMonth()+1,day:d.getUTCDate()};
+}
+const jikanMediaLikeBeforeV202=jikanMediaLike;
+jikanMediaLike=function(j){
+  const m=jikanMediaLikeBeforeV202(j);
+  m.duration=parseJikanDurationV202(j?.duration)||m.duration||null;
+  m.startDate=fuzzyDateFromIsoV202(j?.aired?.from);
+  m.endDate=fuzzyDateFromIsoV202(j?.aired?.to);
+  m.popularity=Number(j?.members||j?.popularity||0)||null;
+  m.source=j?.source||m.source||null;
+  m.studios={nodes:(j?.studios||[]).map(x=>({name:x.name})).filter(x=>x.name)};
+  m.coverImage={
+    extraLarge:j?.images?.webp?.large_image_url||j?.images?.jpg?.large_image_url||m.coverImage?.large||null,
+    large:j?.images?.webp?.large_image_url||j?.images?.jpg?.large_image_url||m.coverImage?.large||null,
+    medium:j?.images?.webp?.image_url||j?.images?.jpg?.image_url||m.coverImage?.medium||null
+  };
+  return m;
+};
+
+/* The catalog no longer depends on AniList when a project backend is configured.
+   One Jikan request per page is substantially steadier than the old AniList -> Jikan double attempt. */
+const catalogFetchPageBeforeV202=catalogFetchPageV10;
+catalogFetchPageV10=async function({append=false}={}){
+  if(catalogStateV10.loading)return;
+  catalogStateV10.mode='catalog';const f=catalogStateV10.filters=catalogReadFormV10();catalogSaveFiltersV10();
+  if(!append){catalogStateV10.page=1;catalogStateV10.items=[];}
+  const pageNo=Math.max(1,Number(catalogStateV10.page||1));catalogSetLoadingV12(true);
+  $('#catalogModeLabel').textContent='КАТАЛОГ';$('#catalogResultsTitle').textContent=f.search?`Поиск: ${f.search}`:(f.genre?`${f.genre} · аниме`:'Каталог аниме');
+  let lastError=null;
+  try{
+    const r=await catalogJikanPageV11(f,pageNo),items=(r.items||[]).filter(m=>catalogClientFilterV11(m,f,{jikan:true}));
+    const merged=append?catalogDedupV12([...catalogStateV10.items,...items]):catalogDedupV12(items);
+    catalogRegisterItemsV10(merged);catalogStateV10.items=merged;catalogStateV10.hasNext=!!r.pagination?.has_next_page;catalogStateV10.page=pageNo;
+    catalogStateV10.total=Number(r.pagination?.items?.total||catalogStateV10.total||catalogUniverseV12.total||0);catalogRenderGridV10();
+    if(merged.length){
+      const total=catalogStateV10.total;$('#catalogResultCount').innerHTML=`${merged.length} показано${total?` · ${fmtNumV12(total)} в источнике`:''}<span class="catalog-source-note">MyAnimeList · Jikan</span>`;
+      $('#catalogSourceStatus').textContent='MyAnimeList · Jikan';catalogWriteCacheV12(f,merged,total,catalogStateV10.hasNext,catalogStateV10.page);catalogSetEmptyV11('Ничего не нашлось','Попробуй изменить фильтры.');
+      return;
+    }
+    if(f.genre||f.length||f.firstSeason){
+      // Client-only filters may empty one page. Walk a couple more pages without hammering the API.
+      let extra=[],next=pageNo+1,has=!!r.pagination?.has_next_page;
+      for(let i=0;i<2&&has&&!extra.length;i++,next++){
+        await sleepV6(650);const rr=await catalogJikanPageV11(f,next);extra=(rr.items||[]).filter(m=>catalogClientFilterV11(m,f,{jikan:true}));has=!!rr.pagination?.has_next_page;catalogStateV10.page=next;
+      }
+      if(extra.length){catalogStateV10.items=catalogDedupV12(extra);catalogRegisterItemsV10(extra);catalogStateV10.hasNext=has;catalogRenderGridV10();$('#catalogResultCount').innerHTML=`${extra.length} показано<span class="catalog-source-note">MyAnimeList · Jikan</span>`;catalogWriteCacheV12(f,extra,catalogStateV10.total,has,catalogStateV10.page);return;}
+    }
+    catalogSetEmptyV11('По этим фильтрам пусто','Сбрось часть фильтров или попробуй другую подборку.');$('#catalogResultCount').textContent='0 в выдаче';
+  }catch(e){
+    lastError=e;console.warn('V20.2 Jikan catalog',e);
+    // Direct AniList is still useful locally, so keep it as a secondary source rather than a hard dependency.
+    try{
+      const targeted=catalogNeedsTargetedV12(f),page=await catalogRawPageV12(f,pageNo,targeted),items=(page.media||[]).filter(m=>catalogFilterV12(m,f)),merged=append?catalogDedupV12([...catalogStateV10.items,...items]):catalogDedupV12(items);
+      if(!merged.length)throw e;catalogStateV10.items=merged;catalogRegisterItemsV10(merged);catalogStateV10.hasNext=!!page.pageInfo?.hasNextPage;catalogStateV10.total=Number(page.pageInfo?.total||0);catalogRenderGridV10();$('#catalogResultCount').innerHTML=`${merged.length} показано<span class="catalog-source-note">AniList · резерв</span>`;$('#catalogSourceStatus').textContent='AniList · резерв';catalogWriteCacheV12(f,merged,catalogStateV10.total,catalogStateV10.hasNext,pageNo);return;
+    }catch(second){lastError=second;}
+    const c=catalogReadCacheV12(f);
+    if(c){catalogStateV10.items=c.items;catalogStateV10.total=c.total||0;catalogStateV10.hasNext=!!c.hasNext;catalogStateV10.page=c.page||1;catalogRegisterItemsV10(c.items);catalogRenderGridV10();$('#catalogResultCount').innerHTML=`${c.items.length} из кэша<span class="catalog-source-note">офлайн-кэш</span>`;catalogSetEmptyV11('Нет свежего соединения','Показываю последнюю успешно загруженную выдачу.');}
+    else{catalogStateV10.items=[];catalogStateV10.hasNext=false;catalogRenderGridV10();catalogSetEmptyV11('Каталог временно недоступен','Нажми «Повторить» через несколько секунд.',String(lastError?.message||lastError||''));$('#catalogResultCount').textContent='Ошибка загрузки';}
+  }finally{catalogSetLoadingV12(false);catalogAutoLoadBusyV12=false;}
+};
+window.catalogFetchPageV10=catalogFetchPageV10;
+
+/* Truly random, no OVA. Uses Jikan's dedicated random endpoint and falls back to already loaded catalog cards. */
+async function catalogRandomV202(){
+  if(catalogRandomBusyV101)return;catalogRandomBusyV101=true;
+  const btn=$('#catalogRandomBtn'),top=$('#topRandomBtn'),old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='🎲 Ищу…';}if(top)top.classList.add('is-loading');
+  try{
+    let data=null;const b=backendBaseV20();
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        if(b){const r=await fetch(`${b}/random/anime`,{headers:{Accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error(`Random ${r.status}`);data=await r.json();}
+        else data=await jikanFetchV6('/random/anime',{tries:2});
+        const j=data?.data;if(j&&String(j.type||'').toUpperCase()!=='OVA'&&!String(j.rating||'').toUpperCase().startsWith('RX')){const m=catalogJikanMediaV11(j);catalogRegisterItemsV10([m]);await openCatalogMediaV10(catalogMediaKeyV11(m));setMessage('','ok');return;}
+      }catch(e){if(attempt===2)throw e;await sleepV6(800);}
+    }
+    throw new Error('Случайный тайтл не найден');
+  }catch(e){
+    console.warn('V20.2 random',e);const pool=[...(catalogStateV10.items||[]),...(catalogStateV10.recommendations||[]).map(x=>x.media||x)].filter(m=>m&&String(m.format||'').toUpperCase()!=='OVA'&&!m.isAdult);
+    if(pool.length){const m=pool[Math.floor(Math.random()*pool.length)];catalogRegisterItemsV10([m]);await openCatalogMediaV10(catalogMediaKeyV11(m));setMessage('','ok');}
+    else setMessage('Случайное временно недоступно — каталог ещё не успел загрузиться.','error');
+  }finally{catalogRandomBusyV101=false;if(btn){btn.disabled=false;btn.textContent=old||'🎲 Случайное';}if(top)top.classList.remove('is-loading');}
+}
+catalogRandomV10=catalogRandomV202;window.catalogRandomV10=catalogRandomV202;
+['catalogRandomBtn','topRandomBtn'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.dataset.v202Random){el.dataset.v202Random='1';el.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();catalogRandomV10();},true);}});
+
+/* AnimeThemes is now the primary OP/ED metadata source. It is designed specifically for this job and does not consume Jikan's tight request budget. */
+async function animeThemesRequestV202(malId){
+  if(!malId)throw new Error('MAL ID не найден');
+  const q=new URLSearchParams();q.set('filter[has]','resources');q.set('filter[site]','MyAnimeList');q.set('filter[external_id]',String(malId));q.set('include','animethemes.animethemeentries.videos,animethemes.song.artists,animethemes.group');
+  const b=backendBaseV20(),url=b?`${b}/animethemes/anime?${q}`:`https://api.animethemes.moe/anime?${q}`;
+  const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error(`AnimeThemes ${r.status}`);return r.json();
+}
+function animeThemesPartV202(payload,c){
+  const a=payload?.anime?.[0];if(!a)return null;const openings=[],endings=[];
+  for(const t of a.animethemes||[]){
+    const code=String(t?.type||t?.slug||t?.name||'').toUpperCase(),song=t?.song||{},title=String(song.title||t?.name||'').trim();if(!title)continue;
+    const artists=(song.artists||[]).map(x=>x?.name).filter(Boolean).join(', '),prefix=t?.name&&String(t.name).toUpperCase()!==title.toUpperCase()?`${t.name}: `:'';
+    const raw=`${prefix}\"${title}\"${artists?` by ${artists}`:''}`;
+    if(/^ED/.test(code)||String(t?.name||'').toUpperCase().startsWith('ED'))endings.push(raw);else if(/^OP/.test(code)||String(t?.name||'').toUpperCase().startsWith('OP'))openings.push(raw);
+  }
+  return {mal_id:Number(c.mal_id),title:c.title||a.name||`MAL ${c.mal_id}`,year:c.year||a.year||null,type:c.type||a.media_format||'',openings:[...new Set(openings)],endings:[...new Set(endings)]};
+}
+async function collectAnimeThemesV202(entry,media,token){
+  let malId=Number(entry.mal_id||media?.idMal||0);if(!malId){try{await resolveEntryV3(entry,{needDetail:true});malId=Number(entry.mal_id||0)}catch{}}
+  const rawParts=(entry.franchise_parts||[]).filter(p=>Number(p?.mal_id));const candidates=rawParts.length?rawParts:[{mal_id:malId,title:entry.title,year:entry.year,type:entry.format}];
+  const parts=[];for(let i=0;i<candidates.length&&i<18;i++){
+    if(token!==detailExtrasTokenV6||!openedDetail)return [];
+    const c=candidates[i],s=$('#detailThemesStatus');if(s)s.textContent=`AnimeThemes: ${i+1} / ${candidates.length}…`;
+    try{const p=animeThemesPartV202(await animeThemesRequestV202(Number(c.mal_id)),c);if(p&&(p.openings.length||p.endings.length))parts.push(p);}catch(e){console.warn('AnimeThemes part',c.mal_id,e);}
+  }
+  if(parts.length&&malId)saveMusicCacheV8(malId,parts);return parts;
+}
+const loadFranchiseThemesBeforeV202=loadFranchiseThemesV6;
+loadFranchiseThemesV6=async function(entry,media,token){
+  if(uiSettings?.showThemes===false)return;renderThemesLoadingV6();
+  try{
+    const parts=await collectAnimeThemesV202(entry,media,token);if(token!==detailExtrasTokenV6||!openedDetail)return;
+    if(parts.length){const malId=Number(entry.mal_id||media?.idMal||parts[0]?.mal_id||0);renderFranchiseThemesV6(entry,parts,malId);const ops=flattenFranchiseThemesV6(parts,'openings'),eds=flattenFranchiseThemesV6(parts,'endings'),s=$('#detailThemesStatus');if(s)s.innerHTML=`AnimeThemes · <b>${parts.length}</b> ${parts.length===1?'часть':'частей'} · <b>${ops.length}</b> OP · <b>${eds.length}</b> ED`;return;}
+  }catch(e){console.warn('V20.2 AnimeThemes failed',e);}
+  // Keep the older Jikan chain as a secondary fallback for rare entries missing from AnimeThemes.
+  return loadFranchiseThemesBeforeV202(entry,media,token);
+};
+
+/* A configured backend without a KODIK_TOKEN is not an error. Do not hit /kodik/search until health says Kodik exists. */
+const ensureKodikBeforeV202=ensureKodikEpisodeV19;
+ensureKodikEpisodeV19=async function(opts={}){
+  const c=providerConfigV19(),b=backendBaseV20();
+  if(b&&!c.kodikToken){
+    try{const h=await backendHealthV20();if(!h?.services?.kodik){watchResolverV19.lastKodikError='ещё не подключён';return false;}}catch{watchResolverV19.lastKodikError='backend недоступен';return false;}
+  }
+  return ensureKodikBeforeV202(opts);
+};
+
+/* Refresh backend health silently after reload, so provider decisions know which secrets are really configured. */
+if(backendBaseV20())backendHealthV20().then(()=>{syncBackendSettingsV20();syncProviderConfigUiV19();}).catch(()=>{});
+
+/* Make the backend status honest about individual services. */
+const testBackendFromSettingsBeforeV202=testBackendFromSettingsV20;
+testBackendFromSettingsV20=async function(){
+  const input=$('#settingBackendUrl'),status=$('#settingBackendStatus');const b=setBackendBaseV20(input?.value||'');if(!b){if(status)status.textContent='Вставь URL Worker';return}
+  if(status){status.textContent='Проверяю…';status.dataset.kind='loading'}
+  try{const h=await backendHealthV20({force:true}),s=h.services||{};if(status){status.textContent=`✓ Backend · Jikan ✓ · AnimeThemes ${s.animethemes?'✓':'—'} · SubDL ${s.subdl?'✓':'—'} · Kodik ${s.kodik?'✓':'—'}`;status.dataset.kind='ok'}syncProviderConfigUiV19();if(document.body.classList.contains('catalog-mode')){catalogStateV10.items=[];catalogStateV10.page=1;catalogFetchPageV10();}}
+  catch(e){if(status){status.textContent=`✕ ${String(e?.message||e)}`;status.dataset.kind='error'}}
+};
+// Replace the earlier click behavior in capture phase so a single click performs one health check.
+$('#settingBackendTest')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();testBackendFromSettingsV20();},true);
+
+console.info(`Anime list V${V202_TAG}: stability fixes loaded`);
+
+/* V20.2b: on the public build, MAL/Jikan is the dependable metadata lane; avoid repeatedly hitting a blocked server-side AniList endpoint. */
+const resolveEntryBeforeV202=resolveEntryV3;
+resolveEntryV3=async function(entry,{needDetail=false}={}){
+  if(backendBaseV20()){
+    if(entry?.mal_id){
+      try{
+        const p=await jikanFetchV6(`/anime/${Number(entry.mal_id)}/full`,{tries:2}),j=p?.data;
+        if(j){const m=jikanMediaLike(j);applyResolved(entry,m);saveData();return m;}
+      }catch(e){console.warn('V20.2 MAL detail fallback',e);}
+    }
+    for(const phrase of entrySearchPhrases(entry).slice(0,3)){
+      try{
+        const list=await jikanSearchAnime(phrase);if(!list.length)continue;const media=list.map(jikanMediaLike);let best=null,bestScore=0;
+        for(const m of media){const sc=scoreMediaMatchV3(m,entry);if(sc>bestScore){bestScore=sc;best=m;}}
+        if(best&&bestScore>=48){applyResolved(entry,best);saveData();if(needDetail&&best.idMal){try{const p=await jikanFetchV6(`/anime/${Number(best.idMal)}/full`,{tries:2}),j=p?.data;if(j){const full=jikanMediaLike(j);applyResolved(entry,full);saveData();return full;}}catch{}}return best;}
+      }catch(e){console.warn('V20.2 MAL search fallback',phrase,e);}
+    }
+  }
+  return resolveEntryBeforeV202(entry,{needDetail});
+};
+
+/* ===== V20.3: remove Jikan from critical paths; Shikimori + direct AniList + robust AnimeThemes ===== */
+const V203_TAG='20.3';
+
+function shikiAbsV203(url){
+  const s=String(url||'').trim();
+  if(!s)return null;
+  if(/^https?:\/\//i.test(s))return s;
+  return `https://shikimori.one${s.startsWith('/')?'':'/'}${s}`;
+}
+function shikiFormatV203(kind){
+  const k=String(kind||'').toLowerCase();
+  if(k==='movie')return 'MOVIE'; if(k==='ova')return 'OVA'; if(k==='ona')return 'ONA';
+  if(k==='special'||k==='tv_special')return 'SPECIAL'; if(k==='music'||k==='pv'||k==='cm')return 'MUSIC';
+  return 'TV';
+}
+function shikiStatusV203(status){return ({ongoing:'RELEASING',released:'FINISHED',anons:'NOT_YET_RELEASED'})[String(status||'').toLowerCase()]||String(status||'').toUpperCase();}
+function dateObjV203(v){
+  if(v&&typeof v==='object'&&Number(v.year))return {year:Number(v.year)||null,month:Number(v.month)||null,day:Number(v.day)||null};
+  const m=String(v||'').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);return m?{year:+m[1],month:+m[2],day:+m[3]}:{year:null,month:null,day:null};
+}
+function cleanShikiDescV203(v){return String(v||'').replace(/\[(?:\/?(?:character|url|b|i|u|quote|spoiler|color|size|center|right|left)[^\]]*)\]/gi,'').replace(/<br\s*\/?\s*>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/\s+\n/g,'\n').replace(/\n\s+/g,'\n').replace(/[ \t]{2,}/g,' ').trim();}
+function shikiMediaV203(j,{full=false}={}){
+  const id=Number(j?.id||j?.malId||j?.mal_id||0), aired=dateObjV203(j?.airedOn||j?.aired_on), poster=j?.poster||{}, image=j?.image||{};
+  const genres=(j?.genres||[]).map(g=>g?.name||g?.russian).filter(Boolean), studios=(j?.studios||[]).map(x=>({name:x?.name})).filter(x=>x.name);
+  const score=Number(j?.score||0);
+  const m={
+    id:id?-(2000000+id):null,idMal:id||null,__shikimori:true,type:'ANIME',format:shikiFormatV203(j?.kind),status:shikiStatusV203(j?.status),episodes:Number(j?.episodes||0)||null,duration:Number(j?.duration||0)||null,seasonYear:Number(aired.year||String(j?.season||'').match(/\d{4}/)?.[0]||0)||null,
+    averageScore:score?Math.round(score*10):null,popularity:Number(j?.popularity||0)||null,isAdult:String(j?.rating||'').toLowerCase()==='rx',
+    title:{english:j?.english||j?.name||null,romaji:j?.name||j?.english||null,native:j?.japanese||null},synonyms:[j?.russian,...(j?.synonyms||[])].filter(Boolean),genres,
+    description:cleanShikiDescV203(j?.descriptionHtml||j?.description_html||j?.description||''),
+    coverImage:{extraLarge:shikiAbsV203(poster.originalUrl||poster.mainUrl||image.original),large:shikiAbsV203(poster.mainUrl||poster.originalUrl||image.original||image.preview),medium:shikiAbsV203(poster.miniUrl||image.preview||image.x96)},
+    startDate:aired,endDate:dateObjV203(j?.releasedOn||j?.released_on),studios:{nodes:studios},source:null
+  };
+  return m;
+}
+async function shikiGetV203(path,{timeout=9000}={}){
+  const ctrl=new AbortController(),tm=setTimeout(()=>ctrl.abort(),timeout),b=backendBaseV20();
+  try{
+    const url=b?`${b}/shikimori${String(path).startsWith('/')?'':'/'}${path}`:`https://shikimori.one/api${String(path).startsWith('/')?'':'/'}${path}`;
+    const r=await fetch(url,{headers:{Accept:'application/json'},cache:'no-store',signal:ctrl.signal});
+    if(!r.ok){let msg=`Shikimori ${r.status}`;try{const t=await r.text();if(t)msg+=` · ${t.slice(0,100)}`}catch{}throw new Error(msg)}
+    return r.json();
+  }finally{clearTimeout(tm)}
+}
+let shikiGenresCacheV203=null;
+async function shikiGenreIdV203(name){
+  if(!name)return null;
+  if(!shikiGenresCacheV203){
+    try{const rows=await shikiGetV203('/genres');shikiGenresCacheV203=new Map((rows||[]).filter(x=>String(x.kind||'').toLowerCase()==='anime').flatMap(x=>[[String(x.name||'').toLowerCase(),x.id],[String(x.russian||'').toLowerCase(),x.id]]));}catch{shikiGenresCacheV203=new Map();}
+  }
+  return shikiGenresCacheV203.get(String(name).toLowerCase())||null;
+}
+function shikiOrderV203(f){if(f.sort==='SCORE_DESC')return 'ranked';if(f.sort==='START_DATE_DESC')return 'aired_on';if(f.sort==='TRENDING_DESC')return 'popularity';return 'popularity';}
+function shikiKindsV203(format){return ({TV:'tv,tv_13,tv_24,tv_48',MOVIE:'movie',OVA:'ova',ONA:'ona',SPECIAL:'special,tv_special',MUSIC:'music'})[format]||'';}
+function shikiStatusFilterV203(status){return ({RELEASING:'ongoing',FINISHED:'released',NOT_YET_RELEASED:'anons'})[status]||'';}
+async function catalogShikiPageV203(f,pageNo){
+  const p=new URLSearchParams({page:String(Math.max(1,pageNo||1)),limit:'50',order:shikiOrderV203(f),censored:'true'});
+  if(f.search)p.set('search',f.search);const kinds=shikiKindsV203(f.format);if(kinds)p.set('kind',kinds);const st=shikiStatusFilterV203(f.status);if(st)p.set('status',st);
+  if(f.score)p.set('score',String(Math.max(1,Math.ceil(Number(f.score)/10))));
+  if(f.yearFrom||f.yearTo){const a=Number(f.yearFrom||f.yearTo),z=Number(f.yearTo||f.yearFrom);if(a&&z)p.set('season',a===z?String(a):`${Math.min(a,z)}_${Math.max(a,z)}`);}
+  if(f.genre){const gid=await shikiGenreIdV203(f.genre);if(gid)p.set('genre',String(gid));}
+  const rows=await shikiGetV203(`/animes?${p.toString()}`),out=(Array.isArray(rows)?rows:[]).map(x=>shikiMediaV203(x));if(f.genre)out.forEach(m=>{if(!m.genres?.length)m.genres=[f.genre];});return out;
+}
+
+/* Catalog: direct AniList first (browser IP), Shikimori fallback. Jikan is no longer used here. */
+catalogFetchPageV10=async function({append=false}={}){
+  if(catalogStateV10.loading)return;
+  catalogStateV10.mode='catalog';const f=catalogStateV10.filters=catalogReadFormV10();catalogSaveFiltersV10();if(!append){catalogStateV10.page=1;catalogStateV10.items=[];}
+  const pageNo=Math.max(1,Number(catalogStateV10.page||1));catalogSetLoadingV12(true);catalogMarkPresetV10(null);$('#catalogModeLabel').textContent='КАТАЛОГ';$('#catalogResultsTitle').textContent=f.search?`Поиск: ${f.search}`:(f.genre?`${f.genre} · аниме`:'Каталог аниме');
+  let items=[],source='',hasNext=false,total=0,lastErr=null;
+  try{
+    try{
+      const payload=await anilistFetchDirectV20(CATALOG_SIMPLE_QUERY_V11,{page:pageNo,search:f.search||null,sort:catalogSortListV11(f)}),page=payload?.data?.Page||{};
+      items=(page.media||[]).filter(m=>catalogClientFilterV11(m,f));hasNext=!!page.pageInfo?.hasNextPage;total=Number(page.pageInfo?.total||0);source='AniList · напрямую';
+    }catch(e){lastErr=e;console.warn('V20.3 AniList direct catalog',e);}
+    if(!items.length){
+      const sh=await catalogShikiPageV203(f,pageNo);items=sh.filter(m=>catalogClientFilterV11(m,f,{jikan:true}));hasNext=sh.length>=50;total=0;source='Shikimori · резерв';
+    }
+    items=catalogDedupV12(items);const merged=append?catalogDedupV12([...(catalogStateV10.items||[]),...items]):items;catalogStateV10.items=merged;catalogStateV10.hasNext=hasNext;catalogStateV10.total=total;catalogStateV10.page=pageNo;catalogRegisterItemsV10(merged);catalogRenderGridV10();
+    if(merged.length){$('#catalogResultCount').innerHTML=`${merged.length} показано${total?` · ~${fmtNumV12(total)} всего`:''}<span class="catalog-source-note">${esc(source)}</span>`;$('#catalogSourceStatus').textContent=source;catalogWriteCacheV12(f,merged,total,hasNext,pageNo);catalogSetEmptyV11('Ничего не нашлось','Попробуй изменить фильтры.');}
+    else throw lastErr||new Error('Пустая выдача');
+  }catch(e){
+    console.warn('V20.3 catalog fallback failed',e);const c=catalogReadCacheV12(f);
+    if(c){catalogStateV10.items=c.items;catalogStateV10.total=c.total||0;catalogStateV10.hasNext=!!c.hasNext;catalogStateV10.page=c.page||1;catalogRegisterItemsV10(c.items);catalogRenderGridV10();$('#catalogResultCount').innerHTML=`${c.items.length} из кэша<span class="catalog-source-note">офлайн-кэш</span>`;catalogSetEmptyV11('Нет свежего соединения','Показываю последнюю успешную выдачу.');}
+    else{catalogStateV10.items=[];catalogStateV10.hasNext=false;catalogRenderGridV10();catalogSetEmptyV11('Каталог временно недоступен','AniList и Shikimori сейчас не ответили. Нажми «Повторить».',String(e?.message||e));$('#catalogResultCount').textContent='Ошибка загрузки';}
+  }finally{catalogSetLoadingV12(false);catalogAutoLoadBusyV12=false;}
+};
+window.catalogFetchPageV10=catalogFetchPageV10;
+
+/* Global random: Shikimori has a real random ordering; no Jikan, no OVA. */
+async function catalogRandomV203(){
+  if(catalogRandomBusyV101)return;catalogRandomBusyV101=true;const btn=$('#catalogRandomBtn'),top=$('#topRandomBtn'),old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='🎲 Ищу…';}if(top)top.classList.add('is-loading');
+  try{
+    let picked=null;
+    try{const rows=await shikiGetV203('/animes?limit=25&order=random&censored=true');const pool=(rows||[]).map(x=>shikiMediaV203(x)).filter(m=>m.format!=='OVA'&&!m.isAdult);picked=pool[Math.floor(Math.random()*pool.length)]||null;}catch(e){console.warn('V20.3 random shiki',e);}
+    if(!picked){const pool=[...(catalogStateV10.items||[]),...(catalogStateV10.recommendations||[]).map(x=>x.media||x)].filter(m=>m&&m.format!=='OVA'&&!m.isAdult);picked=pool[Math.floor(Math.random()*pool.length)]||null;}
+    if(!picked)throw new Error('Нет доступного пула');catalogRegisterItemsV10([picked]);await openCatalogMediaV10(catalogMediaKeyV11(picked));setMessage('','ok');
+  }catch(e){setMessage('Случайное временно недоступно. Попробуй ещё раз после загрузки каталога.','error');}
+  finally{catalogRandomBusyV101=false;if(btn){btn.disabled=false;btn.textContent=old||'🎲 Случайное';}if(top)top.classList.remove('is-loading');}
+}
+catalogRandomV10=catalogRandomV203;window.catalogRandomV10=catalogRandomV203;
+
+/* Shikimori preview/detail enrichment, so title pages don't become empty when AniList is degraded. */
+const catalogResolveMediaBeforeV203=catalogResolveMediaV11;
+catalogResolveMediaV11=async function(m){
+  if(m?.__shikimori&&m.idMal){
+    try{const p=await anilistFetchDirectV20(DETAIL_BY_MAL_QUERY,{idMal:Number(m.idMal)}),a=p?.data?.Media;if(a)return a;}catch{}
+    try{return shikiMediaV203(await shikiGetV203(`/animes/${Number(m.idMal)}`),{full:true});}catch{return {...m,id:null};}
+  }
+  return catalogResolveMediaBeforeV203(m);
+};
+
+/* Resolver: direct AniList -> Shikimori. Jikan deliberately removed from the critical metadata path. */
+resolveEntryV3=async function(entry,{needDetail=false}={}){
+  if(entry?.anilist_id){try{const p=await anilistFetchDirectV20(DETAIL_BY_ID_QUERY,{id:Number(entry.anilist_id)}),m=p?.data?.Media;if(m){applyResolved(entry,m);saveData();return m;}}catch(e){console.warn('V20.3 direct AniList id',e);}}
+  if(entry?.mal_id){try{const p=await anilistFetchDirectV20(DETAIL_BY_MAL_QUERY,{idMal:Number(entry.mal_id)}),m=p?.data?.Media;if(m){applyResolved(entry,m);saveData();return m;}}catch(e){console.warn('V20.3 direct AniList MAL',e);}}
+  if(entry?.mal_id){
+    try{const raw=await shikiGetV203(`/animes/${Number(entry.mal_id)}`),m=shikiMediaV203(raw,{full:true});applyResolved(entry,m);const ru=cleanShikiDescV203(raw?.descriptionHtml||raw?.description_html||raw?.description||'');if(ru){entry.description_ru=ru;entry.description_ru_source='Русское описание: Shikimori';}saveData();return m;}catch(e){console.warn('V20.3 Shikimori detail',e);}
+  }
+  for(const phrase of entrySearchPhrases(entry).slice(0,4)){
+    try{const rows=await shikiGetV203(`/animes?limit=12&censored=true&search=${encodeURIComponent(phrase)}`),media=(rows||[]).map(x=>shikiMediaV203(x));let best=null,bestScore=0;for(const m of media){const sc=scoreMediaMatchV3(m,entry);if(sc>bestScore){bestScore=sc;best=m;}}if(best&&bestScore>=48){entry.mal_id ||= best.idMal;applyResolved(entry,best);saveData();try{const raw=await shikiGetV203(`/animes/${Number(best.idMal)}`),full=shikiMediaV203(raw,{full:true});applyResolved(entry,full);const ru=cleanShikiDescV203(raw?.descriptionHtml||raw?.description_html||raw?.description||'');if(ru){entry.description_ru=ru;entry.description_ru_source='Русское описание: Shikimori';}saveData();return full;}catch{return best;}}}catch(e){console.warn('V20.3 Shikimori search',phrase,e);}
+  }
+  return null;
+};
+
+/* AnimeThemes: try AniList ID and MAL ID, both direct and through backend. */
+async function animeThemesUrlFetchV203(url){const r=await fetch(url,{headers:{Accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error(`AnimeThemes ${r.status}`);return r.json();}
+async function animeThemesByExternalV203(site,id){
+  if(!id)return null;const q=new URLSearchParams();q.set('filter[has]','resources');q.set('filter[site]',site);q.set('filter[external_id]',String(id));q.set('include','animethemes.animethemeentries.videos,animethemes.song.artists,animethemes.group');
+  const urls=[];const b=backendBaseV20();if(b)urls.push(`${b}/animethemes/anime?${q.toString()}`);urls.push(`https://api.animethemes.moe/anime?${q.toString()}`);
+  let last=null;for(const url of urls){try{const j=await animeThemesUrlFetchV203(url);if(j?.anime?.length)return j;last=new Error('пустой ответ');}catch(e){last=e;}}
+  if(last)throw last;return null;
+}
+async function collectAnimeThemesV203(entry,media,token){
+  const candidates=(entry.franchise_parts||[]).length?entry.franchise_parts:[{mal_id:entry.mal_id||media?.idMal,anilist_id:entry.anilist_id||media?.id,title:entry.title,year:entry.year,type:entry.format}];
+  const parts=[];
+  for(let i=0;i<candidates.length&&i<20;i++){
+    if(token!==detailExtrasTokenV6||!openedDetail)return [];
+    const c=candidates[i],status=$('#detailThemesStatus');if(status)status.textContent=`AnimeThemes: ${i+1} / ${candidates.length}…`;
+    let payload=null;
+    for(const [site,id] of [['AniList',Number(c.anilist_id||0)],['MyAnimeList',Number(c.mal_id||0)]]){if(!id)continue;try{payload=await animeThemesByExternalV203(site,id);if(payload?.anime?.length)break;}catch(e){console.warn('V20.3 AnimeThemes',site,id,e);}}
+    if(payload){const p=animeThemesPartV202(payload,c);if(p&&(p.openings.length||p.endings.length))parts.push(p);}
+  }
+  const malId=Number(entry.mal_id||media?.idMal||parts[0]?.mal_id||0);if(parts.length&&malId)saveMusicCacheV8(malId,parts);return parts;
+}
+loadFranchiseThemesV6=async function(entry,media,token){
+  if(uiSettings?.showThemes===false)return;renderThemesLoadingV6();
+  try{const parts=await collectAnimeThemesV203(entry,media,token);if(token!==detailExtrasTokenV6||!openedDetail)return;if(parts.length){const malId=Number(entry.mal_id||media?.idMal||parts[0]?.mal_id||0);renderFranchiseThemesV6(entry,parts,malId);const ops=flattenFranchiseThemesV6(parts,'openings'),eds=flattenFranchiseThemesV6(parts,'endings'),s=$('#detailThemesStatus');if(s)s.innerHTML=`AnimeThemes · <b>${parts.length}</b> ${parts.length===1?'часть':'частей'} · <b>${ops.length}</b> OP · <b>${eds.length}</b> ED`;return;}}
+  catch(e){console.warn('V20.3 AnimeThemes final',e);}
+  const op=$('#detailOpenings'),ed=$('#detailEndings'),s=$('#detailThemesStatus');if(op)op.innerHTML='<div class="theme-empty">AnimeThemes не вернул опенинги для этого ID.</div>';if(ed)ed.innerHTML='<div class="theme-empty">AnimeThemes не вернул эндинги для этого ID.</div>';if(s)s.textContent='Музыка временно недоступна — Jikan больше не используется.';
+};
+
+/* Backend status no longer claims Jikan is healthy. */
+testBackendFromSettingsV20=async function(){
+  const input=$('#settingBackendUrl'),status=$('#settingBackendStatus');const b=setBackendBaseV20(input?.value||'');if(!b){if(status)status.textContent='Вставь URL Worker';return}if(status){status.textContent='Проверяю…';status.dataset.kind='loading'}
+  try{const h=await backendHealthV20({force:true}),s=h.services||{};if(status){status.textContent=`✓ Backend · Shikimori ${s.shikimori?'✓':'—'} · AnimeThemes ${s.animethemes?'✓':'—'} · AniLiberty ${s.aniliberty?'✓':'—'} · SubDL ${s.subdl?'✓':'—'} · Kodik ${s.kodik?'✓':'—'}`;status.dataset.kind='ok'}syncProviderConfigUiV19();if(document.body.classList.contains('catalog-mode')){catalogStateV10.items=[];catalogStateV10.page=1;catalogFetchPageV10();}}
+  catch(e){if(status){status.textContent=`✕ ${String(e?.message||e)}`;status.dataset.kind='error'}}
+};
+$('#settingBackendTest')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();testBackendFromSettingsV20();},true);
+
+console.info(`Anime list V${V203_TAG}: Jikan removed from catalog/random/detail/music critical paths`);
+/* Search bar: direct AniList, then Shikimori. No Jikan fallback. */
+$('#searchForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();e.stopImmediatePropagation();const q=$('#searchInput').value.trim();if(q.length<2)return setMessage('Введи хотя бы 2 символа.','error');
+  setMessage('Ищу…');$('#results').innerHTML='';
+  try{
+    let list=[];
+    try{const payload=await anilistFetchDirectV20(SEARCH_QUERY,{search:q});list=payload?.data?.Page?.media||[];}catch(err){console.warn('V20.3 search AniList',err);}
+    if(!list.length){const rows=await shikiGetV203(`/animes?limit=20&censored=true&search=${encodeURIComponent(q)}`);list=(rows||[]).map(x=>shikiMediaV203(x));}
+    searchResults=await buildGroupedSearchResultsV9(list,q);if(!searchResults.length)return setMessage('Ничего не нашлось.','error');setMessage(`Нашлось: ${searchResults.length}`);renderResults();
+  }catch(err){setMessage(`Поиск временно недоступен: ${String(err?.message||err)}`,'error');}
+},true);
+
+/* AnimeThemes hero uses the same robust provider logic as the detail page. */
+fetchAnimeThemesHeroV14=async function(entry){
+  const part=heroPartForEntryV14(entry),aid=Number(part?.anilist_id||entry?.anilist_id||0),mid=Number(part?.mal_id||entry?.mal_id||0),key=aid?`a${aid}`:`m${mid}`;
+  if(!aid&&!mid)return null;if(animeThemesHeroCacheV14.has(key))return animeThemesHeroCacheV14.get(key);
+  try{const stored=localStorage.getItem(V14_HERO_THEME_CACHE_KEY+key);if(stored){const o=JSON.parse(stored);if(o?.ts>Date.now()-7*86400000&&o?.data?.url){animeThemesHeroCacheV14.set(key,o.data);return o.data;}}}catch{}
+  let data=null;for(const [site,id] of [['AniList',aid],['MyAnimeList',mid]]){if(!id)continue;try{data=await animeThemesByExternalV203(site,id);if(data?.anime?.length)break;}catch(e){console.warn('V20.3 hero theme',site,id,e);}}
+  const picked=data?chooseAnimeThemesVideoV14(data):null;animeThemesHeroCacheV14.set(key,picked||null);if(picked)try{localStorage.setItem(V14_HERO_THEME_CACHE_KEY+key,JSON.stringify({ts:Date.now(),data:picked}));}catch{}return picked||null;
+};

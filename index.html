@@ -328,7 +328,41 @@
         <main class="watch-stage">
           <div id="watchVideoAnchor" class="watch-video-anchor" aria-hidden="true"></div>
           <div id="watchVideoWrap" class="watch-video-wrap">
-            <video id="watchVideo" class="watch-video" controls playsinline preload="metadata"></video>
+            <video id="watchVideo" class="watch-video" playsinline preload="metadata"></video>
+            <div id="watchPlayerBackdrop" class="watch-player-backdrop"></div>
+            <div id="watchPlayerTop" class="watch-player-top">
+              <div class="watch-player-titleline"><span id="watchPlayerBadge">СЕРИЯ</span><b id="watchPlayerEpisodeLabel">—</b><small id="watchPlayerProviderLabel">Авто</small></div>
+              <div class="watch-player-top-actions"><button id="watchPlayerMini" type="button" title="Мини-плеер">▣</button></div>
+            </div>
+            <button id="watchCenterPlay" class="watch-center-play" type="button" aria-label="Воспроизвести"><span>▶</span></button>
+            <div id="watchSeekToast" class="watch-seek-toast hidden">+10 сек</div>
+            <div id="watchLoading" class="watch-loading hidden"><i></i><span>Загрузка…</span></div>
+            <div id="watchNativeControls" class="watch-native-controls">
+              <div class="watch-progress-shell" id="watchProgressShell">
+                <div id="watchBufferedBar" class="watch-buffered-bar"></div>
+                <div id="watchPlayedBar" class="watch-played-bar"></div>
+                <div id="watchOpMarker" class="watch-segment-marker op hidden" title="Опенинг"></div>
+                <div id="watchEdMarker" class="watch-segment-marker ed hidden" title="Эндинг"></div>
+                <input id="watchProgress" class="watch-progress" type="range" min="0" max="1000" value="0" step="1" aria-label="Прогресс видео">
+                <div id="watchProgressTip" class="watch-progress-tip hidden">0:00</div>
+              </div>
+              <div class="watch-controls-row">
+                <div class="watch-controls-left">
+                  <button id="watchPlayPause" class="watch-control-icon primary" type="button" title="Play / Pause">▶</button>
+                  <button id="watchVolumeBtn" class="watch-control-icon" type="button" title="Звук">🔊</button>
+                  <input id="watchVolume" class="watch-volume" type="range" min="0" max="1" value="0.85" step="0.01" aria-label="Громкость">
+                  <span id="watchTime" class="watch-time">0:00 / 0:00</span>
+                </div>
+                <div class="watch-controls-right">
+                  <button id="watchTrackBtn" class="watch-control-chip" type="button" title="Озвучка"><span>🎙</span><b id="watchTrackChip">Дорожка</b></button>
+                  <button id="watchCcInline" class="watch-control-chip" type="button" title="Субтитры"><span>CC</span><b id="watchCcChip">Выкл</b></button>
+                  <button id="watchQualityInline" class="watch-control-chip" type="button" title="Качество"><b id="watchQualityChip">Auto</b></button>
+                  <button id="watchSettingsInline" class="watch-control-icon" type="button" title="Настройки">⚙</button>
+                  <button id="watchPipInline" class="watch-control-icon" type="button" title="PiP">▣</button>
+                  <button id="watchFullscreenInline" class="watch-control-icon" type="button" title="Полный экран">⛶</button>
+                </div>
+              </div>
+            </div>
             <div id="watchSubtitleOverlay" class="watch-subtitle-overlay hidden" aria-live="off"></div>
             <button id="watchSkipSegment" class="watch-skip-segment hidden" type="button">Пропустить опенинг →</button>
             <button id="watchMiniClose" class="watch-mini-close hidden" type="button" title="Вернуть плеер на место">↙</button>
@@ -384,6 +418,9 @@
                 <label class="watch-setting-toggle"><input id="watchAutoSkipEd" type="checkbox"><span>Автопропуск эндинга</span></label>
                 <label class="watch-setting-toggle"><input id="watchMiniPlayer" type="checkbox" checked><span>Мини-плеер при скролле</span></label>
                 <label class="watch-setting-toggle"><input id="watchRememberVolume" type="checkbox" checked><span>Запоминать громкость</span></label>
+                <label class="watch-setting-toggle"><input id="watchAutoHideControls" type="checkbox" checked><span>Автоскрытие контролов</span></label>
+                <label class="watch-setting-toggle"><input id="watchDoubleSeek" type="checkbox" checked><span>Двойной клик ±10 секунд</span></label>
+                <label class="watch-setting-toggle"><input id="watchShowBuffer" type="checkbox" checked><span>Показывать буфер на таймлайне</span></label>
               </section>
               <section class="watch-setting-card watch-setting-sources">
                 <h4>Источники</h4>
@@ -409,6 +446,12 @@
                 <p>Плеер понимает WebVTT и SRT. Если источник отдаёт дорожки сам, они появятся в селекте автоматически.</p>
                 <button id="watchImportSubtitle" class="secondary" type="button">＋ SRT / VTT файл</button>
                 <div class="watch-sub-url-row"><input id="watchSubtitleLabel" type="text" maxlength="40" placeholder="Название: Русские"><input id="watchSubtitleUrl" type="url" placeholder="https://.../subtitles.vtt"><button id="watchAddSubtitleUrl" type="button">Добавить URL</button></div>
+              </section>
+              <section class="watch-setting-card watch-player-lab">
+                <div class="watch-lab-head"><h4>Лаборатория плеера</h4><span>DEV</span></div>
+                <p>Можно проверить интерфейс дорожек до подключения новых провайдеров. Видео не меняется — это только безопасный UI-тест.</p>
+                <button id="watchDemoTracks" class="secondary" type="button">🧪 Добавить демо-дорожки</button>
+                <button id="watchClearDemoTracks" class="secondary" type="button">Очистить демо</button>
               </section>
               <section class="watch-setting-card">
                 <h4>Горячие клавиши</h4>
@@ -492,7 +535,7 @@
         <div class="profile-identity">
           <div id="profileAvatar" class="profile-avatar"><span id="profileAvatarFallback">•</span><img id="profileAvatarImage" alt="" class="hidden"></div>
           <div>
-            <div class="profile-kicker">LOCAL PROFILE · V19</div>
+            <div class="profile-kicker">LOCAL PROFILE · V20.3</div>
             <h2 id="profileName">Профиль</h2>
             <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span></div>
           </div>
