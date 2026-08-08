@@ -8376,3 +8376,56 @@ socialEnsureOwnV241=async function(){
 
 setTimeout(()=>{renderCreatorIdentityV245();adminSyncButtonV164?.()},220);
 console.info(`Anime list V${V245_TAG}: Creator identity + founder-only Admin + permanent creator profile footer`);
+
+
+/* ===== V24.5.1: public avatar crop parity =====
+   Keep the same Avatar Studio crop (fit + vertical position) when another
+   user opens the public profile. Previously public profiles only received
+   the image URL, so they always fell back to object-fit: cover / center. */
+const V2451_TAG='24.5.1';
+
+const socialBuildPublicPayloadBeforeV2451=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){
+  const out=socialBuildPublicPayloadBeforeV2451();
+  const p=ensureProfileV16();
+  out.avatarFit=p.equipped?.avatarFit==='contain'?'contain':'cover';
+  out.avatarPosition=['top','center','bottom'].includes(p.equipped?.avatarPosition)
+    ? p.equipped.avatarPosition
+    : 'center';
+  return out;
+};
+
+function applyPublicAvatarCropV2451(p){
+  const pp=p?.public_payload||{};
+  const img=document.querySelector('#publicProfileBodyV242 .public-profile-avatar-v242 img');
+  if(!img)return;
+  const fit=pp.avatarFit==='contain'?'contain':'cover';
+  const pos=['top','center','bottom'].includes(pp.avatarPosition)?pp.avatarPosition:'center';
+  img.style.objectFit=fit;
+  img.style.objectPosition=pos;
+  img.style.display='block';
+}
+
+const socialOpenPublicProfileBeforeV2451=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){
+  await socialOpenPublicProfileBeforeV2451(id);
+  let p=socialStateV241?.profiles?.get(id);
+  if(!p?.public_payload){
+    try{
+      const q=new URLSearchParams();
+      q.set('id',`eq.${id}`);
+      q.set('limit','1');
+      p=(await socialFetchProfilesV242(q.toString()))?.[0]||p;
+      if(p)socialStateV241.profiles.set(id,p);
+    }catch{}
+  }
+  applyPublicAvatarCropV2451(p);
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+/* Force the owner's current Avatar Studio crop into public_payload once. */
+setTimeout(()=>{
+  if(socialSignedV241?.())socialSyncPublicProfileV242?.().catch?.(()=>{});
+},900);
+
+console.info(`Anime list V${V2451_TAG}: public avatar now preserves Avatar Studio crop/position`);
