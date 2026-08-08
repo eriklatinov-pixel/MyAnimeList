@@ -83,3 +83,11 @@ ACCOUNT V23 — АККАУНТЫ + ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ
 5. В Supabase Auth добавить адрес GitHub Pages в Site URL / Redirect URLs:
    https://eriklatinov-pixel.github.io/MyAnimeList/
 6. Загрузить обновлённые файлы на GitHub Pages.
+
+V24.0 Steam Layer V1 — Anime Tier Board
+- Profile now has a customizable Tier Board widget.
+- Only titles from the Completed/«Посмотрел» library are eligible.
+- Drag posters between S/A/B/C/D tiers, rename/reorder/add tiers, keep unranked titles in a tray.
+- Explicit Save/Cancel; saved data is part of the existing account cloud snapshot.
+- Tier Board is also a movable/resizable Profile Studio block and can be hidden in profile settings.
+- Includes V23.9 strict genre filter fix.

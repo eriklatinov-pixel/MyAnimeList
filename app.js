@@ -5737,13 +5737,26 @@ async function shikiGetV203(path,{timeout=9000}={}){
     return r.json();
   }finally{clearTimeout(tm)}
 }
+const SHIKI_GENRE_IDS_V239={
+  'action':1,'adventure':2,'comedy':4,'mystery':7,'drama':8,'ecchi':9,'fantasy':10,
+  'horror':14,'mecha':18,'music':19,'romance':22,'sci-fi':24,'sports':30,
+  'slice of life':36,'supernatural':37,'psychological':40
+};
 let shikiGenresCacheV203=null;
 async function shikiGenreIdV203(name){
   if(!name)return null;
+  const key=String(name).trim().toLowerCase();
   if(!shikiGenresCacheV203){
-    try{const rows=await shikiGetV203('/genres');shikiGenresCacheV203=new Map((rows||[]).filter(x=>String(x.kind||'').toLowerCase()==='anime').flatMap(x=>[[String(x.name||'').toLowerCase(),x.id],[String(x.russian||'').toLowerCase(),x.id]]));}catch{shikiGenresCacheV203=new Map();}
+    try{
+      const rows=await shikiGetV203('/genres');
+      shikiGenresCacheV203=new Map((rows||[])
+        .filter(x=>String(x.kind||'').toLowerCase()==='anime')
+        .flatMap(x=>[[String(x.name||'').toLowerCase(),Number(x.id)],[String(x.russian||'').toLowerCase(),Number(x.id)]]));
+    }catch{
+      shikiGenresCacheV203=new Map();
+    }
   }
-  return shikiGenresCacheV203.get(String(name).toLowerCase())||null;
+  return shikiGenresCacheV203.get(key)||SHIKI_GENRE_IDS_V239[key]||null;
 }
 function shikiOrderV203(f){if(f.sort==='SCORE_DESC')return 'ranked';if(f.sort==='START_DATE_DESC')return 'aired_on';if(f.sort==='TRENDING_DESC')return 'popularity';return 'popularity';}
 function shikiKindsV203(format){return ({TV:'tv,tv_13,tv_24,tv_48',MOVIE:'movie',OVA:'ova',ONA:'ona',SPECIAL:'special,tv_special',MUSIC:'music'})[format]||'';}
@@ -5753,8 +5766,17 @@ async function catalogShikiPageV203(f,pageNo){
   if(f.search)p.set('search',f.search);const kinds=shikiKindsV203(f.format);if(kinds)p.set('kind',kinds);const st=shikiStatusFilterV203(f.status);if(st)p.set('status',st);
   if(f.score)p.set('score',String(Math.max(1,Math.ceil(Number(f.score)/10))));
   if(f.yearFrom||f.yearTo){const a=Number(f.yearFrom||f.yearTo),z=Number(f.yearTo||f.yearFrom);if(a&&z)p.set('season',a===z?String(a):`${Math.min(a,z)}_${Math.max(a,z)}`);}
-  if(f.genre){const gid=await shikiGenreIdV203(f.genre);if(gid)p.set('genre',String(gid));}
-  const rows=await shikiGetV203(`/animes?${p.toString()}`),out=(Array.isArray(rows)?rows:[]).map(x=>shikiMediaV203(x));if(f.genre)out.forEach(m=>{if(!m.genres?.length)m.genres=[f.genre];});return out;
+  let verifiedGenreId=null;
+  if(f.genre){
+    verifiedGenreId=await shikiGenreIdV203(f.genre);
+    if(!verifiedGenreId)throw new Error(`Shikimori: не удалось определить ID жанра ${f.genre}`);
+    p.set('genre',String(verifiedGenreId));
+  }
+  const rows=await shikiGetV203(`/animes?${p.toString()}`),out=(Array.isArray(rows)?rows:[]).map(x=>shikiMediaV203(x));
+  // Короткая выдача Shikimori не содержит genres. Помечаем выбранным жанром
+  // только после того, как валидный genre ID реально был отправлен серверу.
+  if(f.genre&&verifiedGenreId)out.forEach(m=>{if(!m.genres?.length)m.genres=[f.genre];});
+  return out;
 }
 
 /* Catalog: direct AniList first (browser IP), Shikimori fallback. Jikan is no longer used here. */
@@ -7036,7 +7058,7 @@ function bindProfileCanvasPointersV235(){
 }
 function profileLayoutEditStartV235(){profileStudioBeginV235();profileLayoutEditingV235=true;setProfileTabV16('overview');$('#profileModal')?.classList.add('profile-layout-edit-v235');ensureProfileCanvasV235();profileStudioUpdateUiV235();profileToastV16('Режим макета','Тяни блок за ⠿ — соседние блоки сами отодвинутся вниз. Угол меняет размер, но ниже удобного минимума блок не сожмётся. Полотно растёт вниз автоматически.')}
 function injectProfileStudioV235(){
-  const grid=$('#profileTabCustomize .profile-customize-grid');if(grid&&!$('#profileStudioCardV235'))grid.insertAdjacentHTML('afterbegin',`<article id="profileStudioCardV235" class="profile-custom-card profile-custom-wide profile-studio-card-v235"><div><div class="profile-card-kicker">PROFILE STUDIO</div><h3>Собери страницу как хочешь</h3><p class="profile-custom-help">Блоки не привязаны к одному порядку: аватар, любимые, статистику, список и комментарии можно перетаскивать по 12-колоночному полотну и менять их размер.</p></div><div class="profile-studio-actions-v235"><span id="profileStudioStateV235">✓ Сохранено</span><button id="profileLayoutEditV235" class="secondary" type="button">⠿ Расставить блоки</button><button id="profileStudioResetV235" class="ghost" type="button">Сбросить макет</button><button id="profileStudioCancelV235" class="secondary" type="button">Отменить</button><button id="profileStudioSaveV235" type="button">✓ Сохранить профиль</button></div></article>`);
+  const grid=$('#profileTabCustomize .profile-customize-grid');if(grid&&!$('#profileStudioCardV235'))grid.insertAdjacentHTML('afterbegin',`<article id="profileStudioCardV235" class="profile-custom-card profile-custom-wide profile-studio-card-v235"><div><div class="profile-card-kicker">PROFILE STUDIO</div><h3>Собери страницу как хочешь</h3><p class="profile-custom-help">Блоки не привязаны к одному порядку: аватар, любимые, статистику, тир-лист, список и комментарии можно перетаскивать по 12-колоночному полотну и менять их размер.</p></div><div class="profile-studio-actions-v235"><span id="profileStudioStateV235">✓ Сохранено</span><button id="profileLayoutEditV235" class="secondary" type="button">⠿ Расставить блоки</button><button id="profileStudioResetV235" class="ghost" type="button">Сбросить макет</button><button id="profileStudioCancelV235" class="secondary" type="button">Отменить</button><button id="profileStudioSaveV235" type="button">✓ Сохранить профиль</button></div></article>`);
   if(!$('#profileLayoutFloatV235'))$('.profile-shell')?.insertAdjacentHTML('beforeend',`<div id="profileLayoutFloatV235" class="profile-layout-float-v235 hidden"><div><b>⠿ Редактор расположения</b><span>автораскладка · полотно растёт вниз</span></div><button type="button" id="profileLayoutBackV235" class="secondary">Настройки</button><button type="button" id="profileLayoutResetFloatV235" class="ghost">Сбросить</button><button type="button" id="profileLayoutCancelFloatV235" class="secondary">Отмена</button><button type="button" id="profileLayoutSaveFloatV235">✓ Сохранить</button></div>`);
   $('#profileLayoutEditV235')?.addEventListener('click',profileLayoutEditStartV235);$('#profileStudioResetV235')?.addEventListener('click',profileStudioResetLayoutV235);$('#profileStudioSaveV235')?.addEventListener('click',profileStudioCommitV235);$('#profileStudioCancelV235')?.addEventListener('click',()=>profileStudioCancelV235());
   $('#profileLayoutBackV235')?.addEventListener('click',()=>{profileLayoutEditingV235=false;$('#profileModal')?.classList.remove('profile-layout-edit-v235');setProfileTabV16('customize');profileStudioUpdateUiV235()});
@@ -7370,3 +7392,151 @@ renderAccountChromeV23=function(){renderAccountChromeBeforeV238();heroTrailerKey
 
 restartTopHeroTimerV238();setTimeout(()=>{loadTopHeroListV238();heroTrailerKeyV13='';scheduleHeroTrailerV13()},180);
 console.info('Anime list V23.8: guest/empty hero = current top anime openings');
+
+/* V23.9 STRICT GENRE FILTER: Shikimori fallback never returns unfiltered titles when genre ID resolution fails. */
+
+/* ===== V24.0: Steam Layer V1 · personal anime tier board ===== */
+const PROFILE_TIER_VERSION_V240=1;
+let tierDraftV240=null;
+let tierDragKeyV240='';
+
+function tierDefaultV240(){
+  return {version:PROFILE_TIER_VERSION_V240,title:'Мой тир-лист',tiers:[
+    {id:'s',label:'S',tone:'s',items:[]},
+    {id:'a',label:'A',tone:'a',items:[]},
+    {id:'b',label:'B',tone:'b',items:[]},
+    {id:'c',label:'C',tone:'c',items:[]},
+    {id:'d',label:'D',tone:'d',items:[]}
+  ]};
+}
+function ensureTierListV240(){
+  const p=ensureProfileV16();
+  if(!p.tierListV240||typeof p.tierListV240!=='object')p.tierListV240=tierDefaultV240();
+  const t=p.tierListV240;t.version=PROFILE_TIER_VERSION_V240;t.title=String(t.title||'Мой тир-лист').slice(0,60);
+  if(!Array.isArray(t.tiers)||!t.tiers.length)t.tiers=tierDefaultV240().tiers;
+  t.tiers=t.tiers.slice(0,10).map((x,i)=>({id:String(x?.id||`tier${i}`).replace(/[^a-z0-9_-]/gi,'').slice(0,24)||`tier${i}`,label:String(x?.label||String.fromCharCode(83+i)).slice(0,16),tone:String(x?.tone||['s','a','b','c','d','e','f'][i]||'x'),items:[...new Set((Array.isArray(x?.items)?x.items:[]).map(String))]}));
+  return t;
+}
+function tierCompletedRowsV240(){
+  return (latestData.sections?.completed||[]).map((entry,index)=>({section:'completed',index,entry,key:String(entryKeyV16(entry))}));
+}
+function tierCompletedMapV240(){return new Map(tierCompletedRowsV240().map(x=>[x.key,x]));}
+function tierCleanAgainstLibraryV240(t=ensureTierListV240()){
+  const keys=new Set(tierCompletedRowsV240().map(x=>x.key)),seen=new Set();
+  for(const tier of t.tiers)tier.items=(tier.items||[]).filter(k=>keys.has(String(k))&&!seen.has(String(k))&&(seen.add(String(k))||true));
+  return t;
+}
+function tierAssignedSetV240(t){const s=new Set();for(const tier of t.tiers)for(const k of tier.items||[])s.add(String(k));return s;}
+function tierPersistV240(){
+  try{if(typeof saveDataBeforeV235==='function')saveDataBeforeV235();else saveData();}catch{saveData();}
+  try{scheduleAccountCloudSyncV23?.(300)}catch{}
+}
+function tierCloneV240(v){return cloneJsonV235(v)}
+function tierCoverV240(row){return row?.entry?.cover||''}
+function tierCardHtmlV240(row,{editor=false}={}){
+  if(!row)return '';
+  const e=row.entry,cover=tierCoverV240(row),key=String(row.key);
+  return `<button type="button" class="profile-tier-card-v240${editor?' editor-v240':''}" ${editor?`draggable="true" data-tier-key="${esc(key)}" ondragstart="tierDragStartV240(event,'${esc(key)}')" ondragend="tierDragEndV240(event)" onclick="tierCardClickV240('${esc(key)}')"`: `onclick="profileOpenEntryV162('completed',${row.index})"`} title="${esc(e.title)}">${cover?`<img src="${esc(cover)}" alt="">`:`<span class="profile-tier-card-fallback-v240">${esc(e.emoji||'🎌')}</span>`}<span>${esc(e.title)}</span></button>`;
+}
+function ensureTierProfileBlockV240(){
+  const host=$('#profileOverviewBlocks');if(!host)return null;
+  let block=$('#profileBlockTierListV240');
+  if(!block){
+    block=document.createElement('section');block.id='profileBlockTierListV240';block.className='profile-overview-block profile-tier-block-v240';
+    block.innerHTML=`<div class="profile-section-head profile-tier-head-v240"><div><span>ЛИЧНЫЙ РЕЙТИНГ</span><h3 id="profileTierTitleV240">Мой тир-лист</h3></div><button id="profileTierEditV240" class="secondary" type="button">✦ Создать тир-лист</button></div><div id="profileTierPreviewV240" class="profile-tier-preview-v240"></div>`;
+    host.appendChild(block);
+    $('#profileTierEditV240')?.addEventListener('click',openTierEditorV240);
+  }
+  return block;
+}
+function renderTierPreviewV240(){
+  const block=ensureTierProfileBlockV240();if(!block)return;
+  const pref=ensureProfilePrefsV162();if(pref.showTierListV240===undefined)pref.showTierListV240=true;
+  block.hidden=!pref.showTierListV240;if(block.hidden)return;
+  const title=$('#profileTierTitleV240'),edit=$('#profileTierEditV240'),box=$('#profileTierPreviewV240');if(!box)return;
+  if(!accountSignedInV236()){
+    if(title)title.textContent='Мой тир-лист';if(edit)edit.textContent='☁ Войти';
+    box.innerHTML=`<div class="profile-tier-empty-v240"><div><b>Тир-лист привязан к аккаунту</b><span>Войди — и сможешь расставить уже просмотренные аниме от S до D.</span></div><button type="button" onclick="openRegisterV236()">Создать аккаунт</button></div>`;return;
+  }
+  const t=tierCleanAgainstLibraryV240(ensureTierListV240()),map=tierCompletedMapV240(),has=t.tiers.some(x=>x.items?.length);
+  if(title)title.textContent=t.title||'Мой тир-лист';if(edit)edit.textContent=has?'✎ Редактировать':'✦ Создать тир-лист';
+  if(!tierCompletedRowsV240().length){box.innerHTML='<div class="profile-tier-empty-v240"><div><b>Пока нечего ранжировать</b><span>Заверши хотя бы одно аниме — оно появится здесь.</span></div></div>';return;}
+  if(!has){box.innerHTML=`<div class="profile-tier-empty-v240"><div><b>Собери свой рейтинг просмотренного</b><span>Перетаскивай постеры между S / A / B / C / D. В тир-лист попадут только тайтлы из «Посмотрел».</span></div><button type="button" onclick="openTierEditorV240()">Начать</button></div>`;return;}
+  box.innerHTML=t.tiers.map(tier=>{const rows=(tier.items||[]).map(k=>map.get(String(k))).filter(Boolean);return `<div class="profile-tier-row-v240 tone-${esc(tier.tone)}"><div class="profile-tier-label-v240">${esc(tier.label)}</div><div class="profile-tier-items-v240">${rows.length?rows.slice(0,18).map(r=>tierCardHtmlV240(r)).join(''):'<span class="profile-tier-row-empty-v240">пусто</span>'}${rows.length>18?`<span class="profile-tier-more-v240">+${rows.length-18}</span>`:''}</div></div>`}).join('');
+}
+
+function ensureTierEditorV240(){
+  const shell=$('.profile-shell');if(!shell||$('#profileTierEditorV240'))return;
+  shell.insertAdjacentHTML('beforeend',`<div id="profileTierEditorV240" class="profile-tier-editor-v240 hidden" aria-label="Редактор тир-листа"><div class="profile-tier-editor-panel-v240"><header><div><span>ANIME TIER BOARD</span><h2>Твой рейтинг просмотренного</h2><p>Только тайтлы из «Посмотрел». Тяни постеры в нужный уровень — страница сохранится в аккаунте.</p></div><button id="profileTierEditorCloseV240" class="profile-close" type="button">✕</button></header><div class="profile-tier-editor-toolbar-v240"><label><span>Название</span><input id="profileTierNameV240" maxlength="60" value="Мой тир-лист"></label><div><button id="profileTierAddRowV240" class="secondary" type="button">＋ Уровень</button><button id="profileTierResetV240" class="ghost" type="button">Сбросить</button><button id="profileTierCancelV240" class="secondary" type="button">Отмена</button><button id="profileTierSaveV240" type="button">✓ Сохранить</button></div></div><div id="profileTierRowsV240" class="profile-tier-editor-rows-v240"></div><section class="profile-tier-unranked-v240"><div class="profile-tier-unranked-head-v240"><div><span>НЕ РАСПРЕДЕЛЕНО</span><h3>Просмотренные аниме</h3></div><small id="profileTierUnrankedCountV240"></small></div><div id="profileTierUnrankedV240" class="profile-tier-unranked-grid-v240" ondragover="tierDragOverV240(event)" ondrop="tierDropV240(event,'')"></div></section></div></div>`);
+  $('#profileTierEditorCloseV240')?.addEventListener('click',closeTierEditorV240);
+  $('#profileTierCancelV240')?.addEventListener('click',closeTierEditorV240);
+  $('#profileTierSaveV240')?.addEventListener('click',saveTierEditorV240);
+  $('#profileTierResetV240')?.addEventListener('click',()=>{tierDraftV240=tierDefaultV240();$('#profileTierNameV240').value=tierDraftV240.title;renderTierEditorV240()});
+  $('#profileTierAddRowV240')?.addEventListener('click',addTierRowV240);
+  $('#profileTierNameV240')?.addEventListener('input',e=>{if(tierDraftV240)tierDraftV240.title=String(e.target.value||'').slice(0,60)});
+}
+function openTierEditorV240(){
+  if(!accountSignedInV236()){openRegisterV236();accountMessageV23('Войди или создай аккаунт — тир-лист будет храниться в твоём профиле.','info');return;}
+  ensureTierEditorV240();tierDraftV240=tierCloneV240(tierCleanAgainstLibraryV240(ensureTierListV240()));
+  $('#profileTierNameV240').value=tierDraftV240.title||'Мой тир-лист';renderTierEditorV240();$('#profileTierEditorV240')?.classList.remove('hidden');$('.profile-shell')?.classList.add('tier-editor-open-v240');
+}
+function closeTierEditorV240(){tierDraftV240=null;$('#profileTierEditorV240')?.classList.add('hidden');$('.profile-shell')?.classList.remove('tier-editor-open-v240')}
+function saveTierEditorV240(){
+  if(!tierDraftV240)return;const p=ensureProfileV16();tierDraftV240.title=String($('#profileTierNameV240')?.value||tierDraftV240.title||'Мой тир-лист').trim().slice(0,60)||'Мой тир-лист';p.tierListV240=tierCloneV240(tierDraftV240);tierCleanAgainstLibraryV240(p.tierListV240);tierPersistV240();closeTierEditorV240();renderTierPreviewV240();applyProfileLayoutV235();profileToastV16('✓ Тир-лист сохранён','Он теперь часть твоего профиля');
+}
+function addTierRowV240(){
+  if(!tierDraftV240||tierDraftV240.tiers.length>=10)return;const n=tierDraftV240.tiers.length,id=`t${Date.now().toString(36)}`,labels=['E','F','G','H'];tierDraftV240.tiers.push({id,label:labels[n-5]||`T${n+1}`,tone:['e','f','x'][n%3],items:[]});renderTierEditorV240();
+}
+function deleteTierRowV240(id){
+  if(!tierDraftV240||tierDraftV240.tiers.length<=2)return;const i=tierDraftV240.tiers.findIndex(x=>x.id===id);if(i<0)return;tierDraftV240.tiers.splice(i,1);renderTierEditorV240();
+}
+function renameTierV240(id,value){const t=tierDraftV240?.tiers.find(x=>x.id===id);if(t)t.label=String(value||'').slice(0,16)||'—'}
+function moveTierRowV240(id,dir){if(!tierDraftV240)return;const i=tierDraftV240.tiers.findIndex(x=>x.id===id),j=i+dir;if(i<0||j<0||j>=tierDraftV240.tiers.length)return;[tierDraftV240.tiers[i],tierDraftV240.tiers[j]]=[tierDraftV240.tiers[j],tierDraftV240.tiers[i]];renderTierEditorV240()}
+function tierMoveV240(key,tierId,beforeKey=''){
+  if(!tierDraftV240)return;key=String(key);for(const t of tierDraftV240.tiers)t.items=(t.items||[]).filter(x=>String(x)!==key);
+  if(tierId){const t=tierDraftV240.tiers.find(x=>x.id===tierId);if(t){let idx=beforeKey?t.items.findIndex(x=>String(x)===String(beforeKey)):-1;if(idx<0)t.items.push(key);else t.items.splice(idx,0,key)}}renderTierEditorV240();
+}
+function tierDragStartV240(e,key){tierDragKeyV240=String(key);e.currentTarget?.classList.add('dragging');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',tierDragKeyV240)}catch{}}
+function tierDragEndV240(e){e.currentTarget?.classList.remove('dragging');tierDragKeyV240=''}
+function tierDragOverV240(e){e.preventDefault();try{e.dataTransfer.dropEffect='move'}catch{}}
+function tierDropV240(e,tierId,beforeKey=''){e.preventDefault();const key=tierDragKeyV240||e.dataTransfer?.getData('text/plain');if(key)tierMoveV240(key,tierId,beforeKey)}
+function tierCardClickV240(key){
+  // Click fallback for touch / trackpads: move through tiers, then back to unranked.
+  if(!tierDraftV240)return;const i=tierDraftV240.tiers.findIndex(t=>t.items.includes(String(key)));if(i<0)tierMoveV240(key,tierDraftV240.tiers[0]?.id||'');else if(i<tierDraftV240.tiers.length-1)tierMoveV240(key,tierDraftV240.tiers[i+1].id);else tierMoveV240(key,'');
+}
+Object.assign(window,{openTierEditorV240,deleteTierRowV240,renameTierV240,moveTierRowV240,tierDragStartV240,tierDragEndV240,tierDragOverV240,tierDropV240,tierCardClickV240});
+
+function renderTierEditorV240(){
+  if(!tierDraftV240)return;const map=tierCompletedMapV240(),assigned=tierAssignedSetV240(tierDraftV240),rows=tierCompletedRowsV240();
+  const host=$('#profileTierRowsV240');if(host)host.innerHTML=tierDraftV240.tiers.map((tier,i)=>{const cards=(tier.items||[]).map(k=>map.get(String(k))).filter(Boolean);return `<div class="profile-tier-edit-row-v240 tone-${esc(tier.tone)}" ondragover="tierDragOverV240(event)" ondrop="tierDropV240(event,'${esc(tier.id)}')"><div class="profile-tier-edit-label-v240"><input value="${esc(tier.label)}" maxlength="16" oninput="renameTierV240('${esc(tier.id)}',this.value)"><div><button ${i===0?'disabled':''} onclick="moveTierRowV240('${esc(tier.id)}',-1)">↑</button><button ${i===tierDraftV240.tiers.length-1?'disabled':''} onclick="moveTierRowV240('${esc(tier.id)}',1)">↓</button>${tierDraftV240.tiers.length>2?`<button class="danger" onclick="deleteTierRowV240('${esc(tier.id)}')">✕</button>`:''}</div></div><div class="profile-tier-edit-items-v240">${cards.map(r=>`<span class="profile-tier-drop-wrap-v240" ondragover="tierDragOverV240(event)" ondrop="event.stopPropagation();tierDropV240(event,'${esc(tier.id)}','${esc(r.key)}')">${tierCardHtmlV240(r,{editor:true})}</span>`).join('')||'<span class="profile-tier-drop-hint-v240">перетащи сюда</span>'}</div></div>`}).join('');
+  const un=rows.filter(x=>!assigned.has(String(x.key)));const box=$('#profileTierUnrankedV240');if(box)box.innerHTML=un.map(r=>tierCardHtmlV240(r,{editor:true})).join('')||'<div class="profile-tier-all-ranked-v240">✓ Всё распределено</div>';
+  const c=$('#profileTierUnrankedCountV240');if(c)c.textContent=`${un.length} из ${rows.length} не распределено`;
+}
+
+// Add Tier Board to the free profile canvas.
+const profileDefaultLayoutBeforeV240=profileDefaultLayoutV235;
+profileDefaultLayoutV235=function(){const d=profileDefaultLayoutBeforeV240();d.tierlist ||= {x:1,y:14,w:12,h:4};return d};
+const profileCanvasMetaBeforeV240=profileCanvasMetaV235;
+profileCanvasMetaV235=function(){return {...profileCanvasMetaBeforeV240(),tierlist:{id:'profileBlockTierListV240',label:'Тир-лист',minW:7,minH:4}}};
+const ensureProfileCanvasBeforeV240=ensureProfileCanvasV235;
+ensureProfileCanvasV235=function(){ensureTierProfileBlockV240();ensureProfileCanvasBeforeV240()};
+
+const applyProfileBlockOrderBeforeV240=applyProfileBlockOrderV162;
+applyProfileBlockOrderV162=function(){const pref=ensureProfilePrefsV162();if(pref.showTierListV240===undefined)pref.showTierListV240=true;applyProfileBlockOrderBeforeV240();const b=ensureTierProfileBlockV240();if(b)b.hidden=!pref.showTierListV240;renderTierPreviewV240();applyProfileLayoutV235()};
+
+function injectTierCustomizeV240(){
+  const stack=$('#profileTabCustomize .profile-toggle-stack');if(stack&&!$('#profileShowTierListV240')){
+    stack.insertAdjacentHTML('beforeend','<label><input id="profileShowTierListV240" type="checkbox"><span>Показывать мой тир-лист</span></label>');
+    const el=$('#profileShowTierListV240');el.checked=ensureProfilePrefsV162().showTierListV240!==false;el.addEventListener('change',()=>{profileStudioBeginV235();ensureProfilePrefsV162().showTierListV240=el.checked;profileStudioSessionV235&&(profileStudioSessionV235.dirty=true);renderTierPreviewV240();applyProfileLayoutV235();profileStudioUpdateUiV235()});
+  }
+  const card=$('#profileStudioCardV235');if(card&&!$('#profileTierQuickV240'))card.querySelector('.profile-studio-actions-v235')?.insertAdjacentHTML('afterbegin','<button id="profileTierQuickV240" class="secondary" type="button">▦ Мой тир-лист</button>');
+  const q=$('#profileTierQuickV240');if(q&&q.dataset.boundV240!=='1'){q.dataset.boundV240='1';q.addEventListener('click',openTierEditorV240);}
+}
+
+const renderProfileV16BeforeV240=renderProfileV16;
+renderProfileV16=function(){renderProfileV16BeforeV240();ensureTierProfileBlockV240();renderTierPreviewV240();injectTierCustomizeV240();setTimeout(()=>{ensureProfileCanvasV235();applyProfileLayoutV235()},0)};
+const setProfileTabBeforeV240=setProfileTabV16;
+setProfileTabV16=function(tab){setProfileTabBeforeV240(tab);if(tab==='customize')setTimeout(injectTierCustomizeV240,0);if(tab==='overview')setTimeout(()=>{ensureTierProfileBlockV240();renderTierPreviewV240();ensureProfileCanvasV235();applyProfileLayoutV235()},0)};
+
+setTimeout(()=>{ensureTierListV240();ensureTierProfileBlockV240();renderTierPreviewV240();injectTierCustomizeV240();},120);
+console.info('Anime list V24.0: Steam Layer V1 · profile Tier Board');
