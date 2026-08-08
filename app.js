@@ -6872,3 +6872,388 @@ enrichMissingCovers=async function(){
 window.enrichMissingCovers=enrichMissingCovers;
 setTimeout(()=>coverDoctorPassV233(),900);
 setTimeout(()=>renderAll(),80);
+
+
+/* ===== V23.5: Profile Studio + free layout + smart genre search ===== */
+const PROFILE_STUDIO_VERSION_V235=1;
+let profileStudioSessionV235=null;
+let profileLayoutEditingV235=false;
+let profileDragStateV235=null;
+
+const saveDataBeforeV235=saveData;
+const saveSettingsBeforeV235=saveSettings;
+saveData=function(...args){
+  if(profileStudioSessionV235?.active){profileStudioSessionV235.dirty=true;profileStudioUpdateUiV235();return;}
+  return saveDataBeforeV235(...args);
+};
+saveSettings=function(...args){
+  if(profileStudioSessionV235?.active){profileStudioSessionV235.dirty=true;profileStudioUpdateUiV235();return;}
+  return saveSettingsBeforeV235(...args);
+};
+
+function cloneJsonV235(v){try{return structuredClone(v)}catch{return JSON.parse(JSON.stringify(v))}}
+function profileDefaultLayoutV235(){return {
+  avatar:{x:1,y:1,w:2,h:2},
+  identity:{x:3,y:1,w:4,h:2},
+  progress:{x:7,y:1,w:6,h:2},
+  favorites:{x:1,y:3,w:12,h:3},
+  stats:{x:1,y:6,w:5,h:3},
+  comments:{x:6,y:6,w:7,h:3},
+  list:{x:1,y:9,w:12,h:5}
+}}
+function ensureProfileLayoutV235(){
+  const pref=ensureProfilePrefsV162();
+  pref.layoutV235 ||= cloneJsonV235(profileDefaultLayoutV235());
+  const d=profileDefaultLayoutV235();
+  for(const [k,base] of Object.entries(d)){
+    const v=pref.layoutV235[k] ||= {...base};
+    v.w=Math.max(1,Math.min(12,Number(v.w)||base.w));v.h=Math.max(1,Math.min(12,Number(v.h)||base.h));
+    v.x=Math.max(1,Math.min(13-v.w,Number(v.x)||base.x));v.y=Math.max(1,Math.min(40,Number(v.y)||base.y));
+  }
+  return pref.layoutV235;
+}
+function profileStudioSnapshotV235(){
+  const p=ensureProfileV16();
+  return {prefs:cloneJsonV235(ensureProfilePrefsV162()),favorites:cloneJsonV235(p.favorites||[]),nickname:String(uiSettings?.nickname||'')};
+}
+function profileStudioBeginV235(){
+  if(profileStudioSessionV235?.active)return;
+  profileStudioSessionV235={active:true,dirty:false,snapshot:profileStudioSnapshotV235()};
+  profileStudioUpdateUiV235();
+}
+function profileStudioCommitV235(){
+  if(!profileStudioSessionV235?.active)return;
+  profileStudioSessionV235.active=false;profileStudioSessionV235.dirty=false;profileLayoutEditingV235=false;
+  $('#profileModal')?.classList.remove('profile-layout-edit-v235');
+  saveSettingsBeforeV235();saveDataBeforeV235();
+  profileStudioSessionV235=null;profileStudioUpdateUiV235();renderProfileV16();applyProfileLayoutV235();
+  profileToastV16('✓ Профиль сохранён','Макет и оформление записаны в аккаунт/облако');
+}
+function profileStudioCancelV235({toast=true}={}){
+  const s=profileStudioSessionV235;if(!s?.active)return;
+  const p=ensureProfileV16();p.profilePrefs=cloneJsonV235(s.snapshot.prefs);p.favorites=cloneJsonV235(s.snapshot.favorites);uiSettings.nickname=s.snapshot.nickname||'Гость';
+  profileStudioSessionV235=null;profileLayoutEditingV235=false;$('#profileModal')?.classList.remove('profile-layout-edit-v235');
+  renderProfileV16();applyProfileLayoutV235();profileStudioUpdateUiV235();
+  if(toast)profileToastV16('Изменения отменены','Вернул сохранённый профиль');
+}
+function profileStudioResetLayoutV235(){
+  profileStudioBeginV235();ensureProfilePrefsV162().layoutV235=cloneJsonV235(profileDefaultLayoutV235());profileStudioSessionV235.dirty=true;applyProfileLayoutV235();profileStudioUpdateUiV235();
+}
+function profileStudioUpdateUiV235(){
+  const s=profileStudioSessionV235,dirty=!!s?.dirty;
+  const state=$('#profileStudioStateV235');if(state)state.textContent=dirty?'● Есть несохранённые изменения':'✓ Сохранено';
+  const save=$('#profileStudioSaveV235');if(save)save.disabled=!s?.active||!dirty;
+  const cancel=$('#profileStudioCancelV235');if(cancel)cancel.disabled=!s?.active;
+  const float=$('#profileLayoutFloatV235');if(float)float.classList.toggle('hidden',!profileLayoutEditingV235);
+}
+
+function relocateProfileInfoV235(){
+  const grid=$('.profile-overview-grid');if(!grid)return;
+  const cards=[...grid.querySelectorAll('.profile-info-card')],xp=cards.find(x=>!x.classList.contains('supporter-preview')),support=cards.find(x=>x.classList.contains('supporter-preview'));
+  const quests=$('#profileTabQuests'),shop=$('#profileTabShop');
+  if(xp&&quests){xp.classList.add('profile-relocated-info-v235');const anchor=quests.querySelector('.profile-collection-note')||quests.querySelector('.profile-section-head');anchor?.insertAdjacentElement('afterend',xp)}
+  if(support&&shop){support.classList.add('profile-relocated-info-v235');shop.querySelector('.profile-section-head')?.insertAdjacentElement('afterend',support)}
+  if(!grid.children.length)grid.remove();else grid.classList.add('hidden');
+}
+function profileCanvasMetaV235(){return {
+  avatar:{id:'profileBlockAvatarV235',label:'Аватар'},identity:{id:'profileBlockIdentityV235',label:'Профиль'},progress:{id:'profileBlockProgressV235',label:'Уровень'},
+  favorites:{id:'profileBlockFavorites',label:'Любимые'},stats:{id:'profileBlockStats',label:'Статистика'},list:{id:'profileBlockList',label:'Аниме-лист'},comments:{id:'profileBlockComments',label:'Комментарии'}
+}}
+function ensureProfileCanvasV235(){
+  const host=$('#profileOverviewBlocks');if(!host)return;
+  host.classList.add('profile-public-canvas-v235');
+  let identity=$('.profile-identity');const avatar=$('#profileAvatar');
+  if(identity&&!$('#profileBlockIdentityV235')){identity.id='profileBlockIdentityV235';identity.classList.add('profile-overview-block','profile-canvas-item-v235');host.prepend(identity)}
+  if(avatar&&!$('#profileBlockAvatarV235')){const b=document.createElement('section');b.id='profileBlockAvatarV235';b.className='profile-overview-block profile-canvas-item-v235 profile-avatar-widget-v235';b.appendChild(avatar);host.prepend(b)}
+  const progress=$('.profile-progress-card');if(progress&&progress.id!=='profileBlockProgressV235'){progress.id='profileBlockProgressV235';progress.classList.add('profile-overview-block','profile-canvas-item-v235');host.appendChild(progress)}
+  for(const {id,label} of Object.values(profileCanvasMetaV235())){
+    const el=$('#'+id);if(!el)continue;el.classList.add('profile-canvas-item-v235');el.dataset.profileWidgetLabel=label;
+    if(!el.querySelector(':scope > .profile-widget-chrome-v235')){
+      const c=document.createElement('div');c.className='profile-widget-chrome-v235';c.innerHTML=`<button type="button" class="profile-widget-drag-v235" title="Перетащить">⠿</button><span>${esc(label)}</span><i class="profile-widget-resize-v235" title="Изменить размер"></i>`;el.prepend(c);
+    }
+  }
+  if(!$('.profile-window-label-v235')){$('.profile-head')?.insertAdjacentHTML('afterbegin','<div class="profile-window-label-v235"><span>PROFILE</span><b>Твоя страница</b></div>')}
+  applyProfileLayoutV235();bindProfileCanvasPointersV235();
+}
+function applyProfileLayoutV235(){
+  const host=$('#profileOverviewBlocks');if(!host)return;const layout=ensureProfileLayoutV235(),meta=profileCanvasMetaV235();let maxRow=1;
+  for(const [key,m] of Object.entries(meta)){
+    const el=$('#'+m.id),v=layout[key];if(!el||!v)continue;
+    el.style.gridColumn=`${v.x} / span ${v.w}`;el.style.gridRow=`${v.y} / span ${v.h}`;maxRow=Math.max(maxRow,v.y+v.h-1);
+  }
+  host.style.setProperty('--profile-canvas-rows',String(maxRow));
+}
+function profileWidgetKeyFromElV235(el){for(const [k,m] of Object.entries(profileCanvasMetaV235()))if(m.id===el?.id)return k;return ''}
+function profilePointerStartV235(e,mode,item){
+  if(!profileLayoutEditingV235||!item)return;e.preventDefault();e.stopPropagation();
+  const key=profileWidgetKeyFromElV235(item),layout=ensureProfileLayoutV235(),v=layout[key];if(!key||!v)return;
+  profileDragStateV235={mode,key,item,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,start:{...v}};item.classList.add('dragging-v235');
+  try{e.currentTarget.setPointerCapture?.(e.pointerId)}catch{}
+}
+function profilePointerMoveV235(e){
+  const d=profileDragStateV235;if(!d)return;const host=$('#profileOverviewBlocks'),rect=host?.getBoundingClientRect();if(!rect)return;const layout=ensureProfileLayoutV235(),v=layout[d.key],gap=12,colW=(rect.width-gap*11)/12,rowH=84;
+  if(d.mode==='move'){
+    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;v.x=Math.max(1,Math.min(13-v.w,Math.round((d.start.x-1)+dx/(colW+gap))+1));v.y=Math.max(1,Math.min(40,Math.round((d.start.y-1)+dy/rowH)+1));
+  }else{
+    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;v.w=Math.max(1,Math.min(13-v.x,Math.round(d.start.w+dx/(colW+gap))));v.h=Math.max(1,Math.min(12,Math.round(d.start.h+dy/rowH)));
+  }
+  profileStudioSessionV235&&(profileStudioSessionV235.dirty=true);applyProfileLayoutV235();profileStudioUpdateUiV235();
+}
+function profilePointerEndV235(){if(profileDragStateV235?.item)profileDragStateV235.item.classList.remove('dragging-v235');profileDragStateV235=null}
+function bindProfileCanvasPointersV235(){
+  if(document.body.dataset.profileCanvasBoundV235==='1')return;document.body.dataset.profileCanvasBoundV235='1';
+  document.addEventListener('pointerdown',e=>{
+    const drag=e.target.closest('.profile-widget-drag-v235'),resize=e.target.closest('.profile-widget-resize-v235');
+    if(drag||resize){const item=e.target.closest('.profile-canvas-item-v235');profilePointerStartV235(e,resize?'resize':'move',item);return}
+    if(profileLayoutEditingV235&&e.target.closest('#profileAvatar'))profilePointerStartV235(e,'move',e.target.closest('.profile-canvas-item-v235'));
+  });
+  window.addEventListener('pointermove',profilePointerMoveV235,{passive:false});window.addEventListener('pointerup',profilePointerEndV235);window.addEventListener('pointercancel',profilePointerEndV235);
+}
+function profileLayoutEditStartV235(){profileStudioBeginV235();profileLayoutEditingV235=true;setProfileTabV16('overview');$('#profileModal')?.classList.add('profile-layout-edit-v235');ensureProfileCanvasV235();profileStudioUpdateUiV235();profileToastV16('Режим макета','Тяни блок за ⠿. Аватар можно тащить прямо мышкой. Угол блока меняет размер.')}
+function injectProfileStudioV235(){
+  const grid=$('#profileTabCustomize .profile-customize-grid');if(grid&&!$('#profileStudioCardV235'))grid.insertAdjacentHTML('afterbegin',`<article id="profileStudioCardV235" class="profile-custom-card profile-custom-wide profile-studio-card-v235"><div><div class="profile-card-kicker">PROFILE STUDIO</div><h3>Собери страницу как хочешь</h3><p class="profile-custom-help">Блоки не привязаны к одному порядку: аватар, любимые, статистику, список и комментарии можно перетаскивать по 12-колоночному полотну и менять их размер.</p></div><div class="profile-studio-actions-v235"><span id="profileStudioStateV235">✓ Сохранено</span><button id="profileLayoutEditV235" class="secondary" type="button">⠿ Расставить блоки</button><button id="profileStudioResetV235" class="ghost" type="button">Сбросить макет</button><button id="profileStudioCancelV235" class="secondary" type="button">Отменить</button><button id="profileStudioSaveV235" type="button">✓ Сохранить профиль</button></div></article>`);
+  if(!$('#profileLayoutFloatV235'))$('.profile-shell')?.insertAdjacentHTML('beforeend',`<div id="profileLayoutFloatV235" class="profile-layout-float-v235 hidden"><div><b>⠿ Редактор расположения</b><span>перетаскивай · тяни угол для размера</span></div><button type="button" id="profileLayoutBackV235" class="secondary">Настройки</button><button type="button" id="profileLayoutResetFloatV235" class="ghost">Сбросить</button><button type="button" id="profileLayoutCancelFloatV235" class="secondary">Отмена</button><button type="button" id="profileLayoutSaveFloatV235">✓ Сохранить</button></div>`);
+  $('#profileLayoutEditV235')?.addEventListener('click',profileLayoutEditStartV235);$('#profileStudioResetV235')?.addEventListener('click',profileStudioResetLayoutV235);$('#profileStudioSaveV235')?.addEventListener('click',profileStudioCommitV235);$('#profileStudioCancelV235')?.addEventListener('click',()=>profileStudioCancelV235());
+  $('#profileLayoutBackV235')?.addEventListener('click',()=>{profileLayoutEditingV235=false;$('#profileModal')?.classList.remove('profile-layout-edit-v235');setProfileTabV16('customize');profileStudioUpdateUiV235()});
+  $('#profileLayoutResetFloatV235')?.addEventListener('click',profileStudioResetLayoutV235);$('#profileLayoutCancelFloatV235')?.addEventListener('click',()=>profileStudioCancelV235());$('#profileLayoutSaveFloatV235')?.addEventListener('click',profileStudioCommitV235);
+}
+
+// The old one-dimensional arrow order is superseded by the canvas. Keep visibility logic, do not reorder DOM.
+applyProfileBlockOrderV162=function(){
+  const pref=ensureProfilePrefsV162();$('#profileBlockFavorites')&&($('#profileBlockFavorites').hidden=!pref.showFavorites);$('#profileBlockStats')&&($('#profileBlockStats').hidden=!pref.showStats);$('#profileBlockList')&&($('#profileBlockList').hidden=!pref.showList);$('#profileBlockComments')&&($('#profileBlockComments').hidden=!pref.showComments);applyProfileLayoutV235();
+};
+renderProfileOrderV162=function(){const box=$('#profileBlockOrder');if(box)box.innerHTML='<div class="profile-layout-old-note-v235">Теперь порядок задаётся свободно. Нажми <b>«Расставить блоки»</b> выше — можно двигать и менять размер.</div>'};
+moveProfileBlockV162=function(){profileLayoutEditStartV235()};window.moveProfileBlockV162=moveProfileBlockV162;
+
+const setProfileTabBeforeV235=setProfileTabV16;
+setProfileTabV16=function(tab){if(tab==='customize')profileStudioBeginV235();setProfileTabBeforeV235(tab);profileStudioUpdateUiV235();if(tab==='overview')setTimeout(()=>{ensureProfileCanvasV235();applyProfileLayoutV235()},0)};
+
+// Closing the profile or pressing Esc discards drafts that were not explicitly saved.
+$('#profileClose')?.addEventListener('click',()=>{if(profileStudioSessionV235?.active)profileStudioCancelV235({toast:false})},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&profileStudioSessionV235?.active)profileStudioCancelV235({toast:false})},true);
+
+// Smart genre search: "ecchi", "эччи", "genre: romance" etc. become real server-side genre filters.
+const CATALOG_QUERY_V235=`
+query($page:Int,$search:String,$genre:String,$sort:[MediaSort]){
+  Page(page:$page,perPage:50){
+    pageInfo{total currentPage lastPage hasNextPage}
+    media(type:ANIME,isAdult:false,search:$search,genre:$genre,sort:$sort){
+      id idMal type format status episodes duration seasonYear averageScore popularity isAdult
+      title{romaji english native}
+      genres
+      coverImage{extraLarge large medium color}
+      relations{edges{relationType node{id type format}}}
+    }
+  }
+}`;
+const CATALOG_GENRE_ALIASES_V235=new Map([
+  ['action','Action'],['экшен','Action'],['боевик','Action'],['adventure','Adventure'],['приключения','Adventure'],['comedy','Comedy'],['комедия','Comedy'],['drama','Drama'],['драма','Drama'],['ecchi','Ecchi'],['эччи','Ecchi'],['этти','Ecchi'],['fantasy','Fantasy'],['фэнтези','Fantasy'],['horror','Horror'],['хоррор','Horror'],['ужасы','Horror'],['mahou shoujo','Mahou Shoujo'],['махо-сёдзё','Mahou Shoujo'],['mecha','Mecha'],['меха','Mecha'],['music','Music'],['музыка','Music'],['mystery','Mystery'],['мистика','Mystery'],['psychological','Psychological'],['психологическое','Psychological'],['romance','Romance'],['романтика','Romance'],['sci-fi','Sci-Fi'],['scifi','Sci-Fi'],['фантастика','Sci-Fi'],['slice of life','Slice of Life'],['повседневность','Slice of Life'],['sports','Sports'],['спорт','Sports'],['supernatural','Supernatural'],['сверхъестественное','Supernatural'],['thriller','Thriller'],['триллер','Thriller']
+]);
+function smartGenreFromSearchV235(raw){let q=String(raw||'').trim().toLowerCase().replace(/^genre\s*:\s*/,'').replace(/^жанр\s*:\s*/,'');return CATALOG_GENRE_ALIASES_V235.get(q)||CATALOG_GENRES_V10.find(g=>g.toLowerCase()===q)||''}
+const catalogReadFormBeforeV235=catalogReadFormV10;
+catalogReadFormV10=function(){const f=catalogReadFormBeforeV235(),g=smartGenreFromSearchV235(f.search);if(g&&!f.genre){f.genre=g;f.search='';const sel=$('#catalogGenre');if(sel)sel.value=g;const hint=$('#catalogSmartGenreHintV235');if(hint)hint.textContent=`Жанр распознан: ${g}`;}return f};
+catalogAniListPageV11=async function(f,pageNo){return anilistFetch(CATALOG_QUERY_V235,{page:pageNo,search:f.search||null,genre:f.genre||null,sort:catalogSortListV11(f)})};
+function injectCatalogSmartGenreV235(){
+  const input=$('#catalogSearch');if(!input)return;input.placeholder='Название или жанр — например Ecchi';
+  if(!$('#catalogSmartGenreHintV235'))input.closest('.catalog-search-field')?.insertAdjacentHTML('afterend','<div id="catalogSmartGenreHintV235" class="catalog-smart-genre-hint-v235">Можно искать жанром: <b>Ecchi</b>, Romance, Horror, «эччи»…</div>');
+}
+
+function initProfileStudioV235(){relocateProfileInfoV235();injectProfileStudioV235();ensureProfileCanvasV235();injectCatalogSmartGenreV235();profileStudioUpdateUiV235();}
+setTimeout(initProfileStudioV235,120);
+setTimeout(()=>{ensureProfileCanvasV235();applyProfileLayoutV235()},700);
+
+
+/* ===== V23.6: account-first guest library + avatar card titles + strict short filter ===== */
+const V236_TAG='23.6';
+let guestSurfaceStateV236=null;
+
+function accountSignedInV236(){return !!accountSessionV23?.access_token;}
+function openLoginV236(){openAccountV23();setAccountTabV23('login');}
+function openRegisterV236(){openAccountV23();setAccountTabV23('register');setTimeout(()=>$('#accountRegisterName')?.focus(),60);}
+window.openLoginV236=openLoginV236;window.openRegisterV236=openRegisterV236;
+function requireAccountV236(reason='сохранить это в свой список'){
+  if(accountSignedInV236())return true;
+  openRegisterV236();accountMessageV23(`Создай аккаунт или войди, чтобы ${reason}.`,'info');return false;
+}
+
+function guestLibraryHtmlV236(){return `<section id="guestLibraryV236" class="guest-library-v236">
+  <div class="guest-library-glow-v236"></div>
+  <div class="guest-library-copy-v236">
+    <span class="guest-kicker-v236">ТВОЯ БИБЛИОТЕКА · В ОБЛАКЕ</span>
+    <h2>Войдите в аккаунт, чтобы собрать самый удобный список аниме</h2>
+    <p>Сохраняй «Сейчас», «Посмотреть», фильмы и очередь «Далее», продолжай с любого устройства и собирай профиль под себя.</p>
+    <div class="guest-library-actions-v236"><button type="button" onclick="openRegisterV236()">Создать аккаунт бесплатно</button><button type="button" class="secondary" onclick="openLoginV236()">У меня уже есть аккаунт</button></div>
+    <small>Каталог, поиск и страницы аниме можно смотреть и без регистрации.</small>
+  </div>
+  <div class="guest-benefits-v236">
+    <article><span>☁</span><div><b>Список не потеряется</b><small>Прогресс и настройки синхронизируются через аккаунт.</small></div></article>
+    <article><span>🎨</span><div><b>Профиль-конструктор</b><small>Двигай аватар, любимые аниме, статистику и другие блоки.</small></div></article>
+    <article><span>🎴</span><div><b>Карточки и достижения</b><small>Коллекция, уровни и награды привязаны к твоему профилю.</small></div></article>
+    <article><span>▶</span><div><b>Всё вокруг просмотра</b><small>История, прогресс и в будущем друзья, чаты и «Смотреть вместе».</small></div></article>
+  </div>
+</section>`}
+
+const renderListsBeforeV236=renderLists;
+renderLists=function(){
+  const el=$('#lists');if(!el)return;
+  if(!accountSignedInV236()){el.innerHTML=guestLibraryHtmlV236();return;}
+  renderListsBeforeV236();
+};
+const renderQueueBeforeV236=renderQueue;
+renderQueue=function(){
+  const section=$('#queueSection'),el=$('#nextQueue');
+  if(!accountSignedInV236()){section?.classList.add('guest-personal-hidden-v236');if(el)el.innerHTML='';return;}
+  section?.classList.remove('guest-personal-hidden-v236');renderQueueBeforeV236();
+};
+const renderHeroStatsBeforeV236=renderHeroStats;
+renderHeroStats=function(){
+  const el=$('#heroStats');if(!el)return;
+  if(!accountSignedInV236()){el.innerHTML='<span class="hero-stat"><b>☁</b> облачный список</span><span class="hero-stat"><b>🎨</b> свой профиль</span><span class="hero-stat"><b>🎴</b> коллекция</span>';return;}
+  renderHeroStatsBeforeV236();
+};
+const renderGreetingBeforeV236=renderGreetingV13;
+renderGreetingV13=function(force=false){
+  if(!accountSignedInV236()){
+    const title=$('#siteTitle'),tag=$('#siteTagline'),eye=$('#heroEyebrow'),chip=$('#heroSiteNameChip');
+    if(title)title.textContent='Твоё аниме-пространство';
+    if(tag)tag.textContent='Войди — и собери библиотеку, которая будет жить вместе с твоим аккаунтом.';
+    if(eye)eye.textContent='MY ANIME LIST · ACCOUNT';
+    if(chip)chip.textContent=uiSettings?.siteName||V8_DEFAULTS.siteName;
+    return;
+  }
+  return renderGreetingBeforeV236(force);
+};
+const renderHomePulseBeforeV236=renderHomePulseV12;
+renderHomePulseV12=function(){
+  const root=$('#homePulse');if(!root)return;
+  if(!accountSignedInV236()){
+    root.innerHTML=`<div class="guest-home-v236"><div><div class="home-mini-kicker">НАЧНИ С АККАУНТА</div><h3>Список пока пуст — так и задумано</h3><p>Гостевой режим ничего не подмешивает в личную библиотеку. Войди или зарегистрируйся, и здесь появятся продолжение просмотра и очередь.</p></div><div class="guest-home-actions-v236"><button type="button" onclick="openRegisterV236()">Создать аккаунт</button><button type="button" class="secondary" onclick="catalogShowV10()">Открыть каталог</button></div></div>`;
+    return;
+  }
+  return renderHomePulseBeforeV236();
+};
+
+const updateSidebarStatsBeforeV236=updateSidebarStatsV12;
+updateSidebarStatsV12=function(){
+  if(accountSignedInV236())return updateSidebarStatsBeforeV236();
+  for(const id of ['#sidebarTotalCount','#sidebarWatchingCount','#sidebarPlannedCount','#sidebarMoviesCount','#sidebarCompletedCount','#sidebarPausedCount','#sidebarQueueCount']){const e=$(id);if(e)e.textContent='0';}
+  if(catalogUniverseV12?.total){const e=$('#sidebarCatalogTotal');if(e)e.textContent=catalogCompactCountV232?catalogCompactCountV232(catalogUniverseV12.total):'30k+';}
+};
+
+function applyGuestChromeV236(){
+  const signed=accountSignedInV236();document.body.classList.toggle('account-guest-v236',!signed);
+  $('#catalogPersonalSection')?.classList.toggle('guest-personal-hidden-v236',!signed);
+  const pbtn=$('#profileFutureBtn');if(pbtn)pbtn.title=signed?'Открыть профиль':'Войти или создать аккаунт';
+  if(!signed){
+    const name=$('#sidebarProfileName'),level=$('#sidebarProfileLevel'),xp=$('#sidebarProfileXpText'),bar=$('#sidebarProfileXpBar'),av=$('#sidebarProfileAvatar');
+    if(name)name.textContent='Гость';if(level)level.textContent='ВОЙТИ';if(xp)xp.textContent='Аккаунт не подключён';if(bar)bar.style.width='0%';if(av){av.className='sidebar-profile-avatar';av.textContent='＋';}
+    for(const id of ['#sidebarProfileStars','#sidebarProfileTickets','#sidebarProfileWaifuTickets']){const e=$(id);if(e)e.textContent='0';}
+  }
+  renderGreetingV13(false);renderHeroStats();updateSidebarStatsV12();renderHomePulseV12();renderQueue();renderLists();
+}
+const renderAccountChromeBeforeV236=renderAccountChromeV23;
+renderAccountChromeV23=function(){renderAccountChromeBeforeV236();const signed=accountSignedInV236();if(guestSurfaceStateV236!==signed){guestSurfaceStateV236=signed;setTimeout(applyGuestChromeV236,0)}else{document.body.classList.toggle('account-guest-v236',!signed)}};
+
+// In guest mode local pre-account data stays untouched, but it is never exposed as the active library.
+const catalogOwnedInfoBeforeV236=catalogOwnedInfoV10;
+catalogOwnedInfoV10=function(m){return accountSignedInV236()?catalogOwnedInfoBeforeV236(m):null};
+const findDuplicatesBeforeV236=findDuplicates;
+findDuplicates=function(m){return accountSignedInV236()?findDuplicatesBeforeV236(m):[]};
+
+const addResultBeforeV236=addResult;
+addResult=function(...args){if(!requireAccountV236('добавлять аниме в библиотеку'))return;return addResultBeforeV236(...args)};
+const catalogAddMenuBeforeV236=catalogAddMenuV10;
+catalogAddMenuV10=function(...args){if(!requireAccountV236('собирать свою библиотеку'))return;return catalogAddMenuBeforeV236(...args)};window.catalogAddMenuV10=catalogAddMenuV10;
+const catalogCommitAddBeforeV236=catalogCommitAddV10;
+catalogCommitAddV10=async function(...args){if(!requireAccountV236('сохранять аниме в список'))return;return catalogCommitAddBeforeV236(...args)};window.catalogCommitAddV10=catalogCommitAddV10;
+const saveDetailChangesBeforeV236=saveDetailChanges;
+saveDetailChanges=function(...args){if(!requireAccountV236('сохранять прогресс и разделы'))return;return saveDetailChangesBeforeV236(...args)};
+const openQueuePickerBeforeV236=openQueuePickerV7;
+openQueuePickerV7=function(...args){if(!requireAccountV236('собирать очередь «Далее»'))return;return openQueuePickerBeforeV236(...args)};
+const addQueueFromPickerBeforeV236=addQueueFromPickerV7;
+addQueueFromPickerV7=function(...args){if(!requireAccountV236('собирать очередь «Далее»'))return;return addQueueFromPickerBeforeV236(...args)};window.addQueueFromPickerV7=addQueueFromPickerV7;
+const toggleQueueBeforeV236=toggleQueue;
+toggleQueue=function(...args){if(!requireAccountV236('собирать очередь «Далее»'))return;return toggleQueueBeforeV236(...args)};
+
+$('#profileFutureBtn')?.addEventListener('click',e=>{if(!accountSignedInV236()){e.preventDefault();e.stopImmediatePropagation();openRegisterV236()}},true);
+document.querySelectorAll('[data-side-section]').forEach(b=>b.addEventListener('click',e=>{if(!accountSignedInV236()){e.preventDefault();e.stopImmediatePropagation();$('#guestLibraryV236')?.scrollIntoView({behavior:'smooth',block:'center'})}},true));
+document.querySelector('[data-nav-target="queueSection"]')?.addEventListener('click',e=>{if(!accountSignedInV236()){e.preventDefault();e.stopImmediatePropagation();$('#guestLibraryV236')?.scrollIntoView({behavior:'smooth',block:'center'})}},true);
+const scrollSectionBeforeV236=scrollSectionV8;scrollSectionV8=function(section){if(!accountSignedInV236()){document.body.classList.contains('catalog-mode')&&catalogHideV10('lists');setTimeout(()=>$('#guestLibraryV236')?.scrollIntoView({behavior:'smooth',block:'center'}),30);return}return scrollSectionBeforeV236(section)};window.scrollSectionV8=scrollSectionV8;
+$('#queueAddBtn')?.addEventListener('click',e=>{if(!accountSignedInV236()){e.preventDefault();e.stopImmediatePropagation();requireAccountV236('собирать очередь «Далее»')}},true);
+$('#detailSave')?.addEventListener('click',e=>{if(!accountSignedInV236()){e.preventDefault();e.stopImmediatePropagation();requireAccountV236('сохранять аниме и прогресс')}},true);
+
+/* Card avatar reward = profile title, not a border around the avatar. */
+let avatarStudioTitleModeV236='character';
+function avatarCardTitleV236(card,mode=null){
+  if(!card)return '';
+  const m=mode||ensureCardProfileV205().equipped.avatarTitleMode||'character';
+  if(m==='anime'&&card.animeTitle)return card.animeTitle;
+  return card.name||card.animeTitle||'Карточка';
+}
+function avatarRarityIconV236(r){return ({Common:'○',Rare:'◇',Epic:'◆',Legendary:'♛'})[String(r||'Common')]||'○'}
+function avatarTitleClassV236(r){return `avatar-title-${String(r||'Common').toLowerCase()}-v236`}
+function avatarModernizeStudioV236(){
+  const modal=ensureAvatarStudioV205(),head=modal?.querySelector('header p');if(head)head.textContent='Карточка меняет аватар и открывает титул профиля — без рамки вокруг картинки.';
+  const fx=$('#avatarEffectsV205');const label=fx?.closest('section')?.querySelector('.avatar-studio-label-v205');if(label)label.textContent='ТИТУЛ ИЗ КАРТОЧКИ';
+  return modal;
+}
+const renderAvatarStudioBeforeV236=renderAvatarStudioV205;
+renderAvatarStudioV205=function(){
+  const p=ensureCardProfileV205(),box=$('#avatarCardsV205'),fx=$('#avatarEffectsV205');if(!box||!fx)return;
+  const cards=[...(p.collection||[])].sort((a,b)=>cardRarityRankV205(b.rarity)-cardRarityRankV205(a.rarity)||String(a.name).localeCompare(String(b.name)));
+  box.innerHTML=cards.length?cards.map(c=>avatarStudioCardV205(c,String(avatarStudioPickV205)===String(c.characterId))).join(''):'<div class="profile-empty">Сначала выбей хотя бы одну карточку.</div>';
+  box.querySelectorAll('[data-avatar-card]').forEach(btn=>btn.onclick=()=>{avatarStudioPickV205=btn.dataset.avatarCard;renderAvatarStudioV205();renderAvatarStudioPreviewV205()});
+  const selected=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205));
+  fx.innerHTML=selected?`<button type="button" class="avatar-effect-pick-v205 ${avatarStudioTitleModeV236==='character'?'selected':''}" data-avatar-title-v236="character"><b>${avatarRarityIconV236(selected.rarity)} ${esc(selected.name||'Персонаж')}</b><small>Титул — имя персонажа</small></button><button type="button" class="avatar-effect-pick-v205 ${avatarStudioTitleModeV236==='anime'?'selected':''}" data-avatar-title-v236="anime"><b>🎬 ${esc(selected.animeTitle||'Название аниме')}</b><small>Титул — аниме карточки</small></button>`:'<div class="profile-empty">Выбери карточку — появятся варианты титула.</div>';
+  fx.querySelectorAll('[data-avatar-title-v236]').forEach(btn=>btn.onclick=()=>{avatarStudioTitleModeV236=btn.dataset.avatarTitleV236||'character';renderAvatarStudioV205();renderAvatarStudioPreviewV205()});
+  $('#avatarFitV205').value=p.equipped.avatarFit||'cover';$('#avatarPositionV205').value=p.equipped.avatarPosition||'center';
+};
+renderAvatarStudioPreviewV205=function(){
+  const p=ensureCardProfileV205(),c=(p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205)),root=$('#avatarPreviewV205');if(!root)return;
+  root.className='profile-avatar avatar-card-clean-v236';const fit=$('#avatarFitV205')?.value||'cover',pos=$('#avatarPositionV205')?.value||'center';
+  root.innerHTML=c?.image?`<img src="${esc(c.image)}" style="object-fit:${fit};object-position:${pos}" alt="">`:`<span>${esc(profileNicknameV16().slice(0,1).toUpperCase())}</span>`;
+  $('#avatarPreviewNameV205').textContent=c?.name||'Без персонажа';$('#avatarPreviewMetaV205').textContent=c?`Титул: ${avatarCardTitleV236(c,avatarStudioTitleModeV236)} · ${c.rarity}`:'Выбери карточку ниже';
+};
+openAvatarStudioV205=function(characterId=null){
+  const p=ensureCardProfileV205();avatarModernizeStudioV236();avatarStudioPickV205=characterId!=null?String(characterId):(p.equipped.avatarCharacterId!=null?String(p.equipped.avatarCharacterId):null);avatarStudioEffectV205='none';avatarStudioTitleModeV236=p.equipped.avatarTitleMode||'character';renderAvatarStudioV205();renderAvatarStudioPreviewV205();$('#avatarStudioV205').classList.remove('hidden');
+};window.openAvatarStudioV205=openAvatarStudioV205;
+applyAvatarStudioV205=function(){
+  const p=ensureCardProfileV205();if(avatarStudioPickV205&&!p.collection.some(x=>String(x.characterId)===String(avatarStudioPickV205))){profileToastV16('Карточка не найдена');return}
+  p.equipped.avatarCharacterId=avatarStudioPickV205?Number(avatarStudioPickV205):null;p.equipped.avatarEffect='none';p.equipped.avatarTitleMode=avatarStudioTitleModeV236||'character';p.equipped.avatarFit=$('#avatarFitV205')?.value||'cover';p.equipped.avatarPosition=$('#avatarPositionV205')?.value||'center';
+  if(avatarStudioPickV205)ensureProfilePrefsV162().customAvatar='';saveData();closeAvatarStudioV205();renderProfileV16();profileToastV16('✓ Аватар обновлён',avatarStudioPickV205?`Титул: ${avatarCardTitleV236((p.collection||[]).find(x=>String(x.characterId)===String(avatarStudioPickV205)))}`:'Вернул инициалы');
+};
+
+const renderProfileChromeBeforeV236=renderProfileChromeV16;
+renderProfileChromeV16=function(){
+  renderProfileChromeBeforeV236();const p=ensureCardProfileV205();p.equipped.avatarTitleMode||='character';const card=(p.collection||[]).find(x=>String(x.characterId)===String(p.equipped.avatarCharacterId));
+  const badge=$('#profileEquippedBadge'),root=$('#profileAvatar'),side=$('#sidebarProfileAvatar');
+  if(card){
+    if(root)root.className='profile-avatar avatar-card-clean-v236';
+    if(side){side.className='sidebar-profile-avatar avatar-card-clean-v236';for(const c of ['avatar-fx-soft','avatar-fx-rare','avatar-fx-epic','avatar-fx-legendary','avatar-fx-waifu'])side.classList.remove(c)}
+    const title=avatarCardTitleV236(card);if(badge){badge.textContent=`${avatarRarityIconV236(card.rarity)} ${title}`;badge.className=`avatar-card-title-v236 ${avatarTitleClassV236(card.rarity)}`;badge.title=`Карточка: ${card.name||''}${card.animeTitle?` · ${card.animeTitle}`:''}`;}
+    let st=$('#sidebarProfileCardTitleV236');if(!st){st=document.createElement('small');st.id='sidebarProfileCardTitleV236';st.className='sidebar-card-title-v236';document.querySelector('.sidebar-profile-copy')?.appendChild(st)}if(st){st.textContent=`${avatarRarityIconV236(card.rarity)} ${title}`;st.className=`sidebar-card-title-v236 ${avatarTitleClassV236(card.rarity)}`;}
+  }else{
+    if(badge){badge.className='';badge.removeAttribute('title')}
+    $('#sidebarProfileCardTitleV236')?.remove();
+  }
+  if(!accountSignedInV236())setTimeout(()=>{const name=$('#sidebarProfileName');if(name)name.textContent='Гость';},0);
+};
+
+/* "До 13 серий" means completed short anime — never an ongoing title with a temporarily small episode count. */
+function catalogShortRejectOngoingV236(m,f){
+  if(String(f?.length||'')!=='13')return false;
+  const st=String(m?.status||'').toUpperCase().replace(/ /g,'_');
+  return ['RELEASING','AIRING','CURRENTLY_AIRING','NOT_YET_RELEASED','NOT_YET_AIRED'].includes(st);
+}
+const catalogClientFilterBeforeV236=catalogClientFilterV11;
+catalogClientFilterV11=function(m,f,opts={}){if(catalogShortRejectOngoingV236(m,f))return false;return catalogClientFilterBeforeV236(m,f,opts)};
+const catalogFilterBeforeV236=catalogFilterV12;
+catalogFilterV12=function(m,f){if(catalogShortRejectOngoingV236(m,f))return false;return catalogFilterBeforeV236(m,f)};
+const catalogApplyPresetBeforeV236=catalogApplyPresetV10;
+catalogApplyPresetV10=function(name){
+  if(name!=='short')return catalogApplyPresetBeforeV236(name);
+  const f=catalogDefaultFiltersV10();f.length='13';f.status='FINISHED';f.sort='POPULARITY_DESC';catalogStateV10.preset='short';catalogMarkPresetV10('short');catalogSetFormV10(f);catalogSaveFiltersV10();catalogStateV10.page=1;catalogFetchPageV10();
+};window.catalogApplyPresetV10=catalogApplyPresetV10;
+
+setTimeout(()=>{renderAccountChromeV23();applyGuestChromeV236();renderProfileChromeV16();},160);
+console.info(`Anime list V${V236_TAG}: account-first guest library + profile card titles + completed-only short filter`);

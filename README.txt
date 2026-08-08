@@ -1,3 +1,16 @@
+My Anime List V23.6 — Account First + Profile Titles
+
+- Гостевой режим теперь показывает пустую личную библиотеку и большой CTA входа/регистрации; старые локальные данные не удаляются, но гостю не показываются.
+- Каталог и поиск доступны без аккаунта, но попытка добавить аниме/очередь/прогресс открывает регистрацию.
+- V23.5 Profile Studio сохранён: drag & drop + resize + явные Save/Cancel, XP/Supporter вынесены из верхнего обзора.
+- Поиск жанром работает прямо в каталоге: Ecchi/эччи, Romance, Horror и др.
+- «До 13 серий» больше не показывает онгоинги; быстрый фильтр сразу ставит статус FINISHED.
+- Карточка на аватаре больше не даёт рамку/ауру: она даёт титул профиля. В Avatar Studio можно выбрать титул по имени персонажа или названию аниме.
+
+My Anime List V23.5 — Profile Studio
+
+Free 12-column profile layout editor, explicit Save/Cancel, draggable avatar/widgets, resizable blocks, XP info moved to Quests, Supporter info moved to Shop, and smart server-side genre search (e.g. Ecchi / эччи).
+
 Anime List V22.0
 
 PLAYER V22 — MEDIA DECK
