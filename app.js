@@ -9416,3 +9416,22 @@ setTimeout(()=>{
 },500);
 
 console.info(`Senime V${SENIME_V2471}: Community + collection + comment hotfix loaded`);
+
+
+/* ==========================================================================
+   SENIME V24.7.3 · CACHE-BUST VERIFY
+   This patch exists because GitHub Pages/browser cache could keep serving the
+   older unversioned app.js even after the file was replaced.
+   ========================================================================== */
+window.SENIME_BUILD='24.7.3';
+
+setTimeout(()=>{
+  try{
+    if(founderSessionV245?.() && sessionStorage.getItem('senime-build-toast')!=='24.7.3'){
+      sessionStorage.setItem('senime-build-toast','24.7.3');
+      profileToastV16('✓ Senime V24.7.3 загружен','Новый JS точно активен · cache-bust');
+    }
+  }catch{}
+},1400);
+
+console.info('Senime build 24.7.3 · cache-bust active');
