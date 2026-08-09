@@ -3,7 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>🎌 Мой аниме-лист</title>
+  <title>Senime — аниме-библиотека и сообщество</title>
+
+  <meta name="description" content="Senime — аниме-библиотека, профили, коллекционные карточки, друзья и удобный просмотр в одном месте.">
+  <meta name="theme-color" content="#0e0f13">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Senime — твоё аниме-пространство">
+  <meta property="og:description" content="Собирай библиотеку, оформляй профиль, открывай карточки и общайся с друзьями.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +21,7 @@
       <div class="sidebar-head">
         <button id="topBrandBtn" class="sidebar-brand" type="button" title="На обзор">
           <span class="sidebar-brand-mark">◈</span>
-          <span class="sidebar-brand-copy"><strong id="topBrandName">Мой аниме-лист</strong><small>личная библиотека</small></span>
+          <span class="sidebar-brand-copy"><strong id="topBrandName">Senime</strong><small>anime · social · collection</small></span>
         </button>
         <button id="sidebarToggleBtn" class="sidebar-collapse-btn" type="button" aria-label="Свернуть меню" title="Свернуть меню">☰</button>
       </div>
@@ -71,7 +80,7 @@
         <div id="heroEyebrow" class="eyebrow">ТВОЁ АНИМЕ-ПРОСТРАНСТВО</div>
         <h1 id="siteTitle">Привет 👋</h1>
         <p id="siteTagline">Рад тебя видеть.</p>
-        <div class="hero-live-meta"><span id="heroTrailerBadge" class="hero-trailer-badge hidden">▶ живой аниме-фон · без звука</span><span id="heroSiteNameChip" class="hero-site-chip">Мой аниме-лист</span></div>
+        <div class="hero-live-meta"><span id="heroTrailerBadge" class="hero-trailer-badge hidden">▶ живой аниме-фон · без звука</span><span id="heroSiteNameChip" class="hero-site-chip">Senime</span></div>
         <div id="heroStats" class="hero-stats"></div>
       </div>
       <div class="header-actions">
@@ -92,7 +101,7 @@
         <div>
           <div class="catalog-kicker">DISCOVER · ТВОЙ КАТАЛОГ</div>
           <h2>Найди, что смотреть дальше</h2>
-          <p>Большой каталог с живой выдачей, фильтрами и рекомендациями по твоим оценкам. Список остаётся локальным — наружу ничего не отправляется.</p>
+          <p>Большой каталог с живой выдачей, фильтрами и рекомендациями. После входа библиотека и профиль синхронизируются с аккаунтом.</p>
           <div class="catalog-universe-line"><span class="catalog-live-dot"></span><strong id="catalogUniverseCount">Считаю базу…</strong><span>·</span><span id="catalogSourceStatus">AniList + резервный источник</span></div>
         </div>
         <div class="catalog-hero-actions">
@@ -192,13 +201,13 @@
     <div class="footer-glow"></div>
     <div class="footer-inner">
       <div class="footer-brand">
-        <div class="footer-brand-line"><span class="footer-mark">🎌</span><strong id="footerSiteName">My Anime List</strong></div>
+        <div class="footer-brand-line"><span class="footer-mark">🎌</span><strong id="footerSiteName">Senime</strong></div>
         <p id="footerTagline">Твоя аниме-библиотека, профиль и тусовка в одном месте.</p>
         <button class="footer-top-btn" type="button" onclick="scrollToV8('top')">↑ Наверх</button>
       </div>
       <div class="footer-col"><h4>Навигация</h4><button onclick="scrollToV8('top')">Главная</button><button id="footerCatalogBtn" type="button">Каталог</button><button onclick="scrollToV8('searchSection')">Поиск аниме</button><button onclick="scrollToV8('queueSection')">Очередь «Далее»</button></div>
       <div class="footer-col"><h4>Мой список</h4><button onclick="scrollSectionV8('watching')">Сейчас</button><button onclick="scrollSectionV8('planned')">Посмотреть</button><button onclick="scrollSectionV8('completed')">Посмотрел</button><button onclick="scrollSectionV8('paused')">Отложено</button></div>
-      <div class="footer-col"><h4>Аккаунт</h4><span>Список и профиль синхронизируются между устройствами</span><span>AniList + MyAnimeList/Jikan + облако</span><button onclick="document.getElementById('settingsBtn').click()">⚙️ Настроить вид</button></div>
+      <div class="footer-col"><h4>Аккаунт</h4><span>Список и профиль синхронизируются между устройствами</span><span>AniList + Shikimori + AnimeThemes + облако</span><button onclick="document.getElementById('settingsBtn').click()">⚙️ Настроить вид</button></div>
     </div>
     <div class="footer-creator-v245">
       <div class="footer-creator-mark-v245">✦</div>
@@ -209,7 +218,7 @@
       </div>
       <button id="footerCreatorProfileV245" type="button">Открыть профиль создателя →</button>
     </div>
-    <div class="footer-bottom"><span id="footerCopyright">© 2026 My Anime List</span><span>Сделано людьми, которые слишком много смотрят аниме.</span></div>
+    <div class="footer-bottom"><span id="footerCopyright">© 2026 Senime</span><span class="footer-legal-v246"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="contact.html">Contact</a></span><span>Public Beta · данные аккаунта защищены Supabase RLS</span></div>
   </footer>
 
   <div id="mascotDock" class="mascot-dock hidden" aria-label="Персональная картинка">
@@ -582,14 +591,13 @@
         <div class="profile-identity">
           <div id="profileAvatar" class="profile-avatar"><span id="profileAvatarFallback">•</span><img id="profileAvatarImage" alt="" class="hidden"></div>
           <div>
-            <div class="profile-kicker">LOCAL PROFILE · V20.5</div>
+            <div class="profile-kicker">SENIME PROFILE</div>
             <h2 id="profileName">Профиль</h2>
             <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span><span id="profileCreatorBadgeV245" class="profile-creator-badge-v245 hidden">✦ CREATOR · #0001</span></div>
           </div>
         </div>
         <div class="profile-head-actions">
           <button id="profileAccountBtn" class="profile-account-btn" type="button">☁ Войти</button>
-          <button id="profileAdminBtn" class="profile-admin-btn hidden" type="button">◆ Admin</button>
           <button id="profileQuickEditBtn" class="profile-quick-edit" type="button">✎ Редактировать</button>
           <button id="profileClose" class="profile-close" type="button" aria-label="Закрыть">✕</button>
         </div>
@@ -622,22 +630,6 @@
 
       <div class="profile-body">
         <section id="profileTabOverview" class="profile-tab-pane active">
-          <div class="profile-overview-grid">
-            <article class="profile-info-card">
-              <div class="profile-card-kicker">КАК РАБОТАЕТ XP</div>
-              <h3>Считается реальный просмотр</h3>
-              <p>Серия получает награду только после просмотра ≥82% уникальной временной шкалы. Перемотка и повтор одного куска XP не фармят.</p>
-              <div class="profile-rule-list">
-                <span>+25 XP · серия</span><span>+150 XP · сезон</span><span>+300 XP · тайтл</span><span>ручной прогресс · 0 XP</span>
-              </div>
-            </article>
-            <article class="profile-info-card supporter-preview">
-              <div class="profile-card-kicker">SUPPORTER · ПОЗЖЕ</div>
-              <h3>Платить за просмотр не придётся</h3>
-              <p>Если сайт когда-нибудь выйдет публично, Premium будет только про косметику: рамки, темы, эффекты профиля и значок поддержки.</p>
-              <button id="profileSupporterInfo" class="secondary" type="button">Что можно добавить</button>
-            </article>
-          </div>
           <div id="profileOverviewBlocks" class="profile-overview-blocks">
             <section id="profileBlockFavorites" class="profile-overview-block">
               <div class="profile-section-head"><div><span>ВИТРИНА</span><h3>Любимые аниме</h3></div><button id="profileChooseFavorites" class="secondary" type="button">★ Выбрать</button></div>
@@ -652,7 +644,7 @@
               <div id="profileOverviewStats" class="profile-overview-stats"></div>
             </section>
             <section id="profileBlockList" class="profile-overview-block">
-              <div class="profile-section-head profile-list-heading"><div><span>БИБЛИОТЕКА</span><h3>Мой аниме-лист</h3></div><small id="profileListCount"></small></div>
+              <div class="profile-section-head profile-list-heading"><div><span>БИБЛИОТЕКА</span><h3>Моя библиотека</h3></div><small id="profileListCount"></small></div>
               <div id="profileListFilters" class="profile-list-filters"></div>
               <div id="profileCompactList" class="profile-compact-list"></div>
             </section>
@@ -662,7 +654,7 @@
                 <div id="profileCommentComposerAvatar" class="profile-comment-avatar">S</div>
                 <div class="profile-comment-compose-main">
                   <textarea id="profileCommentInput" maxlength="400" rows="2" placeholder="Оставить запись в профиле..."></textarea>
-                  <div class="profile-comment-compose-foot"><span>Сейчас комментарии локальные · после аккаунтов станут общей гостевой</span><div><small id="profileCommentChars">0 / 400</small><button id="profileCommentSend" type="button">Отправить</button></div></div>
+                  <div class="profile-comment-compose-foot"><span>В своём окне профиля — личные заметки; публичная гостевая доступна на странице профиля</span><div><small id="profileCommentChars">0 / 400</small><button id="profileCommentSend" type="button">Отправить</button></div></div>
                 </div>
               </div>
               <div id="profileCommentsList" class="profile-comments-list"></div>
@@ -675,7 +667,7 @@
             <article class="profile-custom-card profile-custom-wide">
               <div class="profile-card-kicker">PUBLIC PROFILE</div>
               <h3>Как выглядит твоя страница</h3>
-              <p class="profile-custom-help">Все настройки пока хранятся только у тебя. Если появятся аккаунты — это станет публичной страницей профиля.</p>
+              <p class="profile-custom-help">Настройки сохраняются в аккаунте и формируют твою публичную страницу Senime.</p>
               <div class="profile-form-grid">
                 <label><span>Ник</span><input id="profileCustomNickname" maxlength="32" placeholder="Твой ник"></label>
                 <label><span>Заголовок профиля</span><input id="profileCustomTitle" maxlength="70" placeholder="Например: вечерний смотритель аниме"></label>
@@ -806,53 +798,6 @@
     </div>
   </div>
 
-
-  <div id="adminModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-label="Admin Menu">
-    <div class="admin-shell">
-      <header class="admin-head">
-        <div><span>LOCAL OWNER TOOLS</span><h2>◆ Admin Menu</h2><p>Локальные инструменты владельца. После публикации это должно проверяться серверной ролью.</p></div>
-        <button id="adminClose" class="profile-close" type="button">✕</button>
-      </header>
-      <div id="adminSummary" class="admin-summary"></div>
-      <div class="admin-grid">
-        <section class="admin-card">
-          <span>РЕСУРСЫ</span><h3>Выдать себе</h3>
-          <label>XP <div class="admin-inline"><input id="adminXpAmount" type="number" min="1" value="500"><button id="adminGiveXp" type="button">+ XP</button></div></label>
-          <label>Stars <div class="admin-inline"><input id="adminStarsAmount" type="number" min="1" value="500"><button id="adminGiveStars" type="button">+ Stars</button></div></label>
-          <label>Character Tickets <div class="admin-inline"><input id="adminTicketsAmount" type="number" min="1" value="1"><button id="adminGiveTickets" type="button">+ 🎴</button></div></label>
-          <label>Waifu Tickets <div class="admin-inline"><input id="adminWaifuTicketsAmount" type="number" min="1" value="1"><button id="adminGiveWaifuTickets" class="waifu-ticket-btn" type="button">+ 💗</button></div></label>
-          <label>Уровень <div class="admin-inline"><input id="adminLevelValue" type="number" min="1" max="999" value="1"><button id="adminSetLevel" class="secondary" type="button">Установить</button></div></label>
-        </section>
-        <section class="admin-card">
-          <span>ACHIEVEMENTS</span><h3>Достижения</h3>
-          <select id="adminAchievementSelect"></select>
-          <label class="admin-check"><input id="adminAchievementRewards" type="checkbox" checked><span>Выдать и стандартную награду</span></label>
-          <button id="adminGrantAchievement" type="button">🏆 Выдать достижение</button>
-          <button id="adminUnlockCosmetics" class="secondary" type="button">◇ Открыть все рамки</button>
-          <div class="admin-danger-zone">
-            <span>TEST RESET</span>
-            <p>Убирает тестовую прогрессию и вещи, полученные через Admin Menu. Аниме-лист, настройки профиля, комментарии и честно подтверждённый просмотр сохраняются.</p>
-            <button id="adminResetProfile" class="danger" type="button">↺ Сбросить тестовый профиль</button>
-          </div>
-        </section>
-        <section class="admin-card admin-card-wide">
-          <span>QUEST BUILDER</span><h3>Создать задание</h3>
-          <div class="admin-quest-form">
-            <input id="adminQuestTitle" maxlength="70" placeholder="Название задания">
-            <input id="adminQuestDesc" maxlength="180" placeholder="Что нужно сделать">
-            <label>XP<input id="adminQuestXp" type="number" min="0" value="100"></label>
-            <label>Stars<input id="adminQuestStars" type="number" min="0" value="30"></label>
-            <label>Tickets<input id="adminQuestTickets" type="number" min="0" value="0"></label>
-            <label>Waifu<input id="adminQuestWaifuTickets" type="number" min="0" value="0"></label>
-            <button id="adminCreateQuest" type="button">＋ Создать</button>
-          </div>
-          <div id="adminQuestList" class="admin-quest-list"></div>
-        </section>
-      </div>
-      <div class="admin-foot"><span>Ctrl + Shift + A · доступ показывается только для локального профиля SeNite</span><button id="adminRefresh" class="secondary" type="button">↻ Обновить</button></div>
-    </div>
-  </div>
-
   <div id="characterReveal" class="character-reveal hidden" role="dialog" aria-modal="true">
     <div class="character-reveal-card">
       <div id="characterRevealRarity" class="character-reveal-rarity">RARE</div>
@@ -878,6 +823,9 @@
     </div>
   </div>
 
+
+  <input id="settingSiteName" type="hidden" value="Senime">
+  <input id="settingSiteTagline" type="hidden" value="Твоя аниме-библиотека, профиль и сообщество в одном месте.">
 
   <div id="settingsModal" class="settings-modal hidden" role="dialog" aria-modal="true">
     <div class="settings-shell">
@@ -935,8 +883,6 @@
         <section class="settings-group settings-branding-group">
           <h3>🪪 Название, приветствие и футер</h3>
           <label class="setting-field"><span><b>Твой ник</b><small>Используется в приветствиях и будущем профиле</small></span><input id="settingNickname" type="text" maxlength="28" placeholder="Например: SeNite"></label>
-          <label class="setting-field"><span><b>Название сайта</b><small>Название твоего личного аниме-пространства</small></span><input id="settingSiteName" type="text" maxlength="40" placeholder="My Anime List"></label>
-          <label class="setting-field"><span><b>Подпись</b><small>Короткий текст в футере и запасная подпись</small></span><input id="settingSiteTagline" type="text" maxlength="120" placeholder="Мой личный аниме-трекер"></label>
           <label class="setting-toggle"><span><b>Живой аниме-фон на главной</b><small>Автоматически берёт OP/ED-видео из AnimeThemes. YouTube не нужен</small></span><input id="settingHeroTrailer" type="checkbox"><i></i></label>
           <label class="setting-toggle"><span><b>Показывать футер</b><small>Большой нижний блок как у аниме-сервисов</small></span><input id="settingFooter" type="checkbox"><i></i></label>
         </section>
@@ -1039,7 +985,7 @@
         </form>
 
         <div class="account-guest-foot">
-          <span>Можно продолжать без аккаунта — данные останутся локально.</span>
+          <span>Без аккаунта можно смотреть каталог. Для личной библиотеки, профиля и социальных функций нужен аккаунт.</span>
           <button id="accountContinueGuest" type="button">Продолжить как гость</button>
         </div>
       </div>

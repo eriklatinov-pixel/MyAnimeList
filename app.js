@@ -2609,8 +2609,8 @@ saveData();renderQueue();
 
 /* ===== V8: polished motion, customizable mascot/footer, steadier franchise music ===== */
 const V8_DEFAULTS = {
-  siteName:'Мой аниме-лист',
-  siteTagline:'Мой личный аниме-трекер — всё хранится прямо в браузере.',
+  siteName:'Senime',
+  siteTagline:'Твоя аниме-библиотека, профиль и сообщество в одном месте.',
   showFooter:true,
   motion:'normal',buttonFx:'ripple',
   mascotEnabled:false,mascotImage:'',mascotAltImage:'',mascotSize:180,mascotPosition:'right',mascotHover:'lift',mascotClick:'bounce'
@@ -8378,54 +8378,241 @@ setTimeout(()=>{renderCreatorIdentityV245();adminSyncButtonV164?.()},220);
 console.info(`Anime list V${V245_TAG}: Creator identity + founder-only Admin + permanent creator profile footer`);
 
 
-/* ===== V24.5.1: public avatar crop parity =====
-   Keep the same Avatar Studio crop (fit + vertical position) when another
-   user opens the public profile. Previously public profiles only received
-   the image URL, so they always fell back to object-fit: cover / center. */
-const V2451_TAG='24.5.1';
+/* ==========================================================================\n   SENIME V24.6 · PUBLIC BETA FOUNDATION\n   - public profile guestbook\n   - founder-only injected admin panel + server-issued grants\n   - duplicate-proof card tickets\n   - rarity rebalance + safer fan-favorite Waifu pool\n   - public avatar crop parity / visible bio / no inner scrollbar\n   - Senime brand migration + production polish\n   ========================================================================== */
+const SENIME_V246='24.6';
 
-const socialBuildPublicPayloadBeforeV2451=socialBuildPublicPayloadV242;
+/* Brand migration: old personal branding must not survive the public Senime rebrand. */
+function senimeBrandMigrationV246(){
+  try{
+    const old=/^(мой аниме[- ]?лист|my anime list|myanimelist)$/i;
+    if(!uiSettings) return;
+    if(!uiSettings.siteName||old.test(String(uiSettings.siteName).trim())) uiSettings.siteName='Senime';
+    if(!uiSettings.siteTagline||/личн.*аниме|хранится прямо в браузере/i.test(String(uiSettings.siteTagline))) uiSettings.siteTagline='Твоя аниме-библиотека, профиль и сообщество в одном месте.';
+    localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));
+  }catch{}
+  document.title='Senime — аниме-библиотека и сообщество';
+  [['topBrandName','Senime'],['heroSiteNameChip','Senime'],['footerSiteName','Senime']].forEach(([id,t])=>{const e=$('#'+id);if(e)e.textContent=t});
+  const c=$('#footerCopyright');if(c)c.textContent='© 2026 Senime';
+}
+senimeBrandMigrationV246();
+setTimeout(senimeBrandMigrationV246,80);
+
+/* ---------- Public payload: avatar Studio crop is part of the public profile. ---------- */
+const socialBuildPublicPayloadBeforeV246=socialBuildPublicPayloadV242;
 socialBuildPublicPayloadV242=function(){
-  const out=socialBuildPublicPayloadBeforeV2451();
+  const out=socialBuildPublicPayloadBeforeV246();
   const p=ensureProfileV16();
   out.avatarFit=p.equipped?.avatarFit==='contain'?'contain':'cover';
-  out.avatarPosition=['top','center','bottom'].includes(p.equipped?.avatarPosition)
-    ? p.equipped.avatarPosition
-    : 'center';
+  out.avatarPosition=['top','center','bottom'].includes(p.equipped?.avatarPosition)?p.equipped.avatarPosition:'center';
+  out.senimeVersion=SENIME_V246;
   return out;
 };
 
-function applyPublicAvatarCropV2451(p){
+function publicApiHeadersV246(){
+  const c=accountConfigV23(),token=accountSessionV23?.access_token||c.key;
+  return accountAuthHeadersV23(token);
+}
+async function publicRestV246(path){
+  const c=accountConfigV23();if(!accountConfiguredV23())throw new Error('Облако профилей не подключено.');
+  return accountJsonFetchV23(`${c.url}/rest/v1/${path}`,{headers:publicApiHeadersV246()});
+}
+async function publicFreshProfileV246(id){
+  const q=new URLSearchParams();q.set('id',`eq.${id}`);q.set('select',socialProfileFieldsV242());q.set('limit','1');
+  return (await publicRestV246(`profiles?${q.toString()}`))?.[0]||null;
+}
+async function publicProfilesByIdsV246(ids){
+  ids=[...new Set((ids||[]).filter(Boolean))];if(!ids.length)return [];
+  const q=new URLSearchParams();q.set('id',`in.(${ids.join(',')})`);q.set('select','id,display_name,handle,avatar_url,role,founder_no');
+  return await publicRestV246(`profiles?${q.toString()}`)||[];
+}
+function applyPublicAvatarV246(p){
+  const img=document.querySelector('#publicProfileBodyV242 .public-profile-avatar-v242 img');if(!img)return;
   const pp=p?.public_payload||{};
-  const img=document.querySelector('#publicProfileBodyV242 .public-profile-avatar-v242 img');
-  if(!img)return;
-  const fit=pp.avatarFit==='contain'?'contain':'cover';
-  const pos=['top','center','bottom'].includes(pp.avatarPosition)?pp.avatarPosition:'center';
-  img.style.objectFit=fit;
-  img.style.objectPosition=pos;
-  img.style.display='block';
+  img.style.objectFit=pp.avatarFit==='contain'?'contain':'cover';
+  img.style.objectPosition=['top','center','bottom'].includes(pp.avatarPosition)?pp.avatarPosition:'center';
+}
+function enhancePublicBioV246(p){
+  const idBox=document.querySelector('#publicProfileBodyV242 .public-identity-widget-v243');if(!idBox)return;
+  idBox.querySelector('.public-about-v246')?.remove();
+  document.querySelector('#publicProfileBodyV242 .public-stats-widget-v243 > p')?.remove();
+  const bio=String(p?.bio||p?.public_payload?.bio||'').trim();if(!bio)return;
+  const box=document.createElement('div');box.className='public-about-v246';box.innerHTML=`<span>О СЕБЕ</span><p>${esc(bio)}</p>`;
+  const actions=idBox.querySelector('.public-actions-v243');idBox.insertBefore(box,actions||null);
 }
 
-const socialOpenPublicProfileBeforeV2451=socialOpenPublicProfileV242;
+/* ---------- Public profile guestbook (Supabase-backed). ---------- */
+let publicProfileActiveV246=null;
+let publicProfileCommentsV246=[];
+let publicProfileAuthorsV246=new Map();
+let publicProfileReplyV246={parentId:null,name:''};
+function publicCommentTimeV246(v){try{return new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}catch{return''}}
+function publicCommentAvatarV246(p){return p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:`<b>${esc(String(p?.display_name||p?.handle||'?').trim().slice(0,1).toUpperCase()||'?')}</b>`}
+function publicCommentCanDeleteV246(c){const me=accountSessionV23?.user?.id||socialMeV241?.();return !!me&&(me===c.author_id||me===c.profile_id||founderSessionV245?.())}
+async function fetchPublicCommentsV246(profileId){
+  const q=new URLSearchParams();q.set('profile_id',`eq.${profileId}`);q.set('select','id,profile_id,author_id,parent_id,body,created_at');q.set('order','created_at.asc');q.set('limit','200');
+  const rows=await publicRestV246(`profile_comments?${q.toString()}`);publicProfileCommentsV246=rows||[];
+  const profs=await publicProfilesByIdsV246(publicProfileCommentsV246.map(x=>x.author_id));publicProfileAuthorsV246=new Map(profs.map(x=>[x.id,x]));
+  return publicProfileCommentsV246;
+}
+function publicCommentHtmlV246(c,replies=[]){
+  const a=publicProfileAuthorsV246.get(c.author_id)||{},creator=socialFounderBadgeV242?.(a)||'';
+  return `<article class="public-comment-v246"><div class="public-comment-avatar-v246">${publicCommentAvatarV246(a)}</div><div class="public-comment-copy-v246"><div class="public-comment-meta-v246"><strong>${esc(a.display_name||a.handle||'Пользователь')} ${creator}</strong><time>${publicCommentTimeV246(c.created_at)}</time></div><p>${esc(c.body||'')}</p><div class="public-comment-actions-v246">${accountSignedInV236?.()?`<button type="button" onclick="publicStartReplyV246(${Number(c.id)},'${esc(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}${publicCommentCanDeleteV246(c)?`<button class="danger" type="button" onclick="publicDeleteCommentV246(${Number(c.id)})">Удалить</button>`:''}</div>${replies.length?`<div class="public-comment-replies-v246">${replies.map(r=>publicReplyHtmlV246(r)).join('')}</div>`:''}</div></article>`;
+}
+function publicReplyHtmlV246(r){
+  const a=publicProfileAuthorsV246.get(r.author_id)||{},creator=socialFounderBadgeV242?.(a)||'';
+  return `<div class="public-comment-reply-v246"><div class="public-comment-avatar-v246 small">${publicCommentAvatarV246(a)}</div><div><div class="public-comment-meta-v246"><strong>${esc(a.display_name||a.handle||'Пользователь')} ${creator}</strong><time>${publicCommentTimeV246(r.created_at)}</time></div><p>${esc(r.body||'')}</p><div class="public-comment-actions-v246">${accountSignedInV236?.()?`<button type="button" onclick="publicStartReplyV246(${Number(r.parent_id||r.id)},'${esc(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}${publicCommentCanDeleteV246(r)?`<button class="danger" type="button" onclick="publicDeleteCommentV246(${Number(r.id)})">Удалить</button>`:''}</div></div></div>`;
+}
+function renderPublicCommentsCachedV246(profileId){
+  const host=$('#publicProfileCommentsV246');if(!host)return;
+  const roots=publicProfileCommentsV246.filter(x=>!x.parent_id),byParent=new Map();for(const r of publicProfileCommentsV246.filter(x=>x.parent_id)){const k=String(r.parent_id);if(!byParent.has(k))byParent.set(k,[]);byParent.get(k).push(r)}
+  const signed=accountSignedInV236?.();
+  const reply=publicProfileReplyV246.parentId?`<div class="public-comment-replying-v246">Отвечаем <b>${esc(publicProfileReplyV246.name)}</b><button type="button" onclick="publicCancelReplyV246()">✕</button></div>`:'';
+  const composer=signed?`${reply}<div class="public-comment-composer-v246"><textarea id="publicCommentInputV246" maxlength="500" rows="2" placeholder="${publicProfileReplyV246.parentId?'Написать ответ…':'Оставить запись в профиле…'}"></textarea><div><small>До 500 символов · без HTML</small><button type="button" onclick="publicSendCommentV246()">Отправить</button></div></div>`:`<div class="public-comment-login-v246"><span>Войди в Senime, чтобы оставить комментарий.</span><button type="button" onclick="openAccountV23()">Войти</button></div>`;
+  host.innerHTML=`<div class="public-widget-head-v243"><div><span>ГОСТЕВАЯ</span><h3>Комментарии профиля</h3></div><small>${publicProfileCommentsV246.length}</small></div>${composer}<div class="public-comments-list-v246">${roots.length?roots.map(c=>publicCommentHtmlV246(c,byParent.get(String(c.id))||[])).join(''):'<div class="public-profile-empty-v242">Пока тихо. Можно быть первым.</div>'}</div>`;
+}
+async function renderPublicProfileCommentsV246(profileId){
+  const canvas=document.querySelector('#publicProfileBodyV242 .public-profile-canvas-v243, #publicProfileBodyV242 .public-profile-canvas-v235');if(!canvas)return;
+  let host=$('#publicProfileCommentsV246');if(!host){host=document.createElement('section');host.id='publicProfileCommentsV246';host.className='public-widget-v243 public-comments-widget-v246';canvas.appendChild(host)}
+  host.innerHTML='<div class="public-profile-loading-v242">Загружаю гостевую…</div>';
+  try{await fetchPublicCommentsV246(profileId);renderPublicCommentsCachedV246(profileId)}catch(e){host.innerHTML=`<div class="public-profile-empty-v242">Гостевая пока недоступна. ${/profile_comments|schema cache|does not exist/i.test(String(e?.message||e))?'Нужно один раз выполнить SUPABASE_PATCH_V246.sql.':''}</div>`}
+}
+function publicStartReplyV246(parentId,name=''){publicProfileReplyV246={parentId:Number(parentId)||null,name:String(name||'')};renderPublicCommentsCachedV246(publicProfileActiveV246);setTimeout(()=>$('#publicCommentInputV246')?.focus(),10)}
+function publicCancelReplyV246(){publicProfileReplyV246={parentId:null,name:''};renderPublicCommentsCachedV246(publicProfileActiveV246)}
+async function publicSendCommentV246(){
+  if(!accountSignedInV236?.()){openAccountV23();return}const i=$('#publicCommentInputV246'),body=String(i?.value||'').trim();if(!body||!publicProfileActiveV246)return;
+  try{if(i)i.disabled=true;await accountRestV23('rpc/senime_add_profile_comment',{method:'POST',body:{target:publicProfileActiveV246,comment_body:body,reply_to:publicProfileReplyV246.parentId||null}});publicProfileReplyV246={parentId:null,name:''};await renderPublicProfileCommentsV246(publicProfileActiveV246)}catch(e){profileToastV16('Не удалось отправить',/senime_add_profile_comment|schema cache|does not exist/i.test(String(e?.message||e))?'Нужен SUPABASE_PATCH_V246.sql':(e.message||String(e)))}finally{if(i)i.disabled=false}
+}
+async function publicDeleteCommentV246(id){if(!id)return;try{await accountRestV23('rpc/senime_delete_profile_comment',{method:'POST',body:{comment_id:id}});await renderPublicProfileCommentsV246(publicProfileActiveV246)}catch(e){profileToastV16('Не удалось удалить',e.message||String(e))}}
+Object.assign(window,{publicStartReplyV246,publicCancelReplyV246,publicSendCommentV246,publicDeleteCommentV246});
+
+/* Always refresh a public profile from Supabase before rendering it. This fixes stale avatar crops/bio. */
+const socialOpenPublicProfileBeforeV246=socialOpenPublicProfileV242;
 socialOpenPublicProfileV242=async function(id){
-  await socialOpenPublicProfileBeforeV2451(id);
-  let p=socialStateV241?.profiles?.get(id);
-  if(!p?.public_payload){
-    try{
-      const q=new URLSearchParams();
-      q.set('id',`eq.${id}`);
-      q.set('limit','1');
-      p=(await socialFetchProfilesV242(q.toString()))?.[0]||p;
-      if(p)socialStateV241.profiles.set(id,p);
-    }catch{}
-  }
-  applyPublicAvatarCropV2451(p);
+  publicProfileActiveV246=id;publicProfileReplyV246={parentId:null,name:''};
+  let fresh=null;try{fresh=await publicFreshProfileV246(id);if(fresh)socialStateV241.profiles.set(id,fresh)}catch{}
+  await socialOpenPublicProfileBeforeV246(id);
+  const p=fresh||socialStateV241.profiles.get(id);applyPublicAvatarV246(p);enhancePublicBioV246(p);await renderPublicProfileCommentsV246(id);
+  if(!accountSignedInV236?.()){const actions=document.querySelector('#publicProfileBodyV242 .public-actions-v243');if(actions)actions.innerHTML='<button type="button" onclick="openAccountV23()">☁ Войти, чтобы взаимодействовать</button>'}
 };
 window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
 
-/* Force the owner's current Avatar Studio crop into public_payload once. */
-setTimeout(()=>{
-  if(socialSignedV241?.())socialSyncPublicProfileV242?.().catch?.(()=>{});
-},900);
+/* ---------- Card rarity v2: MAIN => at least Rare, supporting characters can also be Rare. ---------- */
+const CARD_RARITY_VERSION_V246=246;
+rarityFromPopularityV205=function(favourites,role='',mediaPopularity=0){
+  const f=Math.max(0,Number(favourites)||0),r=String(role||'').toUpperCase(),mp=Math.max(0,Number(mediaPopularity)||0),main=r==='MAIN';
+  if(f>=24000||(main&&f>=8500&&mp>=120000))return 'Legendary';
+  if(f>=6500||(main&&f>=1600)||(f>=2800&&mp>=180000))return 'Epic';
+  if(f>=550||main||(f>=220&&mp>=90000))return 'Rare';
+  return 'Common';
+};
+cardDropWeightV206=function(edge,mediaPopularity=0){const r=rarityFromPopularityV205(edge?.node?.favourites,edge?.role,mediaPopularity);return ({Common:100,Rare:62,Epic:18,Legendary:4})[r]||100};
+function ownedCharacterIdsV246(){return new Set((ensureProfileV16().collection||[]).map(x=>String(x.characterId)))}
+function unownedEdgesV246(edges){const own=ownedCharacterIdsV246();return (edges||[]).filter(x=>x?.node?.id&&!own.has(String(x.node.id)))}
+function chooseUnownedEdgeV246(edges,mediaPopularity=0){return weightedCharacterEdgeV206(unownedEdgesV246(edges),mediaPopularity)}
 
-console.info(`Anime list V${V2451_TAG}: public avatar now preserves Avatar Studio crop/position`);
+/* Duplicate guard: even if an old caller slips through, a duplicate is NEVER registered or rewarded. */
+const commitCardPullBeforeV246=commitCardPullV205;
+commitCardPullV205=async function(node,media,opts={}){
+  const existing=ensureProfileV16().collection.find(x=>String(x.characterId)===String(node?.id));
+  if(existing)return {duplicate:true,rarity:existing.rarity,reward:'Уже в коллекции · Ticket не потрачен',card:existing};
+  const out=await commitCardPullBeforeV246(node,media,opts);if(out?.card)out.card.rarityVersion=CARD_RARITY_VERSION_V246;return out;
+};
+
+function shuffleV246(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+openCharacterTicketV16=async function(){
+  const p=ensureCardProfileV205();if(p.tickets<1){profileToastV16('Нет Character Ticket','Получай их за уровни, задания и достижения.');return}
+  const candidates=shuffleV246(['completed','watching'].flatMap(s=>(latestData.sections?.[s]||[]).filter(e=>Number(e.anilist_id)>0)));if(!candidates.length){profileToastV16('Нет подходящих тайтлов','Добавь аниме с AniList ID.');return}
+  for(const entry of candidates){
+    let media=null;try{media=(await anilistFetch(CHARACTER_MEDIA_QUERY_V205,{id:Number(entry.anilist_id)}))?.data?.Media}catch{continue}
+    const edge=chooseUnownedEdgeV246(media?.characters?.edges||[],media?.popularity),node=edge?.node;if(!node?.id)continue;
+    const out=await commitCardPullV205(node,media,{characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});if(out.duplicate)continue;
+    p.tickets--;profileActivityV16('🎴',`Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · новая карточка`);saveData();renderProfileChromeV16();revealCardV205(node,media,out.rarity,'Новая карточка · без повторов','character');renderProfileV16();return;
+  }
+  profileToastV16('Повторов не будет','Все доступные персонажи из твоего пула уже собраны. Ticket сохранён.');
+};window.openCharacterTicketV16=openCharacterTicketV16;
+
+openAnimeTicketV205=async function(key){
+  const p=ensureCardProfileV205(),ticket=p.animeTickets?.[key];if(!ticket||Number(ticket.count)<1){profileToastV16('Этот Ticket закончился');return}
+  let media=null;try{media=await resolveTicketMediaV205(ticket)}catch{}if(!media){profileToastV16('Не удалось открыть Ticket','Данные персонажей временно недоступны. Ticket сохранён.');return}
+  const edge=chooseUnownedEdgeV246(media.characters?.edges||[],media?.popularity),node=edge?.node;if(!node?.id){profileToastV16('Коллекция тайтла собрана',`Из ${ticket.title} больше не выпадут повторы. Ticket сохранён.`);return}
+  const out=await commitCardPullV205(node,media,{ticketType:'anime',characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});if(out.duplicate)return;
+  ticket.count--;profileActivityV16('🎟️',`${ticket.title} Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · новая карточка`);saveData();renderProfileChromeV16();revealCardV205(node,media,out.rarity,`${ticket.title} Ticket · новая карточка`,'character');renderProfileV16();
+};window.openAnimeTicketV205=openAnimeTicketV205;
+
+/* ---------- Waifu pool v2: fan-favorite women, Ecchi/Romance bias, Reze-style surprise pool.\n   No sexual-trait scoring and clearly child-coded characters are excluded. ---------- */
+const WAIFU_SPECIAL_SEARCH_V246=['Reze'];
+const WAIFU_MEDIA_POOL_V246=`query($page:Int!,$genre:String){Page(page:$page,perPage:18){media(type:ANIME,genre:$genre,isAdult:false,sort:[POPULARITY_DESC]){id popularity averageScore genres isAdult title{english romaji} characters(page:1,perPage:35,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} description image{large} favourites gender age}}}}}}`;
+const WAIFU_SEARCH_CHARACTER_V246=`query($search:String!){Character(search:$search){id name{full} description image{large} favourites gender age media(type:ANIME,page:1,perPage:8,sort:[POPULARITY_DESC]){nodes{id isAdult popularity averageScore genres title{english romaji}} edges{characterRole node{id}}}}}`;
+function childCodedV246(c){const s=`${c?.age||''} ${c?.description||''}`.toLowerCase();const nums=(String(c?.age||'').match(/\d+/g)||[]).map(Number);if(nums.length&&Math.min(...nums)<14)return true;return /\bloli\b|little girl|elementary|grade school|kindergarten|young child|childhood form/.test(s)}
+function waifuEligibleV246(c){return !!c?.id&&!!c?.image?.large&&String(c.gender||'').toLowerCase()==='female'&&!childCodedV246(c)&&!ownedCharacterIdsV246().has(String(c.id))}
+function waifuFanScoreV246(c,media,role=''){
+  const fav=Math.max(0,Number(c?.favourites)||0),pop=Math.max(0,Number(media?.popularity)||0),genres=(media?.genres||[]).map(x=>String(x).toLowerCase());let s=0;
+  s+=Math.min(42,Math.log10(fav+1)*10);s+=Math.min(18,Math.log10(pop+1)*3.3);if(role==='MAIN')s+=12;if(genres.includes('ecchi'))s+=18;if(genres.includes('romance'))s+=8;return s;
+}
+async function pickWaifuSpecialV246(){
+  const name=WAIFU_SPECIAL_SEARCH_V246[Math.floor(Math.random()*WAIFU_SPECIAL_SEARCH_V246.length)];try{const c=(await anilistFetch(WAIFU_SEARCH_CHARACTER_V246,{search:name}))?.data?.Character;if(!waifuEligibleV246(c))return null;const media=(c.media?.nodes||[]).find(m=>m&&!m.isAdult)||null;if(!media)return null;const role=(c.media?.edges||[]).find(e=>String(e?.node?.id)===String(media.id))?.characterRole||'';return {picked:c,pickedMedia:media,pickedRole:role,sourceLabel:'fan-favorite'}}catch{return null}
+}
+async function pickWaifuGenreV246(){
+  const genre=Math.random()<.7?'Ecchi':'Romance';for(let a=0;a<5;a++){const page=1+Math.floor(Math.random()*6);try{const rows=(await anilistFetch(WAIFU_MEDIA_POOL_V246,{page,genre}))?.data?.Page?.media||[];const cand=[];for(const m of rows){for(const e of m.characters?.edges||[]){if(!waifuEligibleV246(e.node))continue;cand.push({c:e.node,m,role:e.role,score:waifuFanScoreV246(e.node,m,e.role)})}}cand.sort((x,y)=>y.score-x.score);const pool=cand.slice(0,Math.min(24,cand.length));if(pool.length){const x=pool[Math.floor(Math.random()*pool.length)];return {picked:x.c,pickedMedia:x.m,pickedRole:x.role,sourceLabel:`${genre} pool`}}}catch{}}
+  return null;
+}
+openWaifuTicketV165=async function(){
+  const p=ensureCardProfileV205();if(p.waifuTickets<1){profileToastV16('Нет Waifu Ticket','Получай их из заданий, уровней и магазина.');return}
+  let pick=null;if(Math.random()<.24)pick=await pickWaifuSpecialV246();if(!pick)pick=await pickWaifuGenreV246();
+  if(!pick){/* fallback to existing broad source, but discard owned/child-coded cards */
+    try{for(let a=0;a<7&&!pick;a++){const last=await waifuPageCountV165(),page=1+Math.floor(Math.random()*Math.min(last,80)),chars=(await anilistFetch(WAIFU_CHARACTER_PAGE_QUERY_V165,{page}))?.data?.Page?.characters||[];const cand=chars.filter(waifuEligibleV246).map(c=>{const m=(c.media?.nodes||[]).find(x=>x&&!x.isAdult)||null;return {c,m,score:m?waifuFanScoreV246(c,m,''):0}}).filter(x=>x.m).sort((a,b)=>b.score-a.score);if(cand.length){const x=cand[Math.floor(Math.random()*Math.min(16,cand.length))];pick={picked:x.c,pickedMedia:x.m,pickedRole:'',sourceLabel:'fan-favorite'}}}}catch{}
+  }
+  if(!pick){profileToastV16('Новой Waifu-карточки не нашлось','Повтор не выпадет, Ticket сохранён.');return}
+  const out=await commitCardPullV205(pick.picked,pick.pickedMedia,{ticketType:'waifu',sourceLabel:pick.sourceLabel,waifuMeta:waifuTraitsV183(pick.picked,pick.pickedMedia),characterRole:pick.pickedRole,mediaPopularity:pick.pickedMedia?.popularity||0});if(out.duplicate)return;
+  p.waifuTickets--;profileActivityV16('💗',`Waifu Ticket: ${pick.picked.name?.full||'Персонаж'}`,`${out.rarity} · ${pick.sourceLabel}`);saveData();renderProfileChromeV16();revealCardV205(pick.picked,pick.pickedMedia,out.rarity,`${pick.sourceLabel} · новая карточка`,'waifu');renderProfileV16();
+};window.openWaifuTicketV165=openWaifuTicketV165;
+
+/* Force existing collection onto the new deterministic rarity table. */
+setTimeout(()=>{const p=ensureCardProfileV205();for(const c of p.collection||[])c.rarityVersion=0;syncCollectionRaritiesV205?.();},350);
+
+/* ---------- Founder-only Admin panel. Nothing is rendered for regular users. ---------- */
+let adminTargetV246=null,adminAnimeResultsV246=[];
+function adminUiHtmlV246(){return `<div id="adminModalV246" class="admin-modal-v246 hidden" role="dialog" aria-modal="true" aria-label="Senime Admin"><div class="admin-shell-v246"><header class="admin-head-v246"><div><span>SENIME CONTROL</span><h2>◆ Founder Admin</h2><p>Выдачи создаются сервером и забираются только целевым аккаунтом.</p></div><button id="adminCloseV246" class="profile-close" type="button">✕</button></header><div class="admin-target-v246"><div><span>ПОЛЬЗОВАТЕЛЬ</span><h3 id="adminTargetNameV246">Выбери аккаунт</h3><small id="adminTargetMetaV246">Поиск по нику или @handle</small></div><div class="admin-search-v246"><input id="adminUserSearchV246" maxlength="40" placeholder="@handle или ник"><button id="adminUserSearchBtnV246" type="button">Найти</button></div><div id="adminUserResultsV246" class="admin-user-results-v246"></div></div><div class="admin-grid-v246"><section class="admin-card-v246"><span>РЕСУРСЫ</span><h3>Выдать аккаунту</h3><label>Количество<input id="adminGrantAmountV246" type="number" min="1" max="1000000" value="100"></label><div class="admin-grant-buttons-v246"><button data-admin-grant-v246="xp">+ XP</button><button data-admin-grant-v246="stars">+ Stars</button><button data-admin-grant-v246="tickets">+ Character Ticket</button><button data-admin-grant-v246="waifu">+ Waifu Ticket</button></div><label>Premium, дней<div class="admin-inline-v246"><input id="adminPremiumDaysV246" type="number" min="1" max="3650" value="30"><button id="adminPremiumGrantV246">Выдать Premium</button></div></label></section><section class="admin-card-v246"><span>ANIME TICKET</span><h3>Билет конкретного тайтла</h3><div class="admin-inline-v246"><input id="adminAnimeSearchV246" placeholder="Chainsaw Man"><button id="adminAnimeSearchBtnV246">Найти</button></div><label>Количество<input id="adminAnimeTicketAmountV246" type="number" min="1" max="99" value="1"></label><div id="adminAnimeResultsV246" class="admin-anime-results-v246"><small>Найди тайтл — Ticket будет содержать только его персонажей.</small></div></section><section class="admin-card-v246 admin-audit-v246"><span>AUDIT</span><h3>Последние выдачи</h3><div id="adminAuditV246"><small>Загрузка…</small></div></section></div><footer class="admin-foot-v246"><span>Только FOUNDER #0001 · роли CREATOR/FOUNDER здесь не выдаются</span><button id="adminRefreshV246" class="secondary">↻ Обновить</button></footer></div></div>`}
+function ensureFounderAdminUiV246(){
+  const founder=founderSessionV245?.();
+  if(!founder){$('#profileAdminBtnV246')?.remove();$('#adminModalV246')?.remove();return}
+  if(!$('#profileAdminBtnV246')){const b=document.createElement('button');b.id='profileAdminBtnV246';b.className='profile-admin-btn';b.type='button';b.textContent='◆ Admin';const q=$('#profileQuickEditBtn');q?.parentElement?.insertBefore(b,q);b.onclick=openAdminV246}
+  if(!$('#adminModalV246')){document.body.insertAdjacentHTML('beforeend',adminUiHtmlV246());bindAdminV246()}
+}
+function openAdminV246(){if(!founderSessionV245?.())return;ensureFounderAdminUiV246();$('#adminModalV246')?.classList.remove('hidden');document.body.style.overflow='hidden';if(!adminTargetV246&&socialMeV241?.()){adminTargetV246=socialStateV241?.own||{id:socialMeV241(),display_name:'SeNite',handle:'senite'};renderAdminTargetV246()}adminLoadAuditV246()}
+function closeAdminV246(){$('#adminModalV246')?.classList.add('hidden');if($('#profileModal')?.classList.contains('hidden'))document.body.style.overflow=''}
+function renderAdminTargetV246(){const p=adminTargetV246;if($('#adminTargetNameV246'))$('#adminTargetNameV246').textContent=p?(p.display_name||p.handle||'Пользователь'):'Выбери аккаунт';if($('#adminTargetMetaV246'))$('#adminTargetMetaV246').textContent=p?`${p.handle?'@'+p.handle:'без handle'} · ${p.id}`:'Поиск по нику или @handle'}
+async function adminSearchUserV246(){const raw=String($('#adminUserSearchV246')?.value||'').trim().replace(/^@/,'');if(raw.length<2)return;const out=$('#adminUserResultsV246');if(out)out.innerHTML='<small>Ищу…</small>';try{const q=new URLSearchParams();q.set('select',socialProfileFieldsV242());q.set('or',`(display_name.ilike.*${raw.replace(/[,*()]/g,'')}*,handle.ilike.*${raw.replace(/[,*()]/g,'')}*)`);q.set('limit','15');const rows=await accountRestV23(`profiles?${q.toString()}`);if(out)out.innerHTML=(rows||[]).map(p=>`<button type="button" onclick="adminSelectUserV246('${p.id}')"><span>${socialAvatarV241(p)}</span><b>${esc(p.display_name||'Пользователь')}<small>${esc(p.handle?'@'+p.handle:'')}</small></b>${socialFounderBadgeV242(p)}</button>`).join('')||'<small>Никого не найдено.</small>';for(const p of rows||[])socialStateV241.profiles.set(p.id,p)}catch(e){if(out)out.innerHTML=`<small>${esc(e.message||String(e))}</small>`}}
+function adminSelectUserV246(id){adminTargetV246=socialStateV241.profiles.get(id)||{id};renderAdminTargetV246();const r=$('#adminUserResultsV246');if(r)r.innerHTML=''}
+async function adminCreateGrantV246(kind,amount,payload={},note=''){if(!adminTargetV246?.id){profileToastV16('Сначала выбери пользователя');return}amount=Math.max(1,Math.round(Number(amount)||1));try{await accountRestV23('rpc/senime_admin_create_grant',{method:'POST',body:{target:adminTargetV246.id,grant_kind:kind,grant_amount:amount,grant_payload:payload||{},grant_note:note||''}});profileToastV16('◆ Выдача создана',`${adminTargetV246.display_name||adminTargetV246.handle||'Пользователь'} · ${kind} ×${amount}`);await adminLoadAuditV246();if(adminTargetV246.id===socialMeV241?.())setTimeout(()=>claimAdminGrantsV246({toast:true}),100)}catch(e){profileToastV16('Admin grant не выполнен',/senime_admin_create_grant|schema cache|does not exist/i.test(String(e?.message||e))?'Сначала выполни SUPABASE_PATCH_V246.sql':(e.message||String(e)))}}
+async function adminSearchAnimeV246(){const q=String($('#adminAnimeSearchV246')?.value||'').trim();if(q.length<2)return;const box=$('#adminAnimeResultsV246');box.innerHTML='<small>Ищу…</small>';try{let list=[];try{list=(await anilistFetchDirectV20(SEARCH_QUERY,{search:q}))?.data?.Page?.media||[]}catch{}if(!list.length){const rows=await shikiGetV203(`/animes?limit=10&censored=true&search=${encodeURIComponent(q)}`);list=(rows||[]).map(x=>shikiMediaV203(x))}adminAnimeResultsV246=list.slice(0,10);box.innerHTML=adminAnimeResultsV246.map((m,i)=>`<button type="button" onclick="adminGrantAnimeTicketV246(${i})">${m.coverImage?.medium||m.coverImage?.large?`<img src="${esc(m.coverImage?.medium||m.coverImage?.large)}" alt="">`:'<i>🎟️</i>'}<span><b>${esc(pickTitle(m))}</b><small>${m.seasonYear||''}${m.episodes?` · ${m.episodes} эп.`:''}</small></span><strong>Выдать</strong></button>`).join('')||'<small>Не найдено.</small>'}catch(e){box.innerHTML=`<small>${esc(e.message||String(e))}</small>`}}
+function adminGrantAnimeTicketV246(i){const m=adminAnimeResultsV246[i];if(!m)return;const amount=Math.max(1,Math.min(99,Number($('#adminAnimeTicketAmountV246')?.value)||1));const payload={title:pickTitle(m),anilistId:Number(m.id)||0,malId:Number(m.idMal)||0,cover:m.coverImage?.large||m.coverImage?.medium||'',emoji:'🎟️'};adminCreateGrantV246('anime_ticket',amount,payload,`${payload.title} Ticket`)}
+async function adminLoadAuditV246(){const box=$('#adminAuditV246');if(!box)return;try{const rows=await accountRestV23('admin_grants?select=id,target_id,kind,amount,payload,note,created_at,claimed_at&order=created_at.desc&limit=30');const profs=await socialProfilesByIdsV241([...new Set((rows||[]).map(x=>x.target_id))]);const map=new Map((profs||[]).map(x=>[x.id,x]));box.innerHTML=(rows||[]).map(x=>{const p=map.get(x.target_id)||{};return `<div><span>${x.claimed_at?'✓':'○'}</span><b>${esc(p.display_name||p.handle||x.target_id.slice(0,8))}</b><small>${esc(x.kind)} ×${Number(x.amount)||1}${x.note?` · ${esc(x.note)}`:''}</small><time>${publicCommentTimeV246(x.created_at)}</time></div>`}).join('')||'<small>Выдач пока нет.</small>'}catch(e){box.innerHTML=`<small>${/admin_grants|schema cache|does not exist/i.test(String(e?.message||e))?'Нужен SUPABASE_PATCH_V246.sql':esc(e.message||String(e))}</small>`}}
+function bindAdminV246(){
+  $('#adminCloseV246').onclick=closeAdminV246;$('#adminModalV246').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAdminV246()});$('#adminUserSearchBtnV246').onclick=adminSearchUserV246;$('#adminUserSearchV246').addEventListener('keydown',e=>{if(e.key==='Enter')adminSearchUserV246()});
+  document.querySelectorAll('[data-admin-grant-v246]').forEach(b=>b.onclick=()=>adminCreateGrantV246(b.dataset.adminGrantV246,$('#adminGrantAmountV246')?.value||1));$('#adminPremiumGrantV246').onclick=()=>adminCreateGrantV246('premium',$('#adminPremiumDaysV246')?.value||30,{},'Premium');$('#adminAnimeSearchBtnV246').onclick=adminSearchAnimeV246;$('#adminAnimeSearchV246').addEventListener('keydown',e=>{if(e.key==='Enter')adminSearchAnimeV246()});$('#adminRefreshV246').onclick=adminLoadAuditV246;
+}
+Object.assign(window,{openAdminV246,closeAdminV246,adminSelectUserV246,adminGrantAnimeTicketV246});
+/* Legacy V16.4 shortcut compatibility: route it to the new Founder-only panel. */
+openAdminV164=openAdminV246;
+closeAdminV164=closeAdminV246;
+
+/* Pending server grants are applied through the normal local economy functions, then cloud-synced. */
+let claimAdminBusyV246=false;
+async function claimAdminGrantsV246({toast=false}={}){
+  if(claimAdminBusyV246||!accountSignedInV236?.())return false;claimAdminBusyV246=true;
+  try{const rows=await accountRestV23('rpc/senime_claim_admin_grants',{method:'POST',body:{}});if(!rows?.length)return false;const p=ensureCardProfileV205();let count=0;
+    for(const g of rows){const n=Math.max(1,Number(g.amount)||1),reason=`Admin · ${g.note||g.kind}`;if(g.kind==='xp')addXpV16(n,reason,true);else if(g.kind==='stars')addStarsV16(n,reason,true);else if(g.kind==='tickets')addTicketV16(n,reason,true);else if(g.kind==='waifu')addWaifuTicketV165(n,reason,true);else if(g.kind==='premium'){p.premiumActive=true;p.premiumUntil=Math.max(Number(p.premiumUntil)||0,Date.now())+n*86400000;profileActivityV16('👑',`Premium · ${n} дн.`,reason)}else if(g.kind==='anime_ticket'){const x=g.payload||{};addAnimeTicketV205({title:x.title||'Anime',anilist_id:Number(x.anilistId)||0,mal_id:Number(x.malId)||0,cover:x.cover||'',emoji:x.emoji||'🎟️'},n,{silent:true,reason})}count++}
+    saveData();renderProfileChromeV16();if(!$('#profileModal')?.classList.contains('hidden'))renderProfileV16();await accountPushCloudV23({force:true});if(toast||count)profileToastV16(`◆ Получено от Admin: ${count}`,rows.map(x=>`${x.kind} ×${x.amount}`).slice(0,3).join(' · '));return true;
+  }catch(e){if(!/senime_claim_admin_grants|schema cache|does not exist/i.test(String(e?.message||e)))console.warn('V24.6 claim grants',e);return false}finally{claimAdminBusyV246=false}
+}
+window.claimAdminGrantsV246=claimAdminGrantsV246;
+
+const accountWriteSessionBeforeV246=accountWriteSessionV23;
+accountWriteSessionV23=function(s){accountWriteSessionBeforeV246(s);setTimeout(()=>{ensureFounderAdminUiV246();if(s?.access_token)claimAdminGrantsV246()},180)};
+const renderProfileChromeBeforeV246=renderProfileChromeV16;
+renderProfileChromeV16=function(){renderProfileChromeBeforeV246();ensureFounderAdminUiV246()};
+setTimeout(()=>{ensureFounderAdminUiV246();claimAdminGrantsV246();if(socialSignedV241?.())socialSyncPublicProfileV242?.().catch?.(()=>{})},1300);
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&String(e.key).toLowerCase()==='a'&&founderSessionV245?.()){e.preventDefault();openAdminV246()}},true);
+
+console.info(`Senime V${SENIME_V246}: public beta foundation loaded`);

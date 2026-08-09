@@ -1,4 +1,4 @@
-My Anime List V24.3
+Senime V24.6 · Public Beta Foundation
 Clean Steam Layer: account isolation migration, auto-layout profile, clean social workspace, unified public profiles.
 
 My Anime List V23.6 — Account First + Profile Titles
@@ -108,3 +108,22 @@ V24.5
 - Founder/Admin UI is tied to @senite / Founder #0001, not nickname.
 - Creator identity badge and creator profile footer card.
 - Guest-safe creator public profile link.
+
+
+SENIME V24.6 · PUBLIC BETA FOUNDATION
+- Rebrand: My Anime List / «Мой аниме-лист» -> Senime (external MyAnimeList source names stay unchanged).
+- Public profile comments/replies backed by Supabase.
+- Founder Admin UI is injected only for FOUNDER #0001; regular accounts do not get an Admin button/modal.
+- Server-issued pending grants: XP, Stars, Character/Waifu Tickets, Premium days, and a Ticket for a specific anime.
+- Card tickets never intentionally drop a character already owned; exhausted pools keep the ticket.
+- Rarity rebalance: MAIN is at least Rare; Rare is now a real middle tier.
+- Waifu Ticket now uses fan-favorite female characters with Ecchi/Romance bias plus a small special pool (including Reze-style picks); child-coded characters are excluded and there is no sexual-trait scoring.
+- Public avatar preserves Avatar Studio crop/position; bio is prominent; public profile uses page scrolling rather than an inner scrollbar.
+- UI Refresh / Design System V1: larger readable labels, cleaner cards, consistent controls.
+- Production prep: metadata, favicon, Privacy / Terms / Contact pages, stale prototype copy removed.
+
+IMPORTANT
+1. Run SUPABASE_PATCH_V246.sql ONCE in Supabase SQL Editor.
+2. Do NOT upload the SQL file to GitHub Pages.
+3. GitHub FULL/UPDATE archives intentionally exclude SQL.
+4. Together/Watch Party is NOT part of this release.
