@@ -54,6 +54,16 @@
         <button id="topRandomBtn" class="sidebar-nav-btn" type="button" title="Случайное аниме из всей базы, без OVA"><span class="sidebar-icon">⤨</span><span class="sidebar-label-text">Случайное</span></button>
       </div>
 
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">СООБЩЕСТВО</div>
+      <div class="sidebar-group sidebar-community-v247">
+        <button id="sidebarChatsV247" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">💬</span><span class="sidebar-label-text">Чаты</span></button>
+        <button id="sidebarFriendsV247" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">👥</span><span class="sidebar-label-text">Друзья</span></button>
+        <button id="sidebarNotificationsV247" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">🔔</span><span class="sidebar-label-text">Уведомления</span><span id="sidebarNotificationsCountV247" class="sidebar-count hidden">0</span></button>
+        <button id="sidebarLeaderboardsV247" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">🏆</span><span class="sidebar-label-text">Лидерборды</span></button>
+        <button id="sidebarCollectionsV247" class="sidebar-nav-btn" type="button"><span class="sidebar-icon">📚</span><span class="sidebar-label-text">Подборки</span></button>
+      </div>
+
       <div class="sidebar-spacer"></div>
       <div class="sidebar-bottom">
         <button id="profileFutureBtn" class="sidebar-profile-btn" type="button" title="Открыть профиль">
@@ -255,6 +265,7 @@
           <img id="detailCover" class="detail-cover" alt="">
           <div id="detailCoverPlaceholder" class="detail-cover detail-cover-placeholder">🎌</div>
           <button id="detailWatchHere" class="detail-watch-here" type="button">▶ Смотреть здесь</button>
+          <button id="detailAddCollectionV247" class="detail-share-anime" type="button">＋ В подборку</button>
           <button id="detailShareAnime" class="detail-share-anime" type="button">↗ Поделиться</button>
           <div id="detailWatchHint" class="detail-watch-hint"></div>
           <div class="detail-control-card">
@@ -498,7 +509,7 @@
               <textarea id="watchCommentText" rows="2" maxlength="1200" placeholder="Написать комментарий…"></textarea>
               <button id="watchCommentSend" type="button">Отправить</button>
             </div>
-            <div class="watch-comments-note">Пока комментарии хранятся локально. Когда сайт будет опубликован, этот же интерфейс можно подключить к аккаунтам и общей базе.</div>
+            <div class="watch-comments-note">Комментарии Senime Cloud · лайки, ответы и переходы в профиль синхронизируются между аккаунтами.</div>
           </section>
         </main>
 
@@ -736,6 +747,17 @@
         <section id="profileTabCollection" class="profile-tab-pane">
           <div class="profile-section-head"><div><span>COLLECTION</span><h3>Карточки персонажей</h3></div><div class="profile-ticket-actions"><button id="profileOpenTicket" type="button">🎴 Character <b id="collectionRegularTicketCount">0</b></button><button id="profileOpenWaifuTicket" class="waifu-ticket-btn" type="button">💗 Waifu <b id="collectionWaifuTicketCount">0</b></button></div></div>
           <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За полный просмотр аниме теперь выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>🌐 «выбито»</b> показывает общий счётчик карточки у всех пользователей, когда подключена статистика backend.</div>
+          <div class="collection-toolbar-v247">
+            <div class="collection-search-v247"><span>⌕</span><input id="collectionSearchV247" placeholder="Персонаж или аниме..." autocomplete="off"></div>
+            <select id="collectionRarityV247" title="Редкость">
+              <option value="all">Все редкости</option><option value="legendary">Legendary</option><option value="epic">Epic</option><option value="rare">Rare</option><option value="common">Common</option>
+            </select>
+            <select id="collectionAnimeV247" title="Аниме"><option value="all">Все аниме</option></select>
+            <select id="collectionFolderV247" title="Папка"><option value="all">Все папки</option></select>
+            <select id="collectionSortV247" title="Сортировка"><option value="new">Сначала новые</option><option value="rarity">По редкости</option><option value="name">По имени</option><option value="anime">По аниме</option></select>
+            <button id="collectionFoldersBtnV247" class="secondary" type="button">📁 Папки</button>
+            <button id="collectionCompactBtnV247" class="secondary" type="button">▦ Компактно</button>
+          </div>
           <div id="profileCollectionFilters" class="profile-collection-filters">
             <button type="button" data-card-filter="all" class="active">Все</button>
             <button type="button" data-card-filter="showcase">★ В профиле</button>
