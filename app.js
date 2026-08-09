@@ -9435,3 +9435,833 @@ setTimeout(()=>{
 },1400);
 
 console.info('Senime build 24.7.3 · cache-bust active');
+
+
+/* ==========================================================================
+   SENIME V24.8 · SECURITY FOUNDATION
+   - Cloudflare Turnstile for login / signup / password reset
+   - browser-side API secrets purged and disabled
+   - fixed public Worker URL can live in auth-config.js
+   - upload validation
+   - production build marker / safer error handling
+   ========================================================================== */
+const SENIME_V248='24.8.0';
+window.SENIME_BUILD=SENIME_V248;
+
+function securityConfigV248(){
+  const c=window.ANIME_AUTH_CONFIG||{};
+  return {
+    backendUrl:String(c.backendUrl||'').trim().replace(/\/+$/,''),
+    turnstileSiteKey:String(c.turnstileSiteKey||'').trim(),
+    turnstileMode:String(c.turnstileMode||'off').toLowerCase()
+  };
+}
+function securityIsFounderV248(){try{return !!founderSessionV245?.()}catch{return false}}
+
+/* ---------- Server-only provider secrets ---------- */
+function purgeBrowserProviderSecretsV248(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(WATCH_PROVIDER_CONFIG_KEY_V19)||'{}')||{};
+    let changed=false;
+    for(const k of ['kodikToken','subdlKey']){
+      if(Object.prototype.hasOwnProperty.call(raw,k)){delete raw[k];changed=true}
+    }
+    if(changed)localStorage.setItem(WATCH_PROVIDER_CONFIG_KEY_V19,JSON.stringify(raw));
+  }catch{}
+}
+purgeBrowserProviderSecretsV248();
+
+providerConfigV19=function(){
+  let raw={};
+  try{raw=JSON.parse(localStorage.getItem(WATCH_PROVIDER_CONFIG_KEY_V19)||'{}')||{}}catch{}
+  return {
+    kodikToken:'',
+    subdlKey:'',
+    autoSubtitles:raw.autoSubtitles!==false,
+    preferNative:raw.preferNative!==false,
+    subLangs:String(raw.subLangs||'RU,EN')
+  };
+};
+saveProviderConfigV19=function(p){
+  const safe={
+    autoSubtitles:p?.autoSubtitles!==false,
+    preferNative:p?.preferNative!==false,
+    subLangs:String(p?.subLangs||'RU,EN')
+  };
+  try{localStorage.setItem(WATCH_PROVIDER_CONFIG_KEY_V19,JSON.stringify(safe))}catch{}
+};
+saveProviderConfigFromUiV19=function(){
+  const old=providerConfigV19();
+  saveProviderConfigV19({
+    ...old,
+    autoSubtitles:!!$('#watchAutoSubtitles')?.checked,
+    preferNative:!!$('#watchPreferNative')?.checked
+  });
+  syncProviderConfigUiV19();
+  profileToastV16?.('Источники сохранены','Секреты остаются только на сервере');
+  if(watchStateV15.entry)loadWatchEpisodeV15({autoplay:false,preserveTime:true,forceResolver:true});
+};
+syncProviderConfigUiV19=function(){
+  const c=providerConfigV19(),s=$('#watchAutoSubtitles'),n=$('#watchPreferNative'),st=$('#watchSourceConfigStatus');
+  if(s)s.checked=c.autoSubtitles!==false;
+  if(n)n.checked=c.preferNative!==false;
+  if(st){
+    const h=backendHealthCacheV20?.data,services=h?.services||{},b=backendBaseV20();
+    st.innerHTML=b
+      ? `<span class="ok-dot">●</span> Worker · ${h?.ok?'готов':'настроен'} &nbsp; Kodik ${services.kodik?'✓':'—'} &nbsp; SubDL ${services.subdl?'✓':'—'}`
+      : `<span class="off-dot">●</span> Worker URL ещё не задан · API secrets в браузере отключены`;
+  }
+};
+openSourcesV19=function(){syncProviderConfigUiV19();$('#watchSettingsDrawer')?.classList.remove('hidden')};
+window.openSourcesV19=openSourcesV19;
+
+/* Public Worker URL is not a secret. Prefer the build-wide value so every user
+   talks to the same gateway. Founder can still use the old local field while
+   the project is being configured. */
+const backendBaseBeforeV248=backendBaseV20;
+backendBaseV20=function(){
+  const fixed=securityConfigV248().backendUrl;
+  if(fixed)return cleanBackendUrlV20(fixed);
+  return backendBaseBeforeV248();
+};
+const setBackendBaseBeforeV248=setBackendBaseV20;
+setBackendBaseV20=function(v){
+  if(securityConfigV248().backendUrl)return securityConfigV248().backendUrl;
+  if(!securityIsFounderV248())return backendBaseV20();
+  return setBackendBaseBeforeV248(v);
+};
+
+function securitySyncBackendUiV248(){
+  const input=$('#settingBackendUrl');
+  if(!input)return;
+  const row=input.closest('.setting-field')||input.parentElement;
+  const fixed=securityConfigV248().backendUrl;
+  if(fixed){
+    input.value=fixed;input.readOnly=true;row?.classList.add('security-backend-locked-v248');
+  }else{
+    input.readOnly=!securityIsFounderV248();
+    row?.classList.toggle('security-backend-locked-v248',!securityIsFounderV248());
+    if(!securityIsFounderV248())input.placeholder='Настраивает только владелец Senime';
+  }
+}
+
+/* ---------- Upload validation ---------- */
+function validateUserImageV248(file,{maxBytes=8*1024*1024,allowGif=false}={}){
+  if(!file)throw new Error('Файл не выбран.');
+  const allowed=allowGif
+    ? new Set(['image/png','image/jpeg','image/webp','image/gif'])
+    : new Set(['image/png','image/jpeg','image/webp']);
+  if(!allowed.has(String(file.type||'').toLowerCase()))throw new Error('Разрешены только PNG, JPG и WebP'+(allowGif?' / GIF': '')+'.');
+  if(Number(file.size||0)<=0)throw new Error('Пустой файл.');
+  if(Number(file.size)>maxBytes)throw new Error(`Файл слишком большой. Максимум ${Math.round(maxBytes/1024/1024)} МБ.`);
+  return true;
+}
+const compressProfileImageBeforeV248=compressProfileImageV162;
+compressProfileImageV162=async function(file,...args){
+  validateUserImageV248(file,{maxBytes:8*1024*1024,allowGif:false});
+  return compressProfileImageBeforeV248(file,...args);
+};
+const handleMascotFileBeforeV248=handleMascotFileV8;
+handleMascotFileV8=async function(file,alt=false){
+  try{validateUserImageV248(file,{maxBytes:8*1024*1024,allowGif:true})}
+  catch(e){setMessage(`Не удалось загрузить картинку: ${e.message}`,'error');return}
+  return handleMascotFileBeforeV248(file,alt);
+};
+
+/* ---------- Cloudflare Turnstile ----------
+   In test mode the official Cloudflare test sitekey is intentionally used.
+   Real protection begins only after a production sitekey is set in
+   auth-config.js AND its matching secret is enabled in Supabase Auth. */
+const turnstileV248={
+  loginWidget:null,registerWidget:null,loginToken:'',registerToken:'',
+  renderedKey:''
+};
+function turnstileEnabledV248(){return !!securityConfigV248().turnstileSiteKey}
+function turnstileTokenV248(kind){
+  if(!turnstileEnabledV248())return '';
+  return kind==='register'?turnstileV248.registerToken:turnstileV248.loginToken;
+}
+function turnstileResetV248(kind){
+  if(!window.turnstile)return;
+  const widget=kind==='register'?turnstileV248.registerWidget:turnstileV248.loginWidget;
+  if(widget!==null&&widget!==undefined){try{window.turnstile.reset(widget)}catch{}}
+  if(kind==='register')turnstileV248.registerToken='';else turnstileV248.loginToken='';
+}
+function turnstileAuthMetaV248(kind){
+  const token=turnstileTokenV248(kind);
+  if(turnstileEnabledV248()&&!token)throw new Error('Подтверди, что ты не бот.');
+  return token?{gotrue_meta_security:{captcha_token:token}}:{};
+}
+function renderTurnstileKindV248(kind){
+  const cfg=securityConfigV248();
+  if(!cfg.turnstileSiteKey||!window.turnstile?.render)return false;
+  const id=kind==='register'?'accountRegisterTurnstileV248':'accountLoginTurnstileV248';
+  const el=$(`#${id}`);if(!el)return false;
+  const current=kind==='register'?turnstileV248.registerWidget:turnstileV248.loginWidget;
+  if(current!==null&&current!==undefined)return true;
+  try{
+    const widget=window.turnstile.render(el,{
+      sitekey:cfg.turnstileSiteKey,
+      theme:'dark',
+      size:'flexible',
+      action:kind==='register'?'signup':'login',
+      callback:token=>{
+        if(kind==='register')turnstileV248.registerToken=String(token||'');
+        else turnstileV248.loginToken=String(token||'');
+      },
+      'expired-callback':()=>turnstileResetV248(kind),
+      'error-callback':()=>{
+        if(kind==='register')turnstileV248.registerToken='';
+        else turnstileV248.loginToken='';
+        return true;
+      }
+    });
+    if(kind==='register')turnstileV248.registerWidget=widget;else turnstileV248.loginWidget=widget;
+    return true;
+  }catch(e){console.warn('Turnstile render',kind,e);return false}
+}
+function renderTurnstileV248(){
+  const cfg=securityConfigV248();
+  const loginNote=$('#accountLoginCaptchaNoteV248'),regNote=$('#accountRegisterCaptchaNoteV248');
+  for(const n of [loginNote,regNote]){
+    if(!n)continue;
+    n.classList.toggle('test-v248',cfg.turnstileMode==='test');
+    n.textContent=cfg.turnstileMode==='test'
+      ? 'Cloudflare Turnstile · TEST MODE — перед публичным запуском поставь реальные ключи'
+      : 'Cloudflare Turnstile · защита от ботов';
+  }
+  if(!cfg.turnstileSiteKey)return;
+  let tries=0;
+  const t=setInterval(()=>{
+    tries++;
+    const a=renderTurnstileKindV248('login');
+    const b=renderTurnstileKindV248('register');
+    if((a&&b)||tries>30)clearInterval(t);
+  },150);
+}
+const openAccountBeforeV248=openAccountV23;
+openAccountV23=function(){const r=openAccountBeforeV248();setTimeout(renderTurnstileV248,30);return r};
+window.openAccountV23=openAccountV23;
+const setAccountTabBeforeV248=setAccountTabV23;
+setAccountTabV23=function(tab){const r=setAccountTabBeforeV248(tab);setTimeout(renderTurnstileV248,20);return r};
+window.setAccountTabV23=setAccountTabV23;
+
+/* Supabase Auth accepts the CAPTCHA token in gotrue_meta_security. Supabase
+   performs the server-side CAPTCHA validation when CAPTCHA protection is
+   enabled in the project dashboard. */
+accountLoginV23=async function(email,password){
+  if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');
+  const c=accountConfigV23(),meta=turnstileAuthMetaV248('login');
+  try{
+    const d=await accountJsonFetchV23(`${c.url}/auth/v1/token?grant_type=password`,{
+      method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,...meta})
+    });
+    const s=accountSessionFromResponseV23(d);if(!s)throw new Error('Сервер не вернул сессию.');
+    accountWriteSessionV23(s);await accountPullCloudV23({firstLogin:true});return s;
+  }finally{turnstileResetV248('login')}
+};
+accountRegisterV23=async function(name,email,password){
+  if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');
+  const c=accountConfigV23(),redirect=location.href.split('#')[0],meta=turnstileAuthMetaV248('register');
+  try{
+    const d=await accountJsonFetchV23(`${c.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect)}`,{
+      method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,data:{display_name:name},...meta})
+    });
+    const s=accountSessionFromResponseV23(d);
+    if(s){accountWriteSessionV23(s);uiSettings.nickname=name;saveSettings();await accountPullCloudV23({firstLogin:true});return {signed:true}}
+    return {signed:false,user:d?.user||null};
+  }finally{turnstileResetV248('register')}
+};
+accountRecoverV23=async function(email){
+  if(!accountConfiguredV23())throw new Error('Backend аккаунтов пока не подключён.');
+  const c=accountConfigV23(),redirect=location.href.split('#')[0],meta=turnstileAuthMetaV248('login');
+  try{
+    await accountJsonFetchV23(`${c.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,{
+      method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,...meta})
+    });
+  }finally{turnstileResetV248('login')}
+};
+
+/* Friendly production-safe messages: log details locally, do not dump backend
+   internals into the UI for ordinary users. */
+function securityFriendlyErrorV248(err,fallback='Не удалось выполнить запрос.'){
+  const status=Number(err?.status||0),raw=String(err?.message||'');
+  console.warn('Senime request error',status,raw);
+  if(status===429||/rate limit|too many/i.test(raw))return 'Слишком много действий подряд. Подожди немного и попробуй снова.';
+  if(/captcha|turnstile/i.test(raw))return 'Проверка Turnstile не прошла. Обнови CAPTCHA и попробуй ещё раз.';
+  if(status>=500)return 'Сервер временно недоступен. Попробуй ещё раз чуть позже.';
+  return raw&&raw.length<180?raw:fallback;
+}
+
+/* Mark test CAPTCHA unmistakably; production build must replace it. */
+function securityBootV248(){
+  purgeBrowserProviderSecretsV248();
+  securitySyncBackendUiV248();
+  syncProviderConfigUiV19();
+  renderTurnstileV248();
+  const cfg=securityConfigV248();
+  if(cfg.turnstileMode==='test'&&securityIsFounderV248()){
+    console.warn('Senime: Turnstile is using Cloudflare TEST keys. Replace them before production.');
+  }
+}
+setTimeout(securityBootV248,650);
+window.addEventListener('focus',()=>{securitySyncBackendUiV248();purgeBrowserProviderSecretsV248()});
+
+console.info(`Senime V${SENIME_V248}: security foundation active`);
+
+
+/* V24.8 DB-hardening compatibility. */
+markNotificationReadV247=async function(id){
+  try{await senimeRpcV247('senime_mark_notification_read',{notification_id:Number(id)})}catch(e){console.warn('notification read',e)}
+};
+markAllNotificationsV247=async function(){
+  try{await senimeRpcV247('senime_mark_all_notifications_read',{});await loadNotificationsV247(true)}
+  catch(e){profileToastV16('Не удалось',securityFriendlyErrorV248(e))}
+};
+window.markAllNotificationsV247=markAllNotificationsV247;
+
+socialToggleFollowV241=async function(id,on){
+  try{
+    await senimeRpcV247('senime_set_follow',{target:id,desired:!!on});
+    await socialLoadV241();
+  }catch(e){socialBackendErrorV241(e)||socialNoticeV241(securityFriendlyErrorV248(e))}
+};
+window.socialToggleFollowV241=socialToggleFollowV241;
+
+/* Legacy composer is no longer visible, but route it through the secure RPC if
+   an older surface calls it. */
+socialSendMessageV241=async function(){
+  const id=socialStateV241.selected,body=String($('#socialMessageInputV241')?.value||'').trim();
+  if(!id||!body)return;
+  try{
+    await senimeRpcV247('senime_send_dm',{target:id,message_body:body,reply_to:null});
+    if($('#socialMessageInputV241'))$('#socialMessageInputV241').value='';
+    await socialOpenChatV241(id);
+  }catch(e){socialBackendErrorV241(e)||socialNoticeV241(securityFriendlyErrorV248(e))}
+};
+
+console.info('Senime V24.8: hardened DB RPC compatibility loaded');
+
+
+/* ==========================================================================
+   SENIME V24.8.1 · COLLECTION / CURATION / NOTIFICATION FIX
+   ========================================================================== */
+const SENIME_V2481='24.8.1';
+window.SENIME_BUILD=SENIME_V2481;
+
+/* Founder-visible proof that the real security client loaded.
+   This specifically catches the v24.7.3 cache mismatch seen in DevTools. */
+setTimeout(()=>{
+  try{
+    if(founderSessionV245?.() && sessionStorage.getItem('senime-build-toast')!==SENIME_V2481){
+      sessionStorage.setItem('senime-build-toast',SENIME_V2481);
+      profileToastV16('✓ Senime V24.8.1 загружен','Security client + фиксы коллекции активны');
+    }
+  }catch{}
+},1200);
+
+/* ---------- Notifications: reliable read / read-all ---------- */
+markNotificationReadV247=async function(id){
+  const n=communityV247.notifications.find(x=>Number(x.id)===Number(id));
+  if(n&&!n.read_at)n.read_at=new Date().toISOString();
+  renderNotificationsV247?.();
+  loadNotificationBadgeV247?.();
+
+  try{
+    await senimeRpcV247('senime_mark_notification_read',{notification_id:Number(id)});
+  }catch(e){
+    console.warn('mark notification read',e);
+  }
+};
+
+markAllNotificationsV247=async function(){
+  const unread=communityV247.notifications.filter(n=>!n.read_at);
+  if(!unread.length){
+    profileToastV16('✓ Всё уже прочитано');
+    return;
+  }
+
+  const now=new Date().toISOString();
+  unread.forEach(n=>n.read_at=now);
+  renderNotificationsV247();
+  loadNotificationBadgeV247();
+
+  try{
+    await senimeRpcV247('senime_mark_all_notifications_read',{});
+    profileToastV16('✓ Уведомления прочитаны',`${unread.length} отмечено`);
+    await loadNotificationsV247(true);
+  }catch(e){
+    /* Fallback is intentionally RPC-only: V24.8 revoked direct UPDATE. */
+    try{
+      for(const n of unread){
+        await senimeRpcV247('senime_mark_notification_read',{notification_id:Number(n.id)});
+      }
+      await loadNotificationsV247(true);
+    }catch(e2){
+      profileToastV16('Не удалось отметить прочитанными',securityFriendlyErrorV248?.(e2)||e2.message||String(e2));
+    }
+  }
+};
+window.markNotificationReadV247=markNotificationReadV247;
+window.markAllNotificationsV247=markAllNotificationsV247;
+
+/* ---------- Card collection: replace fragile old action-row selector ----------
+   V24.7.1 had a capture listener bound to ".collection-card-actions button".
+   New buttons deliberately use another class so that old interceptor cannot eat
+   their click. */
+function toggleCardShowcaseV2481(id){
+  const p=ensureCollectionMetaV247(),c=(p.collection||[]).find(x=>String(x.characterId)===String(id));
+  if(!c)return;
+  c.showcase=!c.showcase;
+  saveData();
+  renderCollectionV16();
+  renderCardShowcaseV166?.();
+  schedulePublicSyncV244?.(250);
+  profileToastV16(c.showcase?'★ На витрине':'☆ Убрано из витрины',c.name||'Карточка');
+}
+function toggleCardHiddenV2481(id){
+  const p=ensureCollectionMetaV247(),c=(p.collection||[]).find(x=>String(x.characterId)===String(id));
+  if(!c)return;
+  c.hidden=!c.hidden;
+  saveData();
+  renderCollectionV16();
+  profileToastV16(c.hidden?'⌫ Карточка скрыта':'↩ Карточка возвращена',c.name||'Карточка');
+}
+function cardFolderOpenV2481(id){
+  openCardFolderModalV247(Number(id));
+}
+Object.assign(window,{toggleCardShowcaseV2481,toggleCardHiddenV2481,cardFolderOpenV2481});
+
+renderCollectionV16=function(){
+  const p=ensureCollectionMetaV247();
+  ensureCardProfileV205();
+  renderAnimeTicketsV205();
+  const box=$('#profileCollection');
+  if(!box)return;
+
+  populateCollectionSelectsV247();
+  const ui=p.collectionUiV247;
+  const s=$('#collectionSearchV247'),rr=$('#collectionRarityV247'),sort=$('#collectionSortV247');
+  if(s&&document.activeElement!==s)s.value=ui.query||'';
+  if(rr)rr.value=ui.rarity||'all';
+  if(sort)sort.value=ui.sort||'new';
+
+  document.querySelectorAll('#profileCollectionFilters [data-card-filter]')
+    .forEach(b=>b.classList.toggle('active',b.dataset.cardFilter===collectionFilterV166));
+
+  let cards=[...(p.collection||[])];
+  if(collectionFilterV166==='all')cards=cards.filter(c=>!c.hidden);
+  if(collectionFilterV166==='showcase')cards=cards.filter(c=>c.showcase&&!c.hidden);
+  if(collectionFilterV166==='hidden')cards=cards.filter(c=>c.hidden);
+
+  const q=String(ui.query||'').trim().toLowerCase();
+  if(q)cards=cards.filter(c=>`${c.name||''} ${c.animeTitle||''}`.toLowerCase().includes(q));
+  if(ui.rarity!=='all')cards=cards.filter(c=>String(c.rarity||'').toLowerCase()===ui.rarity);
+  if(ui.anime!=='all')cards=cards.filter(c=>String(c.animeTitle||'')===ui.anime);
+  if(ui.folder!=='all')cards=cards.filter(c=>(c.folderIds||[]).includes(ui.folder));
+
+  cards.sort((a,b)=>
+    ui.sort==='name'
+      ? String(a.name||'').localeCompare(String(b.name||''),'ru')
+      : ui.sort==='anime'
+        ? String(a.animeTitle||'').localeCompare(String(b.animeTitle||''),'ru')
+        : ui.sort==='rarity'
+          ? cardRarityRankV247(b.rarity)-cardRarityRankV247(a.rarity)||String(a.name||'').localeCompare(String(b.name||''),'ru')
+          : (Number(b.at)||0)-(Number(a.at)||0)
+  );
+
+  box.classList.toggle('compact-v247',!!ui.compact);
+  $('#collectionCompactBtnV247')?.classList.toggle('active',!!ui.compact);
+
+  if(!p.collection.length){
+    box.innerHTML='<div class="profile-empty">Коллекция пока пустая.</div>';
+    return;
+  }
+  if(!cards.length){
+    box.innerHTML='<div class="profile-empty">По этим фильтрам ничего не нашлось.</div>';
+    return;
+  }
+
+  box.innerHTML=cards.map(c=>{
+    const type=c.ticketType==='waifu'
+      ? '<span class="collection-ticket-type">💗 WAIFU</span>'
+      : c.ticketType==='anime'
+        ? '<span class="collection-ticket-type anime">🎟️ TITLE</span>'
+        : '';
+    const folders=(c.folderIds||[]).map(id=>p.cardFoldersV247.find(f=>f.id===id)?.name).filter(Boolean);
+    const id=Number(c.characterId)||0;
+
+    return `<article class="collection-card ${c.ticketType==='waifu'?'ticket-waifu':''} ${c.showcase?'in-showcase':''}" data-character-id="${id}">
+      <span class="collection-rarity ${rarityClassV16(c.rarity)}">${esc(String(c.rarity).toUpperCase())}</span>
+      ${type}
+      <img src="${esc(c.image||'')}" alt="${esc(c.name)}">
+      <div class="collection-card-copy">
+        <strong>${esc(c.name)}</strong>
+        <small>${esc(c.animeTitle||'')}</small>
+        ${folders.length?`<div class="card-folder-chips-v247">${folders.slice(0,3).map(x=>`<span>📁 ${esc(x)}</span>`).join('')}</div>`:''}
+        <div class="collection-global-v205">🌐 выбито: <b>${formatGlobalPullsV205(c.globalPulls)}</b></div>
+        <div class="collection-card-controls-v2481">
+          <button type="button" title="Использовать карточку как аватар" onclick="openAvatarStudioV205(${id})"><span>🙂</span><b>Аватар</b></button>
+          <button type="button" title="Добавить карточку в папку" onclick="cardFolderOpenV2481(${id})"><span>📁</span><b>Папка</b></button>
+          <button type="button" class="${c.showcase?'active':''}" title="${c.showcase?'Убрать из витрины':'Показать в профиле'}" onclick="toggleCardShowcaseV2481(${id})"><span>${c.showcase?'★':'☆'}</span><b>Витрина</b></button>
+          <button type="button" title="${c.hidden?'Вернуть карточку':'Скрыть карточку'}" onclick="toggleCardHiddenV2481(${id})"><span>${c.hidden?'↩':'⌫'}</span><b>${c.hidden?'Вернуть':'Скрыть'}</b></button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+
+  setTimeout(()=>refreshGlobalPullCountsV205(),0);
+  setTimeout(()=>syncCollectionRaritiesV205(),50);
+};
+
+/* ---------- Collection comments ---------- */
+const collectionCommentsV2481={
+  collectionId:null,
+  items:[],
+  authors:new Map(),
+  likes:new Map(),
+  replyTo:null,
+  sort:'new'
+};
+
+async function loadCollectionCommentsV2481(cid){
+  collectionCommentsV2481.collectionId=String(cid);
+  const q=new URLSearchParams();
+  q.set('collection_id',`eq.${cid}`);
+  q.set('select','id,collection_id,author_id,parent_id,body,created_at');
+  q.set('order','created_at.asc');
+  q.set('limit','300');
+
+  collectionCommentsV2481.items=await senimeFetchV247(`anime_collection_comments?${q.toString()}`,{auth:senimeSignedV247()})||[];
+
+  const ids=[...new Set(collectionCommentsV2481.items.map(x=>x.author_id))];
+  const profs=await publicProfilesByIdsV246(ids);
+  collectionCommentsV2481.authors=new Map((profs||[]).map(x=>[x.id,x]));
+
+  collectionCommentsV2481.likes=new Map();
+  const cids=collectionCommentsV2481.items.map(x=>Number(x.id)).filter(Boolean);
+  if(cids.length){
+    const rows=await senimeFetchV247(`anime_collection_comment_likes?comment_id=in.(${cids.join(',')})&select=comment_id,user_id`,{auth:senimeSignedV247()});
+    for(const r of rows||[]){
+      const k=String(r.comment_id),x=collectionCommentsV2481.likes.get(k)||{count:0,mine:false};
+      x.count++;
+      if(r.user_id===senimeMeV247())x.mine=true;
+      collectionCommentsV2481.likes.set(k,x);
+    }
+  }
+}
+function collectionCommentLikeStateV2481(id){
+  return collectionCommentsV2481.likes.get(String(id))||{count:0,mine:false};
+}
+function collectionCommentCanDeleteV2481(c,ownerId){
+  const me=senimeMeV247();
+  return !!me&&(c.author_id===me||ownerId===me||securityIsFounderV248?.());
+}
+function collectionCommentAuthorV2481(a,id,small=false){
+  return `<span class="collection-comment-avatar-v2481 ${small?'small':''}" role="button" tabindex="0" onclick="openUserProfileV247('${id}')">${socialAvatarV241(a||{})}</span>`;
+}
+function collectionCommentNameV2481(a,id){
+  return `<span class="collection-comment-name-v2481" role="button" tabindex="0" onclick="openUserProfileV247('${id}')">${esc(a?.display_name||a?.handle||'Пользователь')} ${socialFounderBadgeV242(a||{})||''}</span>`;
+}
+function collectionCommentReplyHtmlV2481(c,ownerId){
+  const a=collectionCommentsV2481.authors.get(c.author_id)||{},like=collectionCommentLikeStateV2481(c.id);
+  return `<div id="collection-comment-${c.id}" class="collection-comment-reply-v2481">
+    ${collectionCommentAuthorV2481(a,c.author_id,true)}
+    <div>
+      <div class="collection-comment-meta-v2481">${collectionCommentNameV2481(a,c.author_id)}<time>${publicCommentTimeV246(c.created_at)}</time></div>
+      <p>${esc(c.body||'')}</p>
+      <div class="collection-comment-actions-v2481">
+        <button class="${like.mine?'liked':''}" onclick="toggleCollectionCommentLikeV2481(${Number(c.id)})">♥ <span>${like.count}</span></button>
+        ${senimeSignedV247()?`<button onclick="startCollectionCommentReplyV2481(${Number(c.parent_id||c.id)},'${attrV247(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}
+        ${collectionCommentCanDeleteV2481(c,ownerId)?`<button class="danger" onclick="deleteCollectionCommentV2481(${Number(c.id)})">Удалить</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function collectionCommentRootHtmlV2481(c,replies,ownerId){
+  const a=collectionCommentsV2481.authors.get(c.author_id)||{},like=collectionCommentLikeStateV2481(c.id);
+  return `<article id="collection-comment-${c.id}" class="collection-comment-card-v2481">
+    ${collectionCommentAuthorV2481(a,c.author_id,false)}
+    <div class="collection-comment-main-v2481">
+      <div class="collection-comment-meta-v2481">${collectionCommentNameV2481(a,c.author_id)}<time>${publicCommentTimeV246(c.created_at)}</time></div>
+      <p>${esc(c.body||'')}</p>
+      <div class="collection-comment-actions-v2481">
+        <button class="${like.mine?'liked':''}" onclick="toggleCollectionCommentLikeV2481(${Number(c.id)})">♥ <span>${like.count}</span></button>
+        ${senimeSignedV247()?`<button onclick="startCollectionCommentReplyV2481(${Number(c.id)},'${attrV247(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}
+        <span>${replies.length} ответов</span>
+        ${collectionCommentCanDeleteV2481(c,ownerId)?`<button class="danger" onclick="deleteCollectionCommentV2481(${Number(c.id)})">Удалить</button>`:''}
+      </div>
+      ${replies.length?`<div class="collection-comment-replies-v2481">${replies.map(r=>collectionCommentReplyHtmlV2481(r,ownerId)).join('')}</div>`:''}
+    </div>
+  </article>`;
+}
+function renderCollectionCommentsV2481(ownerId){
+  const box=$('#collectionCommentsListV2481');
+  if(!box)return;
+
+  const byParent=new Map();
+  let roots=collectionCommentsV2481.items.filter(x=>!x.parent_id);
+  for(const r of collectionCommentsV2481.items.filter(x=>x.parent_id)){
+    const k=String(r.parent_id);
+    if(!byParent.has(k))byParent.set(k,[]);
+    byParent.get(k).push(r);
+  }
+  if(collectionCommentsV2481.sort==='popular'){
+    roots=[...roots].sort((a,b)=>collectionCommentLikeStateV2481(b.id).count-collectionCommentLikeStateV2481(a.id).count||new Date(b.created_at)-new Date(a.created_at));
+  }else{
+    roots=[...roots].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  }
+
+  box.innerHTML=roots.length
+    ? roots.map(c=>collectionCommentRootHtmlV2481(c,byParent.get(String(c.id))||[],ownerId)).join('')
+    : '<div class="community-empty-v247">Пока никто не написал. Будь первым.</div>';
+
+  const count=$('#collectionCommentsCountV2481');
+  if(count)count.textContent=String(collectionCommentsV2481.items.length);
+
+  const reply=$('#collectionReplyStateV2481');
+  if(reply){
+    reply.classList.toggle('hidden',!collectionCommentsV2481.replyTo);
+    reply.innerHTML=collectionCommentsV2481.replyTo
+      ? `<span>↩ Ответ для <b>${esc(collectionCommentsV2481.replyTo.name)}</b></span><button onclick="cancelCollectionCommentReplyV2481()">✕</button>`
+      : '';
+  }
+}
+function startCollectionCommentReplyV2481(id,name){
+  collectionCommentsV2481.replyTo={id:Number(id),name:String(name||'')};
+  const c=collectionHubV247.open;
+  renderCollectionCommentsV2481(c?.owner_id);
+  $('#collectionCommentInputV2481')?.focus();
+}
+function cancelCollectionCommentReplyV2481(){
+  collectionCommentsV2481.replyTo=null;
+  renderCollectionCommentsV2481(collectionHubV247.open?.owner_id);
+}
+async function sendCollectionCommentV2481(){
+  if(!senimeSignedV247()){openAccountV23();return}
+  const cid=collectionHubV247.open?.id,input=$('#collectionCommentInputV2481');
+  const body=String(input?.value||'').trim();
+  if(!cid||!body)return;
+  const btn=$('#collectionCommentSendV2481');
+  if(btn)btn.disabled=true;
+  try{
+    await senimeRpcV247('senime_add_collection_comment',{
+      cid,
+      comment_body:body,
+      reply_to:collectionCommentsV2481.replyTo?.id||null
+    });
+    input.value='';
+    collectionCommentsV2481.replyTo=null;
+    await loadCollectionCommentsV2481(cid);
+    renderCollectionCommentsV2481(collectionHubV247.open?.owner_id);
+  }catch(e){
+    profileToastV16('Комментарий не отправлен',securityFriendlyErrorV248?.(e)||e.message||String(e));
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+async function toggleCollectionCommentLikeV2481(id){
+  if(!senimeSignedV247()){openAccountV23();return}
+  try{
+    await senimeRpcV247('senime_toggle_collection_comment_like',{comment_id:Number(id)});
+    await loadCollectionCommentsV2481(collectionHubV247.open?.id);
+    renderCollectionCommentsV2481(collectionHubV247.open?.owner_id);
+  }catch(e){
+    profileToastV16('Лайк не поставился',securityFriendlyErrorV248?.(e)||e.message||String(e));
+  }
+}
+async function deleteCollectionCommentV2481(id){
+  try{
+    await senimeRpcV247('senime_delete_collection_comment',{comment_id:Number(id)});
+    await loadCollectionCommentsV2481(collectionHubV247.open?.id);
+    renderCollectionCommentsV2481(collectionHubV247.open?.owner_id);
+  }catch(e){
+    profileToastV16('Не удалось удалить',securityFriendlyErrorV248?.(e)||e.message||String(e));
+  }
+}
+Object.assign(window,{
+  startCollectionCommentReplyV2481,cancelCollectionCommentReplyV2481,
+  sendCollectionCommentV2481,toggleCollectionCommentLikeV2481,deleteCollectionCommentV2481
+});
+
+/* ---------- Redesigned user collection page ---------- */
+function collectionMosaicV2481(items){
+  const covers=(items||[]).filter(x=>x.cover_url).slice(0,4);
+  if(!covers.length)return '<div class="curation-mosaic-empty-v2481">📚</div>';
+  return `<div class="curation-mosaic-v2481 count-${covers.length}">${covers.map(x=>`<img src="${esc(x.cover_url)}" alt="">`).join('')}</div>`;
+}
+
+openAnimeCollectionV247=async function(id){
+  ensureCommunityModalV247();
+  $('#communityModalV247').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+  communityV247.tab='collections';
+
+  document.querySelectorAll('.community-pane-v247').forEach(p=>p.classList.remove('active'));
+  $('#communityCollectionsV247')?.classList.add('active');
+  document.querySelectorAll('#communityTabsV247 [data-community-tab]')
+    .forEach(b=>b.classList.toggle('active',b.dataset.communityTab==='collections'));
+
+  const box=$('#communityCollectionsV247');
+  if(box)box.innerHTML='<div class="community-loading-v247">Открываю подборку…</div>';
+
+  try{
+    const c=(await senimeFetchV247(`anime_collections?id=eq.${id}&select=id,owner_id,title,description,visibility,cover_url,created_at,updated_at&limit=1`,{auth:senimeSignedV247()}))?.[0];
+    if(!c)throw new Error('Подборка не найдена');
+
+    const items=await senimeFetchV247(`anime_collection_items?collection_id=eq.${id}&select=collection_id,anime_id,anime_title,cover_url,note,sort_order,added_at&order=sort_order.asc`,{auth:senimeSignedV247()})||[];
+    const likes=await senimeFetchV247(`anime_collection_likes?collection_id=eq.${id}&select=user_id`,{auth:false})||[];
+    let saved=false;
+    if(senimeSignedV247()){
+      const s=await senimeFetchV247(`anime_collection_saves?collection_id=eq.${id}&user_id=eq.${senimeMeV247()}&select=collection_id`);
+      saved=!!s?.length;
+    }
+    const owner=(await publicProfilesByIdsV246([c.owner_id]))?.[0]||{};
+    const mine=c.owner_id===senimeMeV247(),liked=likes.some(x=>x.user_id===senimeMeV247());
+
+    collectionHubV247.open=c;
+    collectionHubV247.openItems=items;
+    collectionHubV247.openLikes=likes;
+
+    box.innerHTML=`<div class="curation-detail-v2481">
+      <div class="curation-topbar-v2481">
+        <button class="curation-back-v2481" onclick="loadCollectionsHubV247()">‹ Подборки</button>
+        <div class="curation-top-actions-v2481">
+          ${senimeSignedV247()?`<button class="${liked?'active':''}" onclick="toggleCollectionLikeV247('${id}')">♥ <span>${likes.length}</span></button><button class="${saved?'active':''}" onclick="toggleCollectionSaveV247('${id}')">${saved?'✓ Сохранено':'☆ Сохранить'}</button>`:''}
+          ${mine?`<button class="danger" onclick="deleteCollectionV247('${id}')">Удалить</button>`:''}
+        </div>
+      </div>
+
+      <section class="curation-overview-v2481">
+        ${collectionMosaicV2481(items)}
+        <div class="curation-copy-v2481">
+          <span class="curation-visibility-v2481">${c.visibility==='public'?'PUBLIC':c.visibility==='unlisted'?'LINK ONLY':'PRIVATE'}</span>
+          <h1>${esc(c.title)}</h1>
+          <p>${esc(c.description||'Автор пока не добавил описание.')}</p>
+          <button class="curation-owner-pill-v2481" onclick="openUserProfileV247('${c.owner_id}')">
+            <span>${socialAvatarV241(owner)}</span>
+            <span><small>Собрал</small><b>${esc(owner.display_name||owner.handle||'Пользователь')} ${socialFounderBadgeV242(owner)}</b></span>
+          </button>
+          <div class="curation-stats-v2481">
+            <b>${items.length}<small>аниме</small></b>
+            <b>${likes.length}<small>лайков</small></b>
+            <b id="collectionCommentsCountV2481">0<small>комментов</small></b>
+          </div>
+        </div>
+      </section>
+
+      <section class="curation-list-section-v2481">
+        <header><div><span>АНИМЕ В ПОДБОРКЕ</span><h2>${items.length} позиций</h2></div></header>
+        <div class="curation-items-v2481">
+          ${items.length?items.map((x,i)=>`<article class="curation-item-v2481">
+            <button class="curation-item-main-v2481" onclick="openSharedAnimeV247(${Number(x.anime_id)})">
+              <em>#${i+1}</em>
+              ${x.cover_url?`<img src="${esc(x.cover_url)}" alt="">`:'<i>🎌</i>'}
+              <span><b>${esc(x.anime_title)}</b>${x.note?`<p>${esc(x.note)}</p>`:'<small>Открыть страницу аниме →</small>'}</span>
+            </button>
+            ${mine?`<div class="curation-item-tools-v2481"><button title="Выше" onclick="moveCollectionItemV247('${id}',${Number(x.anime_id)},-1)">↑</button><button title="Ниже" onclick="moveCollectionItemV247('${id}',${Number(x.anime_id)},1)">↓</button><button class="danger" title="Убрать" onclick="removeCollectionItemV247('${id}',${Number(x.anime_id)})">✕</button></div>`:''}
+          </article>`).join(''):'<div class="community-empty-v247">Здесь пока нет аниме.</div>'}
+        </div>
+      </section>
+
+      <section class="curation-comments-v2481">
+        <header>
+          <div><span>ОБСУЖДЕНИЕ</span><h2>Комментарии</h2></div>
+          <select id="collectionCommentSortV2481"><option value="new">Новые</option><option value="popular">Популярные</option></select>
+        </header>
+        ${senimeSignedV247()?`<div class="collection-comment-compose-v2481">
+          <span class="collection-comment-compose-avatar-v2481">${socialAvatarV241(socialStateV241.profiles.get(senimeMeV247())||{})}</span>
+          <textarea id="collectionCommentInputV2481" maxlength="1000" rows="2" placeholder="Что думаешь об этой подборке?"></textarea>
+          <button id="collectionCommentSendV2481" onclick="sendCollectionCommentV2481()">Отправить</button>
+        </div>
+        <div id="collectionReplyStateV2481" class="collection-reply-state-v2481 hidden"></div>`
+        :`<button class="collection-comment-login-v2481" onclick="openAccountV23()">Войти, чтобы комментировать</button>`}
+        <div id="collectionCommentsListV2481"><div class="community-loading-v247">Загружаю комментарии…</div></div>
+      </section>
+    </div>`;
+
+    $('#collectionCommentSortV2481')?.addEventListener('change',e=>{
+      collectionCommentsV2481.sort=e.target.value;
+      renderCollectionCommentsV2481(c.owner_id);
+    });
+
+    if($('#collectionCommentInputV2481')){
+      $('#collectionCommentInputV2481').onkeydown=e=>{
+        if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+          e.preventDefault();
+          sendCollectionCommentV2481();
+        }
+      };
+    }
+
+    try{
+      await loadCollectionCommentsV2481(id);
+      renderCollectionCommentsV2481(c.owner_id);
+    }catch(e){
+      const list=$('#collectionCommentsListV2481');
+      if(list)list.innerHTML='<div class="community-empty-v247">Комментарии к подборкам ещё не подключены.<br><small>Выполни SUPABASE_PATCH_V2481_COLLECTION_COMMENTS.sql.</small></div>';
+    }
+  }catch(e){
+    if(box)box.innerHTML=`<div class="community-empty-v247">${esc(e.message||String(e))}</div>`;
+  }
+};
+window.openAnimeCollectionV247=openAnimeCollectionV247;
+
+/* ---------- Collection comment deep-links from notifications ---------- */
+const notificationIconBeforeV2481=notificationIconV247;
+notificationIconV247=function(k){
+  if(k==='collection_comment')return '💬';
+  if(k==='collection_comment_reply')return '↩';
+  if(k==='collection_comment_like')return '♥';
+  return notificationIconBeforeV2481(k);
+};
+
+async function openCollectionCommentDeepV2481(payload){
+  const cid=payload?.collection_id,commentId=payload?.comment_id||payload?.root_id;
+  if(!cid)return;
+  await openAnimeCollectionV247(cid);
+  if(commentId){
+    await focusElementDeepV247(`#collection-comment-${commentId}`);
+  }
+}
+
+openNotificationV247=async function(id){
+  const n=communityV247.notifications.find(x=>Number(x.id)===Number(id));
+  if(!n)return;
+  await markNotificationReadV247(id);
+  const p=n.payload||{};
+
+  if(['profile_comment_like','profile_comment_reply','profile_comment'].includes(n.kind)){
+    await openProfileCommentDeepV247(p);
+  }else if(['anime_comment_like','anime_comment_reply'].includes(n.kind)){
+    await openAnimeCommentDeepV247(p);
+  }else if(['collection_comment','collection_comment_reply','collection_comment_like'].includes(n.kind)){
+    await openCollectionCommentDeepV2481(p);
+  }else if(n.kind==='dm'||n.kind==='message_reaction'){
+    communityV247.selectedChat=p.user_id||n.actor_id;
+    await setCommunityTabV247('chats');
+  }else if(n.kind==='friend_request'){
+    await setCommunityTabV247('friends');
+  }else if(n.kind==='follow'){
+    await openUserProfileV247(p.user_id||n.actor_id);
+  }else if(n.kind==='collection_like'){
+    await openAnimeCollectionV247(p.collection_id);
+  }
+  await loadNotificationBadgeV247();
+};
+window.openNotificationV247=openNotificationV247;
+
+/* Keep title count visually correct: count may be overwritten after async load. */
+function updateCollectionCommentCountV2481(){
+  const el=$('#collectionCommentsCountV2481');
+  if(!el)return;
+  el.innerHTML=`${collectionCommentsV2481.items.length}<small>комментов</small>`;
+}
+const renderCollectionCommentsBeforeCountV2481=renderCollectionCommentsV2481;
+renderCollectionCommentsV2481=function(ownerId){
+  renderCollectionCommentsBeforeCountV2481(ownerId);
+  updateCollectionCommentCountV2481();
+};
+
+/* Build proof. */
+console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign + comments + notifications fix loaded`);
