@@ -8616,3 +8616,368 @@ setTimeout(()=>{ensureFounderAdminUiV246();claimAdminGrantsV246();if(socialSigne
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&String(e.key).toLowerCase()==='a'&&founderSessionV245?.()){e.preventDefault();openAdminV246()}},true);
 
 console.info(`Senime V${SENIME_V246}: public beta foundation loaded`);
+
+
+/* ==========================================================================
+   SENIME V24.6.1 · REGRESSION FIX
+   - hard-lock public brand to Senime
+   - DM loading state (no empty-chat flicker)
+   - admin grants claim only AFTER cloud state is restored
+   - periodic grant pickup + premium indicator
+   - uploaded avatars are visible to other users
+   - own profile guestbook uses the same Supabase comments as public profile
+   - admin audit can re-issue old grants lost by the V24.6 race
+   ========================================================================== */
+const SENIME_V2461='24.6.1';
+
+/* ---------- Brand: the public product name is no longer user-customizable. ---------- */
+function forceSenimeBrandV2461(){
+  try{
+    if(uiSettings){
+      uiSettings.siteName='Senime';
+      if(!uiSettings.siteTagline||/мой аниме|личн.*аниме|браузер/i.test(String(uiSettings.siteTagline))){
+        uiSettings.siteTagline='Твоя аниме-библиотека, профиль и сообщество в одном месте.';
+      }
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));
+    }
+  }catch{}
+  const nameIds=['topBrandName','heroSiteNameChip','footerSiteName'];
+  for(const id of nameIds){const e=$('#'+id);if(e)e.textContent='Senime'}
+  const c=$('#footerCopyright');if(c)c.textContent=`© ${new Date().getFullYear()} Senime`;
+  const h=$('#settingSiteName');if(h)h.value='Senime';
+  document.title='Senime — аниме-библиотека и сообщество';
+}
+const applyBrandingV8BeforeV2461=applyBrandingV8;
+applyBrandingV8=function(s=uiSettings){
+  if(s)s.siteName='Senime';
+  applyBrandingV8BeforeV2461(s);
+  forceSenimeBrandV2461();
+};
+const applyBrandingV9BeforeV2461=applyBrandingV9;
+applyBrandingV9=function(s=uiSettings){
+  if(s)s.siteName='Senime';
+  applyBrandingV9BeforeV2461(s);
+  forceSenimeBrandV2461();
+};
+forceSenimeBrandV2461();
+setTimeout(forceSenimeBrandV2461,250);
+setTimeout(forceSenimeBrandV2461,1600);
+
+/* ---------- Uploaded avatar parity. Keep data URL in public_payload, not avatar_url. ---------- */
+const socialBuildPublicPayloadBeforeV2461=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){
+  const out=socialBuildPublicPayloadBeforeV2461();
+  const pref=ensureProfilePrefsV162(),p=ensureProfileV16();
+  const custom=String(pref.customAvatar||'');
+  if(/^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(custom)) out.customAvatar=custom;
+  else delete out.customAvatar;
+  out.premiumUntil=Number(p.premiumUntil)||0;
+  out.premiumActive=profilePremiumV168?.()||false;
+  out.senimeVersion=SENIME_V2461;
+  return out;
+};
+
+const socialAvatarBeforeV2461=socialAvatarV241;
+socialAvatarV241=function(p){
+  const custom=String(p?.public_payload?.customAvatar||'');
+  if(/^data:image\//i.test(custom))return `<img src="${esc(custom)}" alt="">`;
+  return socialAvatarBeforeV2461(p);
+};
+
+publicProfilesByIdsV246=async function(ids){
+  ids=[...new Set((ids||[]).filter(Boolean))];if(!ids.length)return [];
+  const q=new URLSearchParams();
+  q.set('id',`in.(${ids.join(',')})`);
+  q.set('select','id,display_name,handle,avatar_url,role,founder_no,public_payload');
+  return await publicRestV246(`profiles?${q.toString()}`)||[];
+};
+function publicCommentAvatarV2461(p){
+  const html=socialAvatarV241(p);
+  return /<img/i.test(html)?html:`<b>${html}</b>`;
+}
+publicCommentAvatarV246=publicCommentAvatarV2461;
+
+/* ---------- Premium state + visible badges. ---------- */
+const profilePremiumBeforeV2461=profilePremiumV168;
+profilePremiumV168=function(){
+  const p=ensureProfileV16(),until=Number(p.premiumUntil)||0;
+  if(until>0&&until<=Date.now()){
+    p.premiumActive=false;p.premiumUntil=0;
+    try{saveData()}catch{}
+    return false;
+  }
+  return until>Date.now()||profilePremiumBeforeV2461();
+};
+
+function premiumDaysLeftV2461(p=ensureProfileV16()){
+  const until=Number(p.premiumUntil)||0;
+  if(!until)return 0;
+  return Math.max(0,Math.ceil((until-Date.now())/86400000));
+}
+function renderPremiumBadgeV2461(){
+  const p=ensureProfileV16(),active=profilePremiumV168(),days=premiumDaysLeftV2461(p);
+  let badge=$('#profilePremiumBadgeV2461');
+  const row=document.querySelector('.profile-status-line');
+  if(!badge&&row){
+    badge=document.createElement('span');badge.id='profilePremiumBadgeV2461';badge.className='profile-premium-badge-v2461';row.appendChild(badge);
+  }
+  if(badge){
+    badge.classList.toggle('hidden',!active);
+    badge.textContent=days?`👑 PREMIUM · ${days} дн.`:'👑 PREMIUM';
+    badge.title=Number(p.premiumUntil)?`Активен до ${new Date(Number(p.premiumUntil)).toLocaleDateString('ru-RU')}`:'Premium активен';
+  }
+}
+const renderProfileChromeBeforeV2461=renderProfileChromeV16;
+renderProfileChromeV16=function(){
+  renderProfileChromeBeforeV2461();
+  renderPremiumBadgeV2461();
+};
+
+function applyPublicPremiumV2461(p){
+  const row=document.querySelector('#publicProfileBodyV242 .public-profile-name-row-v242');
+  if(!row)return;
+  row.querySelector('.public-premium-badge-v2461')?.remove();
+  const pp=p?.public_payload||{},until=Number(pp.premiumUntil)||0;
+  const active=until>Date.now()||(!until&&pp.premiumActive===true);
+  if(!active)return;
+  const b=document.createElement('span');b.className='public-premium-badge-v2461';
+  const days=until?Math.max(1,Math.ceil((until-Date.now())/86400000)):0;
+  b.textContent=days?`👑 PREMIUM · ${days} дн.`:'👑 PREMIUM';
+  row.appendChild(b);
+}
+
+/* ---------- Public profile: always apply fresh avatar + premium after final render. ---------- */
+const socialOpenPublicProfileBeforeV2461=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){
+  await socialOpenPublicProfileBeforeV2461(id);
+  let p=socialStateV241.profiles.get(id);
+  try{
+    const fresh=await publicFreshProfileV246(id);
+    if(fresh){p=fresh;socialStateV241.profiles.set(id,fresh)}
+  }catch{}
+  applyPublicAvatarV246(p);
+  applyPublicPremiumV2461(p);
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+/* ---------- DM: show a stable loading state instead of flashing an empty/new-chat screen. ---------- */
+let socialChatLoadingV2461=false;
+const socialRenderMessagesBeforeV2461=socialRenderMessagesV241;
+socialRenderMessagesV241=function(){
+  const box=$('#socialMessagesV241'),comp=$('#socialComposerV241'),input=$('#socialMessageInputV241'),send=$('#socialMessageSendV241');
+  if(socialChatLoadingV2461&&socialStateV241.selected&&box){
+    box.innerHTML='<div class="social-chat-loading-v2461"><span></span><b>Загружаю переписку…</b></div>';
+    if(comp)comp.classList.add('loading-v2461');
+    if(input)input.disabled=true;
+    if(send)send.disabled=true;
+    return;
+  }
+  comp?.classList.remove('loading-v2461');
+  socialRenderMessagesBeforeV2461();
+};
+window.socialRenderMessagesV241=socialRenderMessagesV241;
+
+socialOpenChatV241=async function(id){
+  if(!id)return;
+  socialStateV241.selected=id;
+  socialChatLoadingV2461=true;
+  socialStateV241.messages=[];
+  const p=socialStateV241.profiles.get(id);
+  if($('#socialChatTitleV241')){
+    const mark=(p?.role==='founder'||Number(p?.founder_no)>0)?' · ✦ CREATOR':'';
+    $('#socialChatTitleV241').textContent=`Чат · ${p?.display_name||p?.handle||'Пользователь'}${mark}`;
+  }
+  socialRenderChatsV241();
+  try{
+    const me=socialMeV241(),q=new URLSearchParams();
+    q.set('or',`(and(sender_id.eq.${me},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${me}))`);
+    q.set('select','id,sender_id,receiver_id,body,created_at,read_at');
+    q.set('order','created_at.asc');q.set('limit','200');
+    socialStateV241.messages=await socialRestV241(`direct_messages?${q.toString()}`)||[];
+  }catch(e){
+    socialBackendErrorV241(e)||socialNoticeV241(e.message||String(e));
+  }finally{
+    socialChatLoadingV2461=false;
+    socialRenderChatsV241();
+  }
+};
+window.socialOpenChatV241=socialOpenChatV241;
+
+/* ---------- Admin grants: V24.6 could claim before cloud restore, then the restore overwrote them.
+   Never claim until accountPullCloudV23 has finished. ---------- */
+const claimAdminGrantsCoreV2461=claimAdminGrantsV246;
+let adminGrantCloudReadyV2461=false;
+
+claimAdminGrantsV246=async function(opts={}){
+  if(!adminGrantCloudReadyV2461)return false;
+  const ok=await claimAdminGrantsCoreV2461(opts);
+  if(ok){
+    renderPremiumBadgeV2461();
+    try{await socialSyncPublicProfileV242?.()}catch{}
+  }
+  return ok;
+};
+window.claimAdminGrantsV246=claimAdminGrantsV246;
+
+/* Remove the old 180ms claim from accountWriteSessionV23. */
+accountWriteSessionV23=function(s){
+  accountWriteSessionBeforeV246(s);
+  adminGrantCloudReadyV2461=false;
+  setTimeout(()=>ensureFounderAdminUiV246(),180);
+};
+
+const accountPullCloudBeforeV2461=accountPullCloudV23;
+accountPullCloudV23=async function(opts={}){
+  adminGrantCloudReadyV2461=false;
+  const ok=await accountPullCloudBeforeV2461(opts);
+  adminGrantCloudReadyV2461=true;
+  if(ok)setTimeout(()=>claimAdminGrantsV246({toast:true}),120);
+  return ok;
+};
+window.accountPullCloudV23=accountPullCloudV23;
+
+function pollAdminGrantsV2461(){
+  if(document.visibilityState!=='visible'||!accountSignedInV236?.()||!adminGrantCloudReadyV2461)return;
+  claimAdminGrantsV246({toast:true});
+}
+window.addEventListener('focus',()=>setTimeout(pollAdminGrantsV2461,120));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(pollAdminGrantsV2461,120)});
+setInterval(pollAdminGrantsV2461,12000);
+
+/* Founder audit: re-issue a grant that the old V24.6 race already marked as claimed. */
+let adminAuditRowsV2461=[];
+async function adminReplayGrantV2461(i){
+  const g=adminAuditRowsV2461[Number(i)];if(!g||!founderSessionV245?.())return;
+  try{
+    await accountRestV23('rpc/senime_admin_create_grant',{method:'POST',body:{
+      target:g.target_id,grant_kind:g.kind,grant_amount:Number(g.amount)||1,grant_payload:g.payload||{},grant_note:g.note||''
+    }});
+    profileToastV16('↻ Выдача повторена',`${g.kind} ×${g.amount}`);
+    await adminLoadAuditV246();
+  }catch(e){profileToastV16('Не удалось повторить',e.message||String(e))}
+}
+window.adminReplayGrantV2461=adminReplayGrantV2461;
+
+adminLoadAuditV246=async function(){
+  const box=$('#adminAuditV246');if(!box)return;
+  try{
+    const rows=await accountRestV23('admin_grants?select=id,target_id,kind,amount,payload,note,created_at,claimed_at&order=created_at.desc&limit=30');
+    adminAuditRowsV2461=rows||[];
+    const profs=await socialProfilesByIdsV241([...new Set(adminAuditRowsV2461.map(x=>x.target_id))]);
+    const map=new Map((profs||[]).map(x=>[x.id,x]));
+    box.innerHTML=adminAuditRowsV2461.map((x,i)=>{
+      const p=map.get(x.target_id)||{},state=x.claimed_at?'✓ получено':'○ ждёт';
+      return `<div class="admin-audit-row-v2461"><span>${state}</span><b>${esc(p.display_name||p.handle||x.target_id.slice(0,8))}</b><small>${esc(x.kind)} ×${Number(x.amount)||1}${x.note?` · ${esc(x.note)}`:''}</small><time>${publicCommentTimeV246(x.created_at)}</time>${x.claimed_at?`<button type="button" onclick="adminReplayGrantV2461(${i})">↻ Повторить</button>`:''}</div>`;
+    }).join('')||'<small>Выдач пока нет.</small>';
+  }catch(e){
+    box.innerHTML=`<small>${/admin_grants|schema cache|does not exist/i.test(String(e?.message||e))?'Нужен SUPABASE_PATCH_V246.sql':esc(e.message||String(e))}</small>`;
+  }
+};
+
+/* ---------- Own profile guestbook: same Supabase source as the public profile. ---------- */
+let ownGuestCommentsV2461=[];
+let ownGuestAuthorsV2461=new Map();
+let ownGuestReplyV2461={parentId:null,name:''};
+let ownGuestLoadTokenV2461=0;
+let ownGuestBoundV2461=false;
+
+function ownGuestAuthorHtmlV2461(p){
+  const av=socialAvatarV241(p);
+  return /<img/i.test(av)?av:`<b>${av}</b>`;
+}
+function ownGuestCanDeleteV2461(c){
+  const me=socialMeV241();return !!me&&(c.author_id===me||c.profile_id===me||founderSessionV245?.());
+}
+function ownGuestReplyHtmlV2461(r){
+  const a=ownGuestAuthorsV2461.get(r.author_id)||{};
+  return `<div class="profile-comment-reply cloud-v2461"><div class="profile-comment-avatar small">${ownGuestAuthorHtmlV2461(a)}</div><div class="profile-comment-copy"><div class="profile-comment-meta"><strong>${esc(a.display_name||a.handle||'Пользователь')} ${socialFounderBadgeV242(a)||''}</strong><time>${publicCommentTimeV246(r.created_at)}</time></div><p>${esc(r.body||'')}</p><div class="comment-actions"><button type="button" onclick="ownGuestStartReplyV2461(${Number(r.parent_id||r.id)},'${esc(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>${ownGuestCanDeleteV2461(r)?`<button class="danger" type="button" onclick="ownGuestDeleteV2461(${Number(r.id)})">Удалить</button>`:''}</div></div></div>`;
+}
+function ownGuestRootHtmlV2461(c,replies=[]){
+  const a=ownGuestAuthorsV2461.get(c.author_id)||{};
+  return `<div class="profile-comment-thread cloud-v2461"><article class="profile-comment-card"><div class="profile-comment-avatar">${ownGuestAuthorHtmlV2461(a)}</div><div class="profile-comment-copy"><div class="profile-comment-meta"><strong>${esc(a.display_name||a.handle||'Пользователь')} ${socialFounderBadgeV242(a)||''}</strong><time>${publicCommentTimeV246(c.created_at)}</time></div><p>${esc(c.body||'')}</p><div class="comment-actions"><button type="button" onclick="ownGuestStartReplyV2461(${Number(c.id)},'${esc(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button><span>${replies.length} ответов</span>${ownGuestCanDeleteV2461(c)?`<button class="danger" type="button" onclick="ownGuestDeleteV2461(${Number(c.id)})">Удалить</button>`:''}</div></div></article>${replies.map(ownGuestReplyHtmlV2461).join('')}</div>`;
+}
+function renderOwnGuestCachedV2461(){
+  const list=$('#profileCommentsList'),count=$('#profileCommentsCount');if(!list)return;
+  const roots=ownGuestCommentsV2461.filter(x=>!x.parent_id),byParent=new Map();
+  for(const r of ownGuestCommentsV2461.filter(x=>x.parent_id)){const k=String(r.parent_id);if(!byParent.has(k))byParent.set(k,[]);byParent.get(k).push(r)}
+  if(count)count.textContent=`${ownGuestCommentsV2461.length} записей`;
+  list.innerHTML=roots.length?roots.map(c=>ownGuestRootHtmlV2461(c,byParent.get(String(c.id))||[])).join(''):'<div class="profile-comment-empty"><b>Пока тихо</b><span>Комментарии других пользователей появятся здесь и на публичной странице профиля.</span></div>';
+  const input=$('#profileCommentInput');
+  if(input){
+    input.placeholder=ownGuestReplyV2461.parentId?`Ответ для ${ownGuestReplyV2461.name}…`:'Оставить запись в своей гостевой…';
+  }
+}
+async function loadOwnGuestbookV2461(){
+  const me=socialMeV241(),list=$('#profileCommentsList');if(!me||!list)return;
+  const token=++ownGuestLoadTokenV2461;
+  list.innerHTML='<div class="profile-comment-empty"><b>Загружаю гостевую…</b><span>Синхронизация с Senime Cloud</span></div>';
+  try{
+    const q=new URLSearchParams();q.set('profile_id',`eq.${me}`);q.set('select','id,profile_id,author_id,parent_id,body,created_at');q.set('order','created_at.asc');q.set('limit','200');
+    const rows=await publicRestV246(`profile_comments?${q.toString()}`);
+    if(token!==ownGuestLoadTokenV2461)return;
+    ownGuestCommentsV2461=rows||[];
+    const ids=[...new Set(ownGuestCommentsV2461.map(x=>x.author_id))];
+    const profs=await publicProfilesByIdsV246(ids);
+    if(token!==ownGuestLoadTokenV2461)return;
+    ownGuestAuthorsV2461=new Map((profs||[]).map(x=>[x.id,x]));
+    renderOwnGuestCachedV2461();
+  }catch(e){
+    list.innerHTML=`<div class="profile-comment-empty"><b>Не удалось загрузить гостевую</b><span>${esc(e.message||String(e))}</span></div>`;
+  }
+}
+async function ownGuestSendV2461(){
+  if(!accountSignedInV236?.()){openAccountV23();return}
+  const input=$('#profileCommentInput'),body=String(input?.value||'').trim(),me=socialMeV241();if(!body||!me)return;
+  const btn=$('#profileCommentSend');if(btn)btn.disabled=true;
+  try{
+    await accountRestV23('rpc/senime_add_profile_comment',{method:'POST',body:{target:me,comment_body:body.slice(0,500),reply_to:ownGuestReplyV2461.parentId||null}});
+    input.value='';ownGuestReplyV2461={parentId:null,name:''};updateProfileCommentCharsV2461();await loadOwnGuestbookV2461();
+  }catch(e){profileToastV16('Не удалось отправить',e.message||String(e))}
+  finally{if(btn)btn.disabled=false}
+}
+function ownGuestStartReplyV2461(id,name=''){ownGuestReplyV2461={parentId:Number(id)||null,name:String(name||'')};renderOwnGuestCachedV2461();$('#profileCommentInput')?.focus()}
+function ownGuestCancelReplyV2461(){ownGuestReplyV2461={parentId:null,name:''};renderOwnGuestCachedV2461()}
+async function ownGuestDeleteV2461(id){
+  try{await accountRestV23('rpc/senime_delete_profile_comment',{method:'POST',body:{comment_id:Number(id)}});await loadOwnGuestbookV2461()}
+  catch(e){profileToastV16('Не удалось удалить',e.message||String(e))}
+}
+function updateProfileCommentCharsV2461(){
+  const i=$('#profileCommentInput'),c=$('#profileCommentChars');if(c)c.textContent=`${String(i?.value||'').length} / 500`;
+}
+function bindOwnGuestbookV2461(){
+  if(ownGuestBoundV2461)return;
+  let input=$('#profileCommentInput'),btn=$('#profileCommentSend');if(!input||!btn)return;
+  /* Clone removes the old local-only V16 listeners. */
+  const ni=input.cloneNode(true),nb=btn.cloneNode(true);
+  input.replaceWith(ni);btn.replaceWith(nb);
+  input=ni;btn=nb;input.maxLength=500;
+  input.addEventListener('input',updateProfileCommentCharsV2461);
+  input.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();ownGuestSendV2461()}else if(e.key==='Escape'&&ownGuestReplyV2461.parentId){ownGuestCancelReplyV2461()}});
+  btn.addEventListener('click',ownGuestSendV2461);
+  const foot=document.querySelector('.profile-comment-compose-foot > span');
+  if(foot)foot.textContent='Публичная гостевая Senime · записи видны на твоём профиле другим пользователям';
+  ownGuestBoundV2461=true;updateProfileCommentCharsV2461();
+}
+Object.assign(window,{ownGuestStartReplyV2461,ownGuestCancelReplyV2461,ownGuestDeleteV2461});
+
+function scheduleOwnGuestbookV2461(){
+  bindOwnGuestbookV2461();
+  if(accountSignedInV236?.())setTimeout(loadOwnGuestbookV2461,80);
+}
+const renderProfileV16BeforeGuestV2461=renderProfileV16;
+renderProfileV16=function(){
+  renderProfileV16BeforeGuestV2461();
+  renderPremiumBadgeV2461();
+  scheduleOwnGuestbookV2461();
+};
+
+/* Current signed-in profile may already have a local uploaded avatar / premium state.
+   Publish it once after the patched code is ready. */
+setTimeout(()=>{
+  forceSenimeBrandV2461();
+  renderPremiumBadgeV2461();
+  if(socialSignedV241?.())socialSyncPublicProfileV242?.().catch?.(()=>{});
+  scheduleOwnGuestbookV2461();
+},900);
+
+console.info(`Senime V${SENIME_V2461}: regression fix loaded`);
