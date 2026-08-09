@@ -635,7 +635,6 @@
         <button type="button" data-profile-tab="achievements">Достижения</button>
         <button type="button" data-profile-tab="collection">Коллекция</button>
         <button type="button" data-profile-tab="shop">Магазин</button>
-        <button type="button" data-profile-tab="social" id="profileSocialTabV241">👥 Друзья</button>
         <button type="button" data-profile-tab="activity">Активность</button>
       </nav>
 
@@ -748,15 +747,15 @@
           <div class="profile-section-head"><div><span>COLLECTION</span><h3>Карточки персонажей</h3></div><div class="profile-ticket-actions"><button id="profileOpenTicket" type="button">🎴 Character <b id="collectionRegularTicketCount">0</b></button><button id="profileOpenWaifuTicket" class="waifu-ticket-btn" type="button">💗 Waifu <b id="collectionWaifuTicketCount">0</b></button></div></div>
           <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За полный просмотр аниме теперь выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>🌐 «выбито»</b> показывает общий счётчик карточки у всех пользователей, когда подключена статистика backend.</div>
           <div class="collection-toolbar-v247">
-            <div class="collection-search-v247"><span>⌕</span><input id="collectionSearchV247" placeholder="Персонаж или аниме..." autocomplete="off"></div>
-            <select id="collectionRarityV247" title="Редкость">
+            <div class="collection-search-v247"><span>⌕</span><input id="collectionSearchV247" placeholder="Персонаж или аниме..." autocomplete="off" oninput="collectionToolbarInputV2471(this.value)"></div>
+            <select id="collectionRarityV247" title="Редкость" onchange="collectionToolbarSelectV2471('rarity',this.value)">
               <option value="all">Все редкости</option><option value="legendary">Legendary</option><option value="epic">Epic</option><option value="rare">Rare</option><option value="common">Common</option>
             </select>
-            <select id="collectionAnimeV247" title="Аниме"><option value="all">Все аниме</option></select>
-            <select id="collectionFolderV247" title="Папка"><option value="all">Все папки</option></select>
-            <select id="collectionSortV247" title="Сортировка"><option value="new">Сначала новые</option><option value="rarity">По редкости</option><option value="name">По имени</option><option value="anime">По аниме</option></select>
-            <button id="collectionFoldersBtnV247" class="secondary" type="button">📁 Папки</button>
-            <button id="collectionCompactBtnV247" class="secondary" type="button">▦ Компактно</button>
+            <select id="collectionAnimeV247" title="Аниме" onchange="collectionToolbarSelectV2471('anime',this.value)"><option value="all">Все аниме</option></select>
+            <select id="collectionFolderV247" title="Папка" onchange="collectionToolbarSelectV2471('folder',this.value)"><option value="all">Все папки</option></select>
+            <select id="collectionSortV247" title="Сортировка" onchange="collectionToolbarSelectV2471('sort',this.value)"><option value="new">Сначала новые</option><option value="rarity">По редкости</option><option value="name">По имени</option><option value="anime">По аниме</option></select>
+            <button id="collectionFoldersBtnV247" class="secondary" type="button" onclick="openCardFolderModalV247()">📁 Папки</button>
+            <button id="collectionCompactBtnV247" class="secondary" type="button" onclick="toggleCollectionCompactV2471()">▦ Компактно</button>
           </div>
           <div id="profileCollectionFilters" class="profile-collection-filters">
             <button type="button" data-card-filter="all" class="active">Все</button>

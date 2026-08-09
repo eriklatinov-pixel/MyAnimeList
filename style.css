@@ -1678,3 +1678,78 @@ textarea:focus{border-color:color-mix(in srgb,var(--accent2) 62%,var(--line));bo
 .collection-toolbar-v247{display:grid;grid-template-columns:minmax(210px,1fr) repeat(4,minmax(110px,auto)) auto auto;gap:7px;margin:12px 0}.collection-toolbar-v247 select,.collection-search-v247{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:10px}.collection-toolbar-v247 select{padding:9px}.collection-search-v247{display:flex;align-items:center;padding:0 9px}.collection-search-v247 input{width:100%;border:0;background:transparent;color:var(--text);padding:9px;outline:0}.collection-toolbar-v247 button.active{border-color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 12%,var(--panel2))!important}.card-folder-chips-v247{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}.card-folder-chips-v247 span{font-size:7px;padding:3px 5px;border-radius:999px;background:rgba(255,255,255,.04);color:var(--muted)}.profile-collection-grid.compact-v247{grid-template-columns:repeat(auto-fill,minmax(105px,1fr))}.profile-collection-grid.compact-v247 .collection-card-copy>small,.profile-collection-grid.compact-v247 .collection-global-v205,.profile-collection-grid.compact-v247 .waifu-rate-v183,.profile-collection-grid.compact-v247 .card-folder-chips-v247{display:none}.profile-collection-grid.compact-v247 .collection-card-copy{padding:7px}.profile-collection-grid.compact-v247 .collection-card-copy strong{font-size:9px}.profile-collection-grid.compact-v247 .collection-card-actions{opacity:.2;transition:.15s}.profile-collection-grid.compact-v247 .collection-card:hover .collection-card-actions{opacity:1}.card-folder-create-v247{display:flex;gap:6px}.card-folder-create-v247 input{flex:1}.card-folder-list-v247{display:grid;gap:5px;margin-top:10px}.card-folder-list-v247>div{display:grid;grid-template-columns:1fr auto;gap:5px}.card-folder-list-v247>div>button:first-child{display:grid!important;grid-template-columns:auto 1fr auto;gap:8px;text-align:left!important;align-items:center;background:var(--panel2)!important;color:var(--text)!important}.card-folder-list-v247>div>button.active{border-color:var(--accent)!important}.anime-ticket-list-v205 button.complete-v247{opacity:.82;border-color:color-mix(in srgb,#7ee0b5 36%,var(--line))!important}.anime-ticket-list-v205 button.complete-v247 small{color:#82d9b8}.ticket-shop-buy-v168 s{font-size:8px;color:var(--muted);margin-left:4px}
 @media(max-width:1100px){.community-tabs-v247{justify-content:flex-start}.community-chat-page-v247{grid-template-columns:250px 1fr}.curation-grid-v247{grid-template-columns:repeat(3,1fr)}.collection-toolbar-v247{grid-template-columns:1fr 1fr 1fr}.collection-search-v247{grid-column:1/-1}}
 @media(max-width:760px){.community-modal-v247{padding:0}.community-shell-v247{height:100vh;border-radius:0}.community-head-v247{grid-template-columns:1fr auto}.community-brand-v247{display:none}.community-tabs-v247{grid-row:2;grid-column:1/-1}.community-pane-v247{padding:12px}.community-chat-page-v247{grid-template-columns:92px 1fr;min-height:calc(100vh - 130px)}.community-chat-sidebar-v247>header div{display:none}.community-chat-person-v247{grid-template-columns:1fr!important}.community-chat-person-v247>span:last-child{display:none}.community-chat-avatar-v247{margin:auto}.community-chat-search-v247{display:none}.chat-message-v247{max-width:86%}.community-people-grid-v247,.curation-items-v247{grid-template-columns:1fr}.curation-grid-v247{grid-template-columns:repeat(2,1fr)}.leader-podium-v247{grid-template-columns:1fr}.leader-podium-card-v247{min-height:120px!important}.collection-toolbar-v247{grid-template-columns:1fr 1fr}.collection-search-v247{grid-column:1/-1}.public-curations-grid-v247{grid-template-columns:repeat(2,1fr)}}
+
+
+/* ===== Senime V24.7.1 hotfix ===== */
+
+/* The old in-profile social page was replaced by global Community. */
+#profileSocialTabV241{display:none!important}
+
+/* Author identity must look like identity, not like a CTA button. */
+.profile-comment-meta .author-name-safe-v2471,
+.public-comment-meta-v246 .author-name-safe-v2471,
+.watch-comment-main .author-name-safe-v2471{
+  display:inline!important;
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:none!important;
+  box-shadow:none!important;
+  color:var(--text)!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  line-height:1.25!important;
+  cursor:pointer!important;
+  vertical-align:baseline!important;
+}
+.author-name-safe-v2471:hover{text-decoration:underline!important}
+
+.profile-comment-card>.author-safe-v2471,
+.profile-comment-reply>.author-safe-v2471,
+.public-comment-v246>.author-safe-v2471,
+.public-comment-reply-v246>.author-safe-v2471,
+.watch-comment-card>.author-safe-v2471,
+.watch-comment-reply>.author-safe-v2471{
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  cursor:pointer!important;
+  flex:0 0 auto!important;
+}
+.author-safe-v2471 img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  border-radius:inherit!important;
+}
+.profile-comment-card>.author-safe-v2471{width:42px!important;height:42px!important}
+.profile-comment-reply>.author-safe-v2471{width:34px!important;height:34px!important}
+.public-comment-v246>.author-safe-v2471{width:38px!important;height:38px!important}
+.public-comment-reply-v246>.author-safe-v2471{width:30px!important;height:30px!important}
+.watch-comment-card>.author-safe-v2471{width:36px!important;height:36px!important}
+.watch-comment-reply>.author-safe-v2471{width:30px!important;height:30px!important}
+
+/* Collection controls: obvious clickability + clearer card actions. */
+#collectionFoldersBtnV247,#collectionCompactBtnV247{cursor:pointer!important}
+.collection-card-actions button{
+  min-height:34px!important;
+  cursor:pointer!important;
+}
+.collection-card-actions button:nth-child(2)::after{content:" Папка";font-size:9px}
+.collection-card-actions button:nth-child(3)::after{content:" Витрина";font-size:9px}
+.collection-card-actions button:nth-child(4)::after{content:" Скрыть";font-size:9px}
+.collection-card-actions button:nth-child(2),
+.collection-card-actions button:nth-child(3),
+.collection-card-actions button:nth-child(4){font-size:9px!important}
+
+.profile-collection-grid.compact-v247 .collection-card-actions button:nth-child(n+2)::after{content:""!important}
+
+/* Community errors should not eat the whole page visually. */
+.community-pane-v247>.community-empty-v247{max-width:720px;margin:20px auto}

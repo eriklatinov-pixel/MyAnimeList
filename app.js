@@ -9230,3 +9230,187 @@ socialRemoveFriendV241=async function(...a){const r=await socialRemoveFriendBefo
 
 /* A visible version marker in console only; no debug UI shipped. */
 console.info('Senime V24.7 final wiring OK');
+
+
+/* ==========================================================================
+   SENIME V24.7.1 · HOTFIX
+   - fixes Community "reading length" crash
+   - removes redundant Friends tab inside Profile
+   - hardens collection toolbar/card controls
+   - fixes own/public/player comment author avatar + nickname layout
+   ========================================================================== */
+const SENIME_V2471='24.7.1';
+
+/* ---------- Social state compatibility ----------
+   V24.3 UI reads socialStateV241.incoming, while the real state stores requests.
+   The missing alias was the source of "Cannot read properties of undefined
+   (reading 'length')" in both Chats and Friends. */
+(function repairSocialStateV2471(){
+  for(const k of ['friends','following','followers','requests','search','feed','messages']){
+    if(!Array.isArray(socialStateV241[k]))socialStateV241[k]=[];
+  }
+  const d=Object.getOwnPropertyDescriptor(socialStateV241,'incoming');
+  if(!d||(!d.get&&!Array.isArray(socialStateV241.incoming))){
+    try{
+      Object.defineProperty(socialStateV241,'incoming',{
+        configurable:true,
+        enumerable:true,
+        get(){
+          const me=socialMeV241?.();
+          return (Array.isArray(this.requests)?this.requests:[]).filter(x=>x?.receiver_id===me);
+        }
+      });
+    }catch{
+      socialStateV241.incoming=[];
+    }
+  }
+})();
+
+function normalizeSocialStateV2471(){
+  for(const k of ['friends','following','followers','requests','search','feed','messages']){
+    if(!Array.isArray(socialStateV241[k]))socialStateV241[k]=[];
+  }
+}
+const socialLoadBeforeV2471=socialLoadV241;
+socialLoadV241=async function(){
+  normalizeSocialStateV2471();
+  const out=await socialLoadBeforeV2471();
+  normalizeSocialStateV2471();
+  return out;
+};
+window.socialLoadV241=socialLoadV241;
+
+/* Old profile Social page is redundant. Any legacy attempt to open it goes
+   to the new Community Friends page instead. */
+const setProfileTabBeforeV2471=setProfileTabV16;
+setProfileTabV16=function(tab){
+  if(tab==='social'){
+    openCommunityV247('friends');
+    return;
+  }
+  return setProfileTabBeforeV2471(tab);
+};
+window.setProfileTabV16=setProfileTabV16;
+setTimeout(()=>{$('#profileSocialTabV241')?.remove()},80);
+
+/* ---------- Collection controls: robust even after re-renders ---------- */
+let collectionToolbarTimerV2471=null;
+function collectionToolbarInputV2471(value){
+  const ui=collectionUiV247();
+  ui.query=String(value||'');
+  clearTimeout(collectionToolbarTimerV2471);
+  collectionToolbarTimerV2471=setTimeout(()=>{saveData();renderCollectionV16()},120);
+}
+function collectionToolbarSelectV2471(key,value){
+  const ui=collectionUiV247();
+  if(!['rarity','anime','folder','sort'].includes(key))return;
+  ui[key]=String(value||'all');
+  saveData();renderCollectionV16();
+}
+function toggleCollectionCompactV2471(){
+  const ui=collectionUiV247();
+  ui.compact=!ui.compact;
+  saveData();renderCollectionV16();
+  profileToastV16(ui.compact?'▦ Компактный вид':'▦ Обычный вид');
+}
+Object.assign(window,{collectionToolbarInputV2471,collectionToolbarSelectV2471,toggleCollectionCompactV2471});
+
+/* Capture fallback for toolbar + per-card actions.
+   This intentionally stops the older inline listener so a click executes once. */
+if(!document.body.dataset.collectionHotfixV2471){
+  document.body.dataset.collectionHotfixV2471='1';
+  document.addEventListener('click',e=>{
+    const folderTop=e.target.closest?.('#collectionFoldersBtnV247');
+    if(folderTop){
+      e.preventDefault();e.stopImmediatePropagation();
+      openCardFolderModalV247();
+      return;
+    }
+    const compact=e.target.closest?.('#collectionCompactBtnV247');
+    if(compact){
+      e.preventDefault();e.stopImmediatePropagation();
+      toggleCollectionCompactV2471();
+      return;
+    }
+    const card=e.target.closest?.('.collection-card[data-character-id]');
+    const btn=e.target.closest?.('.collection-card-actions button');
+    if(!card||!btn)return;
+    const id=Number(card.dataset.characterId)||0;
+    const buttons=[...card.querySelectorAll('.collection-card-actions button')];
+    const idx=buttons.indexOf(btn);
+    if(idx<0)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(idx===0)openAvatarStudioV205(id);
+    else if(idx===1)openCardFolderModalV247(id);
+    else if(idx===2)toggleCardShowcaseV166(id);
+    else if(idx===3)toggleCardHiddenV247(id);
+  },true);
+}
+
+/* Re-bind after every profile render. */
+const renderProfileBeforeV2471=renderProfileV16;
+renderProfileV16=function(){
+  const out=renderProfileBeforeV2471();
+  setTimeout(()=>{
+    try{
+      normalizeSocialStateV2471();
+      bindCollectionToolsV247?.();
+    }catch{}
+  },30);
+  return out;
+};
+
+/* ---------- Comments: do NOT use generic <button> for author identity.
+   It inherited global button styling and produced the giant gradient nickname. */
+function commentAuthorAvatarV2471(p,small=false){
+  return `<span class="${small?'profile-comment-avatar small':'profile-comment-avatar'} social-comment-author-v247 author-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${p?.id||''}')">${socialAvatarV241(p||{})}</span>`;
+}
+function commentAuthorNameV2471(p){
+  return `<span class="social-comment-name-v247 author-name-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${p?.id||''}')">${esc(p?.display_name||p?.handle||'Пользователь')} ${socialFounderBadgeV242(p||{})||''}</span>`;
+}
+
+/* Public profile guestbook */
+publicCommentHtmlV246=function(c,replies=[]){
+  const a=publicProfileAuthorsV246.get(c.author_id)||{},like=profileLikeStateV247(c.id);
+  return `<article id="profile-comment-${c.id}" class="public-comment-v246"><span class="public-comment-avatar-v246 social-comment-author-v247 author-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${c.author_id}')">${publicCommentAvatarV246(a)}</span><div class="public-comment-copy-v246"><div class="public-comment-meta-v246">${commentAuthorNameV2471({...a,id:c.author_id})}<time>${publicCommentTimeV246(c.created_at)}</time></div><p>${esc(c.body||'')}</p><div class="public-comment-actions-v246"><button class="${like.mine?'liked':''}" onclick="toggleProfileCommentLikeCloudV247(${Number(c.id)},'public')">♥ <span>${like.count}</span></button>${accountSignedInV236?.()?`<button type="button" onclick="publicStartReplyV246(${Number(c.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}${publicCommentCanDeleteV246(c)?`<button class="danger" type="button" onclick="publicDeleteCommentV246(${Number(c.id)})">Удалить</button>`:''}</div>${replies.length?`<div class="public-comment-replies-v246">${replies.map(publicReplyHtmlV246).join('')}</div>`:''}</div></article>`;
+};
+publicReplyHtmlV246=function(r){
+  const a=publicProfileAuthorsV246.get(r.author_id)||{},like=profileLikeStateV247(r.id);
+  return `<div id="profile-comment-${r.id}" class="public-comment-reply-v246"><span class="public-comment-avatar-v246 small social-comment-author-v247 author-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${r.author_id}')">${publicCommentAvatarV246(a)}</span><div><div class="public-comment-meta-v246">${commentAuthorNameV2471({...a,id:r.author_id})}<time>${publicCommentTimeV246(r.created_at)}</time></div><p>${esc(r.body||'')}</p><div class="public-comment-actions-v246"><button class="${like.mine?'liked':''}" onclick="toggleProfileCommentLikeCloudV247(${Number(r.id)},'public')">♥ <span>${like.count}</span></button>${accountSignedInV236?.()?`<button type="button" onclick="publicStartReplyV246(${Number(r.parent_id||r.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}${publicCommentCanDeleteV246(r)?`<button class="danger" type="button" onclick="publicDeleteCommentV246(${Number(r.id)})">Удалить</button>`:''}</div></div></div>`;
+};
+
+/* Own profile guestbook */
+function ownGuestReplyHtmlV2471(r){
+  const a=ownGuestAuthorsV2461.get(r.author_id)||{},like=profileLikeStateV247(r.id),p={...a,id:r.author_id};
+  return `<div id="profile-comment-${r.id}" class="profile-comment-reply cloud-v2461">${commentAuthorAvatarV2471(p,true)}<div class="profile-comment-copy"><div class="profile-comment-meta">${commentAuthorNameV2471(p)}<time>${publicCommentTimeV246(r.created_at)}</time></div><p>${esc(r.body||'')}</p><div class="comment-actions"><button class="${like.mine?'liked':''}" onclick="toggleProfileCommentLikeCloudV247(${Number(r.id)},'own')">♥ <span>${like.count}</span></button><button type="button" onclick="ownGuestStartReplyV2461(${Number(r.parent_id||r.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>${ownGuestCanDeleteV2461(r)?`<button class="danger" type="button" onclick="ownGuestDeleteV2461(${Number(r.id)})">Удалить</button>`:''}</div></div></div>`;
+}
+function ownGuestRootHtmlV2471(c,replies=[]){
+  const a=ownGuestAuthorsV2461.get(c.author_id)||{},like=profileLikeStateV247(c.id),p={...a,id:c.author_id};
+  return `<div id="profile-comment-${c.id}" class="profile-comment-thread cloud-v2461"><article class="profile-comment-card">${commentAuthorAvatarV2471(p,false)}<div class="profile-comment-copy"><div class="profile-comment-meta">${commentAuthorNameV2471(p)}<time>${publicCommentTimeV246(c.created_at)}</time></div><p>${esc(c.body||'')}</p><div class="comment-actions"><button class="${like.mine?'liked':''}" onclick="toggleProfileCommentLikeCloudV247(${Number(c.id)},'own')">♥ <span>${like.count}</span></button><button type="button" onclick="ownGuestStartReplyV2461(${Number(c.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button><span>${replies.length} ответов</span>${ownGuestCanDeleteV2461(c)?`<button class="danger" type="button" onclick="ownGuestDeleteV2461(${Number(c.id)})">Удалить</button>`:''}</div></div></article>${replies.map(ownGuestReplyHtmlV2471).join('')}</div>`;
+}
+renderOwnGuestCachedV2461=function(){
+  const list=$('#profileCommentsList'),count=$('#profileCommentsCount');if(!list)return;
+  const roots=ownGuestCommentsV2461.filter(x=>!x.parent_id),byParent=new Map();
+  for(const r of ownGuestCommentsV2461.filter(x=>x.parent_id)){const k=String(r.parent_id);if(!byParent.has(k))byParent.set(k,[]);byParent.get(k).push(r)}
+  if(count)count.textContent=`${ownGuestCommentsV2461.length} записей`;
+  list.innerHTML=roots.length?roots.map(c=>ownGuestRootHtmlV2471(c,byParent.get(String(c.id))||[])).join(''):'<div class="profile-comment-empty"><b>Пока тихо</b><span>Комментарии других пользователей появятся здесь.</span></div>';
+  const input=$('#profileCommentInput');if(input)input.placeholder=ownGuestReplyV2461.parentId?`Ответ для ${ownGuestReplyV2461.name}…`:'Оставить запись в своей гостевой…';
+};
+
+/* Player comments */
+animeCommentNodeV247=function(c,replies=[]){
+  const a=animeCommentV247.authors.get(c.author_id)||{},like=animeLikeV247(c.id),p={...a,id:c.author_id};
+  return `<article id="anime-comment-${c.id}" class="watch-comment-card"><span class="watch-comment-avatar social-comment-author-v247 author-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${c.author_id}')">${socialAvatarV241(a)}</span><div class="watch-comment-main"><div>${commentAuthorNameV2471(p)}<small>${publicCommentTimeV246(c.created_at)}</small></div><p>${esc(c.body||'')}</p><div class="comment-actions"><button class="${like.mine?'liked':''}" onclick="toggleAnimeCommentLikeV247(${Number(c.id)})">♥ <span>${like.count}</span></button>${senimeSignedV247()?`<button onclick="startAnimeCommentReplyV247(${Number(c.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}<span>${replies.length} ответов</span>${animeCommentCanDeleteV247(c)?`<button class="danger" onclick="deleteAnimeCommentV247(${Number(c.id)})">Удалить</button>`:''}</div>${replies.length?`<div class="watch-comment-replies-v247">${replies.map(animeReplyNodeV247).join('')}</div>`:''}</div></article>`;
+};
+animeReplyNodeV247=function(r){
+  const a=animeCommentV247.authors.get(r.author_id)||{},like=animeLikeV247(r.id),p={...a,id:r.author_id};
+  return `<div id="anime-comment-${r.id}" class="watch-comment-reply"><span class="watch-comment-avatar small social-comment-author-v247 author-safe-v2471" role="button" tabindex="0" onclick="openUserProfileV247('${r.author_id}')">${socialAvatarV241(a)}</span><div class="watch-comment-main"><div>${commentAuthorNameV2471(p)}<small>${publicCommentTimeV246(r.created_at)}</small></div><p>${esc(r.body||'')}</p><div class="comment-actions"><button class="${like.mine?'liked':''}" onclick="toggleAnimeCommentLikeV247(${Number(r.id)})">♥ <span>${like.count}</span></button>${senimeSignedV247()?`<button onclick="startAnimeCommentReplyV247(${Number(r.parent_id||r.id)},'${v247EscAttr(a.display_name||a.handle||'Пользователь')}')">↩ Ответить</button>`:''}${animeCommentCanDeleteV247(r)?`<button class="danger" onclick="deleteAnimeCommentV247(${Number(r.id)})">Удалить</button>`:''}</div></div></div>`;
+};
+
+setTimeout(()=>{
+  normalizeSocialStateV2471();
+  bindCollectionToolsV247?.();
+  if(profileActiveTabV16==='overview'&&senimeSignedV247())loadOwnGuestbookV2461?.();
+},500);
+
+console.info(`Senime V${SENIME_V2471}: Community + collection + comment hotfix loaded`);
