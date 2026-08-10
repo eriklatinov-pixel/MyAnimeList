@@ -3077,3 +3077,73 @@ body.account-guest-v236 #coversBtn{display:none!important}
   .senime-v25 .profile-favorites-grid.style-posters,
   .senime-v25 .profile-favorites-grid:not(.style-cards):not(.style-compact){grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
+
+/* ==========================================================================\n   SENIME V25.9 · CLEAN ROUTES\n   Major sections become real URL views instead of feeling like stacked modals.\n   Same shared UI stays underneath, so no duplicate page logic.\n   ========================================================================== */
+html[data-senime-route-kind]{scroll-behavior:smooth}
+html[data-senime-route-kind="catalog"] .sidebar-nav-btn[data-sidebar-route="catalog"],
+html[data-senime-route-kind="list"] .sidebar-nav-btn[data-sidebar-route="list"],
+html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overview"]{color:#fff!important;background:linear-gradient(90deg,rgba(151,125,255,.17),rgba(151,125,255,.045))!important;border-color:rgba(169,150,255,.20)!important;box-shadow:inset 3px 0 0 var(--v25-purple)!important}
+
+@media(min-width:861px){
+  html[data-senime-route-kind="profile"] #profileModal,
+  html[data-senime-route-kind="community"] #communityModalV247,
+  html[data-senime-route-kind="watch"] #watchModal,
+  html[data-senime-route-kind="anime-detail"] #detailModal,
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242{
+    left:calc(var(--sidebar-w) + 34px)!important;
+    top:0!important;right:0!important;bottom:0!important;
+    background:transparent!important;
+    backdrop-filter:none!important;
+    padding:28px 30px 72px!important;
+    z-index:64!important;
+    overflow:auto!important;
+    animation:senimeRoutePageInV259 .22s ease both!important;
+  }
+  html[data-senime-route-kind="profile"] body.sidebar-collapsed #profileModal,
+  html[data-senime-route-kind="community"] body.sidebar-collapsed #communityModalV247,
+  html[data-senime-route-kind="watch"] body.sidebar-collapsed #watchModal,
+  html[data-senime-route-kind="anime-detail"] body.sidebar-collapsed #detailModal,
+  html[data-senime-route-kind="public-profile"] body.sidebar-collapsed #publicProfileModalV242{
+    left:calc(var(--sidebar-collapsed-w) + 34px)!important;
+  }
+  html[data-senime-route-kind="profile"] #profileModal{display:block}
+  html[data-senime-route-kind="profile"] #profileModal.hidden{display:none}
+  html[data-senime-route-kind="profile"] .profile-shell,
+  html[data-senime-route-kind="anime-detail"] .detail-shell,
+  html[data-senime-route-kind="watch"] .watch-shell,
+  html[data-senime-route-kind="public-profile"] .public-profile-shell-v242{
+    width:min(1540px,100%)!important;
+    max-width:none!important;
+    margin:0 auto 42px!important;
+    border-radius:24px!important;
+    box-shadow:0 22px 70px rgba(0,0,0,.28)!important;
+  }
+  html[data-senime-route-kind="community"] #communityModalV247{display:block!important}
+  html[data-senime-route-kind="community"] #communityModalV247.hidden{display:none!important}
+  html[data-senime-route-kind="community"] .community-shell-v247{
+    width:min(1540px,100%)!important;
+    height:calc(100vh - 58px)!important;
+    margin:0 auto!important;
+    border-radius:24px!important;
+    box-shadow:0 22px 70px rgba(0,0,0,.28)!important;
+  }
+  html[data-senime-route-kind="watch"] #watchModal{display:block}
+  html[data-senime-route-kind="watch"] #watchModal.hidden{display:none}
+  html[data-senime-route-kind="anime-detail"] #detailModal{display:block}
+  html[data-senime-route-kind="anime-detail"] #detailModal.hidden{display:none}
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242{display:block}
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242.hidden{display:none}
+}
+
+@media(max-width:860px){
+  html[data-senime-route-kind="profile"] #profileModal,
+  html[data-senime-route-kind="community"] #communityModalV247,
+  html[data-senime-route-kind="watch"] #watchModal,
+  html[data-senime-route-kind="anime-detail"] #detailModal,
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242{
+    background:#090a0f!important;
+    backdrop-filter:none!important;
+    padding:6px!important;
+  }
+}
+@keyframes senimeRoutePageInV259{from{opacity:.55;transform:translateY(7px)}to{opacity:1;transform:none}}

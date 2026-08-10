@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Senime</title></head>
+<body style="background:#090a0f;color:#fff;font-family:system-ui;display:grid;place-items:center;min-height:100vh;margin:0">
+<div>Открываю Senime…</div>
+<script>
+(()=>{
+  const parts=location.pathname.split('/').filter(Boolean);
+  const isGithub=/\.github\.io$/i.test(location.hostname);
+  const repo=isGithub&&parts.length?`/${parts[0]}/`:'/';
+  let local=location.pathname;
+  if(isGithub&&parts.length){local=location.pathname.slice(parts[0].length+1)||'/';}
+  const requested=local+location.search+location.hash;
+  location.replace(repo+'?__senime_route='+encodeURIComponent(requested));
+})();
+</script>
+</body></html>

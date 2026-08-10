@@ -11215,3 +11215,210 @@ window.openCharacterTicketV16=openCharacterTicketV16;
 
 window.SENIME_BUILD=SENIME_V258;
 console.info('Senime V25.8 Character Ticket pool fix ready');
+
+/* ==========================================================================\n   SENIME V25.9 · CLEAN ROUTES\n   Real clean URLs for catalog/list/profile/community/anime/watch.\n   The old UI functions remain the source of truth; this layer only maps them\n   to browser history so the release stays stable while the app becomes\n   page-oriented.\n   ========================================================================== */
+const SENIME_V259='25.9';
+let senimeRouteApplyingV259=false;
+
+function senimeBasePathV259(){
+  if(!/\.github\.io$/i.test(location.hostname))return '';
+  const first=location.pathname.split('/').filter(Boolean)[0]||'';
+  return first?`/${first}`:'';
+}
+function senimeLocalPathV259(){
+  const base=senimeBasePathV259();
+  let p=location.pathname||'/';
+  if(base&&p.startsWith(base))p=p.slice(base.length)||'/';
+  if(!p.startsWith('/'))p='/'+p;
+  return p.replace(/\/{2,}/g,'/');
+}
+function senimeFullPathV259(local='/',search=''){
+  const base=senimeBasePathV259();
+  local=String(local||'/');if(!local.startsWith('/'))local='/'+local;
+  return `${base}${local==='/'?'/':local}${search||''}`;
+}
+function senimeCurrentLocalUrlV259(){return senimeLocalPathV259()+location.search+location.hash}
+function senimeSetRouteKindV259(kind='home'){
+  document.documentElement.dataset.senimeRouteKind=kind;
+  document.body?.setAttribute('data-senime-route-kind',kind);
+}
+function senimeRouteTitleV259(title='Senime'){document.title=title==='Senime'?'Senime — аниме-библиотека и сообщество':`${title} — Senime`}
+function senimeWriteRouteV259(local,{replace=false,from=null}={}){
+  if(senimeRouteApplyingV259)return;
+  const current=senimeCurrentLocalUrlV259();
+  if(current===local)return;
+  const state={...(history.state||{}),senimeRouteV259:true};
+  if(from!=null)state.senimeFromV259=from;
+  else if(!replace)state.senimeFromV259=current;
+  const full=senimeFullPathV259(local);
+  if(replace)history.replaceState(state,'',full);else history.pushState(state,'',full);
+  senimeMarkRouteFromLocationV259();
+}
+function senimeBackRouteV259(){
+  const st=history.state||{};
+  if(st.senimeRouteV259&&st.senimeFromV259){history.back();return true}
+  history.replaceState({senimeRouteV259:true},'',senimeFullPathV259('/'));
+  senimeApplyRouteV259();return false;
+}
+function senimeProfilePathV259(tab){
+  return ({overview:'/profile',customize:'/profile?edit=1',quests:'/quests',achievements:'/achievements',collection:'/collection',shop:'/shop',activity:'/activity'})[tab]||'/profile';
+}
+function senimeCommunityPathV259(tab){
+  return ({chats:'/messages',friends:'/friends',notifications:'/notifications',leaderboards:'/leaderboard',collections:'/collections'})[tab]||'/messages';
+}
+function senimeMarkRouteFromLocationV259(){
+  const p=senimeLocalPathV259();
+  let kind='home',title='Senime';
+  if(p==='/anime'){kind='catalog';title='Каталог'}
+  else if(/^\/anime\/[^/]+/.test(p)){kind='anime-detail';title='Аниме'}
+  else if(p==='/list'){kind='list';title='Мой список'}
+  else if(['/profile','/quests','/achievements','/collection','/shop','/activity'].includes(p)){kind='profile';title=({profile:'Профиль',quests:'Задания',achievements:'Достижения',collection:'Коллекция',shop:'Магазин',activity:'Активность'})[p.slice(1)]||'Профиль'}
+  else if(['/messages','/friends','/notifications','/leaderboard','/collections'].includes(p)||/^\/collections\//.test(p)){kind='community';title=({messages:'Чаты',friends:'Друзья',notifications:'Уведомления',leaderboard:'Лидерборды',collections:'Подборки'})[p.split('/')[1]]||'Сообщество'}
+  else if(/^\/watch(?:\/|$)/.test(p)){kind='watch';title='Просмотр'}
+  else if(/^\/u\//.test(p)){kind='public-profile';title='Профиль'}
+  senimeSetRouteKindV259(kind);senimeRouteTitleV259(title);
+}
+function senimeCloseRouteViewsV259(except=''){
+  const visible=sel=>{const x=document.querySelector(sel);return !!(x&&!x.classList.contains('hidden'))};
+  try{if(except!=='watch'&&visible('#watchModal'))closeWatchPlayerV15?.()}catch{}
+  try{if(except!=='detail'&&visible('#detailModal'))closeDetails?.()}catch{}
+  try{if(except!=='profile'&&visible('#profileModal'))closeProfileV16?.()}catch{}
+  try{if(except!=='community'&&visible('#communityModalV247'))closeCommunityV247?.()}catch{}
+  if(except!=='public')document.querySelector('#publicProfileModalV242')?.classList.add('hidden');
+  if(!['profile','community','watch','detail','public'].includes(except))document.body.style.overflow='';
+}
+function senimeRouteQueryV259(){return new URLSearchParams(location.search)}
+async function senimeApplyRouteV259(){
+  if(senimeRouteApplyingV259)return;
+  senimeRouteApplyingV259=true;senimeMarkRouteFromLocationV259();
+  try{
+    const p=senimeLocalPathV259(),q=senimeRouteQueryV259();
+    if(p==='/'){
+      senimeCloseRouteViewsV259();
+      if(document.body.classList.contains('catalog-mode'))catalogHideV10?.('top');
+      setSidebarActiveV12?.('overview');
+      if(!location.hash)window.scrollTo({top:0,behavior:'auto'});
+      return;
+    }
+    if(p==='/anime'){
+      senimeCloseRouteViewsV259();catalogShowV10?.();return;
+    }
+    const animeMatch=p.match(/^\/anime\/(-?\d+)$/);
+    if(animeMatch){
+      senimeCloseRouteViewsV259('detail');
+      await openSharedAnimeV247?.(Number(animeMatch[1]));return;
+    }
+    if(p==='/list'){
+      senimeCloseRouteViewsV259();
+      if(document.body.classList.contains('catalog-mode'))catalogHideV10?.('lists');
+      setSidebarActiveV12?.('list');
+      const section=String(q.get('section')||'').trim();
+      setTimeout(()=>{
+        const target=section==='queue'?'#queueSection':section?`#section-${CSS.escape(section)}`:'#lists';
+        document.querySelector(target)?.scrollIntoView({behavior:'auto',block:'start'});
+      },70);return;
+    }
+    const profileTabs={
+      '/profile':q.get('edit')==='1'?'customize':'overview','/quests':'quests','/achievements':'achievements','/collection':'collection','/shop':'shop','/activity':'activity'
+    };
+    if(profileTabs[p]){
+      senimeCloseRouteViewsV259('profile');openProfileV16?.();setProfileTabV16?.(profileTabs[p]);return;
+    }
+    const communityTabs={'/messages':'chats','/friends':'friends','/notifications':'notifications','/leaderboard':'leaderboards','/collections':'collections'};
+    if(communityTabs[p]){
+      senimeCloseRouteViewsV259('community');openCommunityV247?.(communityTabs[p]);return;
+    }
+    const collectionMatch=p.match(/^\/collections\/(\d+)$/);
+    if(collectionMatch){
+      senimeCloseRouteViewsV259('community');openCommunityV247?.('collections');setTimeout(()=>openAnimeCollectionV247?.(Number(collectionMatch[1])),120);return;
+    }
+    const watchMatch=p.match(/^\/watch\/(-?\d+)(?:\/(\d+))?$/);
+    if(watchMatch){
+      senimeCloseRouteViewsV259('watch');
+      await openSharedAnimeV247?.(Number(watchMatch[1]));
+      if(openedDetail){openWatchPlayerV15?.(openedDetail.section,openedDetail.index,{season:Math.max(0,(Number(q.get('season'))||1)-1),episode:Math.max(1,Number(watchMatch[2])||1)});}
+      return;
+    }
+    const userMatch=p.match(/^\/u\/([^/]+)$/);
+    if(userMatch){senimeCloseRouteViewsV259('public');await socialOpenPublicProfileV242?.(decodeURIComponent(userMatch[1]));return;}
+    // Unknown app route: keep user in Senime instead of a blank state.
+    history.replaceState({senimeRouteV259:true},'',senimeFullPathV259('/'));
+    senimeMarkRouteFromLocationV259();
+  }catch(e){console.warn('V25.9 route apply',e)}finally{senimeRouteApplyingV259=false}
+}
+window.senimeApplyRouteV259=senimeApplyRouteV259;
+window.senimeGoV259=(path)=>{senimeWriteRouteV259(path);senimeApplyRouteV259()};
+
+// Restore the path requested through GitHub Pages 404 fallback.
+try{
+  const boot=new URL(location.href),fallback=boot.searchParams.get('__senime_route');
+  if(fallback){
+    const route=fallback;
+    history.replaceState({senimeRouteV259:true},'',senimeFullPathV259(route));
+  }
+}catch{}
+
+// Wrap stable V25.8 actions so every major screen gets a URL without changing its logic.
+const catalogShowBeforeV259=catalogShowV10;
+catalogShowV10=function(){const r=catalogShowBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259)senimeWriteRouteV259('/anime');return r};window.catalogShowV10=catalogShowV10;
+const catalogHideBeforeV259=catalogHideV10;
+catalogHideV10=function(target='top'){const r=catalogHideBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259)senimeWriteRouteV259(target==='lists'?'/list':'/');return r};window.catalogHideV10=catalogHideV10;
+
+const openProfileBeforeV259=openProfileV16;
+openProfileV16=function(){const r=openProfileBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259)senimeWriteRouteV259(senimeProfilePathV259(profileActiveTabV16||'overview'));return r};window.openProfileV16=openProfileV16;
+const closeProfileBeforeV259=closeProfileV16;
+closeProfileV16=function(){const r=closeProfileBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='profile')senimeBackRouteV259();return r};window.closeProfileV16=closeProfileV16;
+const setProfileTabBeforeV259=setProfileTabV16;
+setProfileTabV16=function(tab){const r=setProfileTabBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='profile'&&!$('#profileModal')?.classList.contains('hidden'))senimeWriteRouteV259(senimeProfilePathV259(tab),{replace:true});return r};window.setProfileTabV16=setProfileTabV16;
+
+const openCommunityBeforeV259=openCommunityV247;
+openCommunityV247=function(tab='chats'){const r=openCommunityBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&!$('#communityModalV247')?.classList.contains('hidden'))senimeWriteRouteV259(senimeCommunityPathV259(tab));return r};window.openCommunityV247=openCommunityV247;
+const closeCommunityBeforeV259=closeCommunityV247;
+closeCommunityV247=function(){const r=closeCommunityBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='community')senimeBackRouteV259();return r};window.closeCommunityV247=closeCommunityV247;
+const setCommunityTabBeforeV259=setCommunityTabV247;
+setCommunityTabV247=async function(tab){const r=await setCommunityTabBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='community'&&!$('#communityModalV247')?.classList.contains('hidden'))senimeWriteRouteV259(senimeCommunityPathV259(tab),{replace:true});return r};window.setCommunityTabV247=setCommunityTabV247;
+
+const openDetailsBeforeV259=openDetails;
+openDetails=async function(section,index){const r=await openDetailsBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259){const e=latestData?.sections?.[section]?.[index]||openedDetail?.entry;const id=Number(e?.anilist_id)||0;if(id)senimeWriteRouteV259(`/anime/${id}`)}return r};window.openDetails=openDetails;
+const closeDetailsBeforeV259=closeDetails;
+closeDetails=function(){const r=closeDetailsBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='anime-detail')senimeBackRouteV259();return r};window.closeDetails=closeDetails;
+
+const openWatchBeforeV259=openWatchPlayerV15;
+openWatchPlayerV15=function(section,index,opts={}){const r=openWatchBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259){const e=latestData?.sections?.[section]?.[index]||watchStateV15?.entry,id=Number(e?.anilist_id)||0;if(id){const ep=Math.max(1,Number(opts?.episode)||Number(watchStateV15?.episode)||1),season=Math.max(1,(Number(opts?.season??watchStateV15?.season)||0)+1);senimeWriteRouteV259(`/watch/${id}/${ep}?season=${season}`)}}return r};window.openWatchPlayerV15=openWatchPlayerV15;
+const closeWatchBeforeV259=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){const r=closeWatchBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259&&document.documentElement.dataset.senimeRouteKind==='watch')senimeBackRouteV259();return r};window.closeWatchPlayerV15=closeWatchPlayerV15;
+
+if(typeof socialOpenPublicProfileV242==='function'){
+  const openPublicBeforeV259=socialOpenPublicProfileV242;
+  socialOpenPublicProfileV242=async function(id){const r=await openPublicBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259)senimeWriteRouteV259(`/u/${encodeURIComponent(id)}`);return r};window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+}
+if(typeof openAnimeCollectionV247==='function'){
+  const openCollectionBeforeV259=openAnimeCollectionV247;
+  openAnimeCollectionV247=async function(id){const r=await openCollectionBeforeV259?.apply(this,arguments);if(!senimeRouteApplyingV259)senimeWriteRouteV259(`/collections/${Number(id)}`);return r};window.openAnimeCollectionV247=openAnimeCollectionV247;
+}
+
+// Home/list sidebar navigation did not call a dedicated route function, so sync it here.
+document.addEventListener('click',e=>{
+  if(senimeRouteApplyingV259)return;
+  const nav=e.target.closest?.('[data-nav-target]');
+  if(nav){const t=nav.dataset.navTarget;if(t==='top')senimeWriteRouteV259('/');else if(t==='lists')senimeWriteRouteV259('/list');else if(t==='queueSection')senimeWriteRouteV259('/list?section=queue');return}
+  const sec=e.target.closest?.('[data-side-section]');if(sec)senimeWriteRouteV259(`/list?section=${encodeURIComponent(sec.dataset.sideSection)}`);
+  if(e.target.closest?.('#topBrandBtn'))senimeWriteRouteV259('/');
+  if(e.target.closest?.('#topCatalogBtn,#footerCatalogBtn'))senimeWriteRouteV259('/anime');
+  if(e.target.closest?.('#profileFutureBtn')&&!senimeRouteApplyingV259)senimeWriteRouteV259('/profile');
+  if(e.target.closest?.('#profileClose')&&document.documentElement.dataset.senimeRouteKind==='profile')setTimeout(senimeBackRouteV259,0);
+  if(e.target.closest?.('#detailClose')&&document.documentElement.dataset.senimeRouteKind==='anime-detail')setTimeout(senimeBackRouteV259,0);
+  if(e.target.closest?.('#watchClose')&&document.documentElement.dataset.senimeRouteKind==='watch')setTimeout(senimeBackRouteV259,0);
+  if(e.target.closest?.('#publicProfileCloseV242')&&document.documentElement.dataset.senimeRouteKind==='public-profile')setTimeout(senimeBackRouteV259,0);
+},true);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||senimeRouteApplyingV259)return;
+  const kind=document.documentElement.dataset.senimeRouteKind;
+  if(['profile','anime-detail','watch','public-profile'].includes(kind))setTimeout(()=>{if(document.documentElement.dataset.senimeRouteKind===kind)senimeBackRouteV259()},0);
+},true);
+window.addEventListener('popstate',()=>senimeApplyRouteV259());
+
+setTimeout(()=>senimeApplyRouteV259(),420);
+window.SENIME_BUILD=SENIME_V259;
+document.documentElement.dataset.senimeBuild=SENIME_V259;
+console.info('Senime V25.9 clean routes ready');

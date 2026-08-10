@@ -260,3 +260,26 @@ V25.8 — Character Ticket pool fix
 - The ticket is spent only after a genuinely new character card is added.
 - Candidate titles are checked in batches, so a completed themed set no longer incorrectly blocks generic Character Tickets.
 - Cache bust: app.js?v=25.8 / style.css?v=25.8.
+
+=== V25.9 CLEAN ROUTES ===
+Major sections now have clean URLs without duplicating application logic:
+/ — home
+/anime — catalog
+/anime/<AniList ID> — anime page
+/list — library
+/profile — profile
+/quests — daily quests
+/achievements — achievements
+/collection — character cards
+/shop — shop
+/activity — reward/activity history
+/messages — chats
+/friends — friends
+/notifications — notifications
+/leaderboard — leaderboards
+/collections — user collections
+/collections/<id> — collection page
+/watch/<AniList ID>/<episode>?season=1 — player
+/u/<profile UUID> — public profile
+
+Cloudflare Pages uses _redirects. GitHub Pages uses 404.html fallback while the project is still tested at the old GitHub URL.

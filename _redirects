@@ -1,0 +1,22 @@
+# Senime V25.9 clean routes — Cloudflare Pages
+/anime /index.html 200
+/anime/* /index.html 200
+/list /index.html 200
+/profile /index.html 200
+/quests /index.html 200
+/achievements /index.html 200
+/collection /index.html 200
+/shop /index.html 200
+/activity /index.html 200
+/messages /index.html 200
+/friends /index.html 200
+/notifications /index.html 200
+/leaderboard /index.html 200
+/collections /index.html 200
+/collections/* /index.html 200
+/watch /index.html 200
+/watch/* /index.html 200
+/u/* /index.html 200
+/privacy /privacy.html 200
+/terms /terms.html 200
+/contact /contact.html 200
