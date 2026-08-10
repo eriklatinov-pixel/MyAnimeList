@@ -2962,3 +2962,53 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
   .senime-v25 .profile-favorites-grid.style-posters,.senime-v25 .profile-favorites-grid:not(.style-cards):not(.style-compact){grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .senime-v25 .profile-collection-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
+
+
+/* ==========================================================================
+   SENIME V25.5 · visible profile cosmetics
+   The old frame styles existed only in the shop preview / one local avatar.
+   These rules make the equipped frame a real profile cosmetic everywhere.
+   ========================================================================== */
+.profile-avatar,
+.sidebar-profile-avatar,
+.public-profile-avatar-v242{position:relative;isolation:isolate}
+.profile-avatar::after,
+.sidebar-profile-avatar::after,
+.public-profile-avatar-v242::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:4;
+  border:0 solid transparent;box-shadow:none;transition:border-color .18s ease,box-shadow .18s ease
+}
+
+/* Rose Signal */
+.profile-avatar.frame-rose,.sidebar-profile-avatar.frame-rose,.public-profile-avatar-v242.frame-rose{filter:drop-shadow(0 0 10px rgba(255,111,159,.28))}
+.profile-avatar.frame-rose::after,.sidebar-profile-avatar.frame-rose::after,.public-profile-avatar-v242.frame-rose::after{
+  border-width:3px;border-color:#ff6f9f;box-shadow:inset 0 0 10px rgba(255,111,159,.20)
+}
+
+/* Violet Pulse */
+.profile-avatar.frame-violet,.sidebar-profile-avatar.frame-violet,.public-profile-avatar-v242.frame-violet{filter:drop-shadow(0 0 12px rgba(142,123,255,.34))}
+.profile-avatar.frame-violet::after,.sidebar-profile-avatar.frame-violet::after,.public-profile-avatar-v242.frame-violet::after{
+  border-width:3px;border-color:#8e7bff;box-shadow:inset 0 0 12px rgba(142,123,255,.25)
+}
+
+/* Golden Hour */
+.profile-avatar.frame-gold,.sidebar-profile-avatar.frame-gold,.public-profile-avatar-v242.frame-gold{filter:drop-shadow(0 0 11px rgba(244,201,104,.30))}
+.profile-avatar.frame-gold::after,.sidebar-profile-avatar.frame-gold::after,.public-profile-avatar-v242.frame-gold::after{
+  border-width:3px;border-color:#f4c968;box-shadow:inset 0 0 10px rgba(244,201,104,.18)
+}
+
+/* Cyber Split */
+.profile-avatar.frame-cyber,.sidebar-profile-avatar.frame-cyber,.public-profile-avatar-v242.frame-cyber{filter:drop-shadow(0 0 12px rgba(82,243,255,.26))}
+.profile-avatar.frame-cyber::after,.sidebar-profile-avatar.frame-cyber::after,.public-profile-avatar-v242.frame-cyber::after{
+  border-width:3px;border-color:#52f3ff;box-shadow:inset 0 0 0 2px #ca5cff,inset 0 0 12px rgba(82,243,255,.16)
+}
+
+/* The sidebar is tiny: keep the ring readable instead of fat. */
+.sidebar-profile-avatar.frame-rose::after,
+.sidebar-profile-avatar.frame-violet::after,
+.sidebar-profile-avatar.frame-gold::after,
+.sidebar-profile-avatar.frame-cyber::after{border-width:2px}
+.sidebar-profile-avatar.frame-cyber::after{box-shadow:inset 0 0 0 1px #ca5cff}
+
+/* Shop preview remains a preview, not a separate implementation. */
+.shop-preview .frame-rose,.shop-preview .frame-violet,.shop-preview .frame-gold,.shop-preview .frame-cyber{position:relative}

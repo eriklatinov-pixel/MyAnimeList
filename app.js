@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.4';
+const SENIME_V25='25.5';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');
@@ -10768,3 +10768,83 @@ renderProfileV16=function(){
 
 window.SENIME_BUILD='25.4';
 console.info('Senime V25.4 profile + collection reliability ready');
+
+
+/* ==========================================================================
+   SENIME V25.5 · COSMETIC FRAMES ACTUALLY WORK
+   - equipped profile frames are visible on own avatar and sidebar
+   - frame choice is synced into public_payload and shown on public profile
+   - frame changes re-sync the public profile immediately
+   - public frame class is allow-listed before touching the DOM
+   ========================================================================== */
+const SENIME_V255='25.5';
+function profileFrameClassV255(value){
+  const v=String(value||'');
+  return PROFILE_SHOP_V16.some(x=>x.type==='frame'&&x.className===v)?v:'';
+}
+window.profileFrameClassV255=profileFrameClassV255;
+
+// Own profile + sidebar: keep the exact same equipped frame everywhere the owner sees their avatar.
+if(typeof renderProfileAvatarV163==='function'){
+  const renderProfileAvatarBeforeV255=renderProfileAvatarV163;
+  renderProfileAvatarV163=function(){
+    const out=renderProfileAvatarBeforeV255();
+    const frame=profileFrameClassV255(ensureProfileV16()?.equipped?.frame);
+    const own=$('#profileAvatar');
+    const side=$('#sidebarProfileAvatar');
+    if(own){
+      own.classList.remove('frame-rose','frame-violet','frame-gold','frame-cyber');
+      if(frame)own.classList.add(frame);
+    }
+    if(side){
+      side.classList.remove('frame-rose','frame-violet','frame-gold','frame-cyber');
+      if(frame)side.classList.add(frame);
+    }
+    return out;
+  };
+}
+
+// Public payload: frames are cosmetic profile data, so other users should actually see them.
+if(typeof socialBuildPublicPayloadV242==='function'){
+  const socialBuildPublicPayloadBeforeV255=socialBuildPublicPayloadV242;
+  socialBuildPublicPayloadV242=function(){
+    const out=socialBuildPublicPayloadBeforeV255()||{};
+    out.profileFrame=profileFrameClassV255(ensureProfileV16()?.equipped?.frame);
+    out.senimeVersion=SENIME_V255;
+    return out;
+  };
+}
+
+// Apply the allow-listed frame after any current public-profile renderer finishes.
+if(typeof socialOpenPublicProfileV242==='function'){
+  const socialOpenPublicProfileBeforeV255=socialOpenPublicProfileV242;
+  socialOpenPublicProfileV242=async function(id){
+    const out=await socialOpenPublicProfileBeforeV255(id);
+    const p=socialStateV241?.profiles?.get?.(id);
+    const frame=profileFrameClassV255(p?.public_payload?.profileFrame);
+    const avatar=document.querySelector('#publicProfileBodyV242 .public-profile-avatar-v242');
+    if(avatar){
+      avatar.classList.remove('frame-rose','frame-violet','frame-gold','frame-cyber');
+      if(frame)avatar.classList.add(frame);
+    }
+    return out;
+  };
+  window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+}
+
+// Buying/equipping used to change only local UI. Sync it to the cloud profile too.
+if(typeof buyOrEquipCosmeticV16==='function'){
+  const buyOrEquipCosmeticBeforeV255=buyOrEquipCosmeticV16;
+  buyOrEquipCosmeticV16=function(id){
+    const out=buyOrEquipCosmeticBeforeV255(id);
+    try{renderProfileAvatarV163?.()}catch{}
+    setTimeout(()=>{try{socialSyncPublicProfileV242?.().catch?.(()=>{})}catch{}},120);
+    return out;
+  };
+  window.buyOrEquipCosmeticV16=buyOrEquipCosmeticV16;
+}
+
+// One refresh is enough to make an already-equipped legacy frame visible after updating.
+setTimeout(()=>{try{renderProfileAvatarV163?.()}catch{}},80);
+window.SENIME_BUILD=SENIME_V255;
+console.info('Senime V25.5 cosmetic frames ready');

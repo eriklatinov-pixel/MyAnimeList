@@ -246,3 +246,6 @@ Senime V25.2 — CLEAN LIBRARY ACTIONS
 - На мобильном ••• всегда достаточно заметна.
 - Cache bust: app.js?v=25.2 / style.css?v=25.2.
 - SQL не нужен.
+
+
+V25.5: cosmetic profile frames now apply to own avatar, sidebar avatar and public profile; frame choice syncs through public_payload. No SQL required.
