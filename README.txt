@@ -1,3 +1,5 @@
+Senime V25.4 — Profile + Collection reliability
+
 Senime V25.3 — Calm Action System
 
 - Global purple/pink button flood removed.

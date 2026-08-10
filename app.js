@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.3';
+const SENIME_V25='25.4';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');
@@ -10552,3 +10552,219 @@ animeCard=function(e,s,i){
 window.animeCard=animeCard;
 
 console.info('Senime V25.3 calm action system ready');
+
+
+/* ==========================================================================\n   SENIME V25.4 · PROFILE + COLLECTION RELIABILITY\n   - favorite count reflects actual existing anime\n   - favorite reorder/removal works even after old/stale favorite keys\n   - collection selects are re-bound reliably after every profile re-render\n   - collection grid gets a single quiet action menu instead of dead icon rows\n   ========================================================================== */
+
+function profileFavoriteStateV254(){
+  const p=ensureProfileV16();
+  const pref=ensureProfilePrefsV162();
+  const all=profileAllEntriesV162();
+  const byKey=new Map(all.map(x=>[String(x.key),x]));
+  const raw=[...new Set((p.favorites||[]).map(String))];
+  const valid=[];
+  for(const k of raw){
+    if(byKey.has(k)){valid.push(k);continue;}
+    // Small migration for very old numeric favorite IDs.
+    if(/^\d+$/.test(k)){
+      const al=`al:${k}`,mal=`mal:${k}`;
+      if(byKey.has(al)){valid.push(al);continue;}
+      if(byKey.has(mal)){valid.push(mal);continue;}
+    }
+  }
+  const next=[...new Set(valid)].slice(0,12);
+  if(JSON.stringify(next)!==JSON.stringify(p.favorites||[])){
+    p.favorites=next;
+    try{saveData()}catch{}
+  }
+  return {p,pref,all,byKey,keys:next};
+}
+
+profileFavoriteEntryDataV162=function(){
+  const st=profileFavoriteStateV254();
+  return st.keys.map(k=>st.byKey.get(k)).filter(Boolean).slice(0,st.pref.favoriteLimit);
+};
+
+moveFavoriteV162=function(i,d){
+  const st=profileFavoriteStateV254();
+  const rows=profileFavoriteEntryDataV162();
+  const j=Number(i)+Number(d);
+  if(i<0||j<0||i>=rows.length||j>=rows.length)return;
+  const aKey=String(rows[i].key),bKey=String(rows[j].key);
+  const a=st.p.favorites.indexOf(aKey),b=st.p.favorites.indexOf(bKey);
+  if(a<0||b<0)return;
+  [st.p.favorites[a],st.p.favorites[b]]=[st.p.favorites[b],st.p.favorites[a]];
+  saveData();
+  renderProfileFavoritesV162();
+  renderFavoritePickerV162?.();
+  applyProfileAppearanceV162();
+  schedulePublicSyncV244?.(250);
+};
+removeFavoriteV162=function(key){
+  const st=profileFavoriteStateV254();
+  st.p.favorites=st.p.favorites.filter(x=>String(x)!==String(key));
+  saveData();renderProfileFavoritesV162();renderFavoritePickerV162?.();applyProfileAppearanceV162();schedulePublicSyncV244?.(250);
+};
+toggleFavoriteV162=function(key){
+  const st=profileFavoriteStateV254(),k=String(key),at=st.p.favorites.indexOf(k);
+  if(at>=0)st.p.favorites.splice(at,1);
+  else{
+    if(st.p.favorites.length>=st.pref.favoriteLimit){profileToastV16('Витрина заполнена',`Сейчас максимум ${st.pref.favoriteLimit}.`);return;}
+    if(st.byKey.has(k))st.p.favorites.push(k);
+  }
+  saveData();renderFavoritePickerV162();renderProfileFavoritesV162();applyProfileAppearanceV162();schedulePublicSyncV244?.(250);
+};
+Object.assign(window,{moveFavoriteV162,removeFavoriteV162,toggleFavoriteV162});
+
+const renderFavoritePickerBeforeV254=renderFavoritePickerV162;
+renderFavoritePickerV162=function(){
+  profileFavoriteStateV254();
+  renderFavoritePickerBeforeV254();
+  const st=profileFavoriteStateV254();
+  const hint=$('#profileFavoritePickerHint');
+  if(hint)hint.textContent=`${Math.min(st.keys.length,st.pref.favoriteLimit)} / ${st.pref.favoriteLimit} выбрано · нажми карточку, чтобы добавить или убрать`;
+};
+
+const renderProfileFavoritesBeforeV254=renderProfileFavoritesV162;
+renderProfileFavoritesV162=function(){
+  profileFavoriteStateV254();
+  renderProfileFavoritesBeforeV254();
+  const box=$('#profileFavorites');
+  const count=profileFavoriteEntryDataV162().length;
+  if(box){
+    box.style.setProperty('--fav-cols',String(Math.max(1,Math.min(6,count||1))));
+    box.dataset.favoriteCount=String(count);
+  }
+};
+
+// ---------- Collection toolbar: no stale bindings after profile re-renders ----------
+function collectionApplyControlV254(key,value){
+  const ui=collectionUiV247();
+  if(key==='query')ui.query=String(value||'');
+  else if(key==='rarity')ui.rarity=['all','legendary','epic','rare','common'].includes(String(value))?String(value):'all';
+  else if(key==='anime')ui.anime=String(value||'all');
+  else if(key==='folder')ui.folder=String(value||'all');
+  else if(key==='sort')ui.sort=['new','rarity','name','anime'].includes(String(value))?String(value):'new';
+  saveData();
+  renderCollectionV16();
+}
+collectionToolbarSelectV2471=function(key,value){collectionApplyControlV254(key,value)};
+collectionToolbarInputV2471=function(value){
+  const ui=collectionUiV247();ui.query=String(value||'');
+  clearTimeout(collectionToolbarTimerV2471);
+  collectionToolbarTimerV2471=setTimeout(()=>{saveData();renderCollectionV16()},100);
+};
+Object.assign(window,{collectionToolbarSelectV2471,collectionToolbarInputV2471});
+
+bindCollectionToolsV247=function(){
+  const s=$('#collectionSearchV247'),rr=$('#collectionRarityV247'),an=$('#collectionAnimeV247'),fo=$('#collectionFolderV247'),so=$('#collectionSortV247');
+  if(s)s.oninput=e=>collectionToolbarInputV2471(e.target.value);
+  if(rr)rr.onchange=e=>collectionApplyControlV254('rarity',e.target.value);
+  if(an)an.onchange=e=>collectionApplyControlV254('anime',e.target.value);
+  if(fo)fo.onchange=e=>collectionApplyControlV254('folder',e.target.value);
+  if(so)so.onchange=e=>collectionApplyControlV254('sort',e.target.value);
+  const folders=$('#collectionFoldersBtnV247');if(folders)folders.onclick=()=>openCardFolderModalV247();
+  const compact=$('#collectionCompactBtnV247');if(compact)compact.onclick=()=>toggleCollectionCompactV2471();
+};
+
+if(!document.body.dataset.collectionSelectV254){
+  document.body.dataset.collectionSelectV254='1';
+  document.addEventListener('change',e=>{
+    const map={collectionRarityV247:'rarity',collectionAnimeV247:'anime',collectionFolderV247:'folder',collectionSortV247:'sort'};
+    const key=map[e.target?.id];
+    if(key){e.stopImmediatePropagation();collectionApplyControlV254(key,e.target.value);}
+  },true);
+}
+
+function ensureCollectionCardMenuV254(){
+  let m=$('#collectionCardMenuV254');
+  if(m)return m;
+  document.body.insertAdjacentHTML('beforeend',`<div id="collectionCardMenuV254" class="collection-card-menu-v254 hidden" role="menu"></div>`);
+  m=$('#collectionCardMenuV254');
+  document.addEventListener('pointerdown',e=>{
+    if(!m.classList.contains('hidden')&&!e.target.closest('#collectionCardMenuV254')&&!e.target.closest('.collection-menu-trigger-v254'))m.classList.add('hidden');
+  },true);
+  return m;
+}
+function closeCollectionCardMenuV254(){$('#collectionCardMenuV254')?.classList.add('hidden')}
+function openCollectionCardMenuV254(id,anchor){
+  const p=ensureCollectionMetaV247(),c=(p.collection||[]).find(x=>String(x.characterId)===String(id));if(!c)return;
+  const m=ensureCollectionCardMenuV254();
+  m.dataset.characterId=String(id);
+  m.innerHTML=`
+    <button type="button" onclick="closeCollectionCardMenuV254();openAvatarStudioV205(${Number(id)||0})">🙂 <span>Аватар</span></button>
+    <button type="button" onclick="closeCollectionCardMenuV254();cardFolderOpenV2481(${Number(id)||0})">📁 <span>В папку</span></button>
+    <button type="button" onclick="closeCollectionCardMenuV254();toggleCardShowcaseV2481(${Number(id)||0})">${c.showcase?'★':'☆'} <span>${c.showcase?'Убрать из витрины':'На витрину'}</span></button>
+    <button type="button" onclick="closeCollectionCardMenuV254();toggleCardHiddenV2481(${Number(id)||0})">${c.hidden?'↩':'⌫'} <span>${c.hidden?'Вернуть':'Скрыть'}</span></button>`;
+  const r=anchor?.getBoundingClientRect?.();
+  if(r){
+    const width=176,gap=7;
+    let left=Math.min(window.innerWidth-width-gap,Math.max(gap,r.right-width));
+    let top=r.bottom+6;
+    m.style.left=`${left}px`;m.style.top=`${top}px`;
+    m.classList.remove('hidden');
+    requestAnimationFrame(()=>{
+      const mr=m.getBoundingClientRect();
+      if(mr.bottom>window.innerHeight-gap)m.style.top=`${Math.max(gap,r.top-mr.height-6)}px`;
+    });
+  }else m.classList.remove('hidden');
+}
+Object.assign(window,{openCollectionCardMenuV254,closeCollectionCardMenuV254});
+
+renderCollectionV16=function(){
+  const p=ensureCollectionMetaV247();
+  ensureCardProfileV205();renderAnimeTicketsV205();
+  const box=$('#profileCollection');if(!box)return;
+  const ui=p.collectionUiV247;
+  ui.rarity=String(ui.rarity||'all').toLowerCase();
+  populateCollectionSelectsV247();
+  const s=$('#collectionSearchV247'),rr=$('#collectionRarityV247'),an=$('#collectionAnimeV247'),fo=$('#collectionFolderV247'),sort=$('#collectionSortV247');
+  if(s&&document.activeElement!==s)s.value=ui.query||'';
+  if(rr)rr.value=ui.rarity||'all';if(an)an.value=ui.anime||'all';if(fo)fo.value=ui.folder||'all';if(sort)sort.value=ui.sort||'new';
+  bindCollectionToolsV247();
+  document.querySelectorAll('#profileCollectionFilters [data-card-filter]').forEach(b=>b.classList.toggle('active',b.dataset.cardFilter===collectionFilterV166));
+
+  let cards=[...(p.collection||[])];
+  if(collectionFilterV166==='all')cards=cards.filter(c=>!c.hidden);
+  if(collectionFilterV166==='showcase')cards=cards.filter(c=>c.showcase&&!c.hidden);
+  if(collectionFilterV166==='hidden')cards=cards.filter(c=>c.hidden);
+  const q=String(ui.query||'').trim().toLowerCase();
+  if(q)cards=cards.filter(c=>`${c.name||''} ${c.animeTitle||''}`.toLowerCase().includes(q));
+  if(ui.rarity!=='all')cards=cards.filter(c=>String(c.rarity||'').toLowerCase()===ui.rarity);
+  if(ui.anime!=='all')cards=cards.filter(c=>String(c.animeTitle||'')===ui.anime);
+  if(ui.folder!=='all')cards=cards.filter(c=>(c.folderIds||[]).includes(ui.folder));
+  cards.sort((a,b)=>ui.sort==='name'?String(a.name||'').localeCompare(String(b.name||''),'ru'):ui.sort==='anime'?String(a.animeTitle||'').localeCompare(String(b.animeTitle||''),'ru'):ui.sort==='rarity'?(cardRarityRankV247(b.rarity)-cardRarityRankV247(a.rarity)||String(a.name||'').localeCompare(String(b.name||''),'ru')):(Number(b.at)||0)-(Number(a.at)||0));
+  box.classList.toggle('compact-v247',!!ui.compact);$('#collectionCompactBtnV247')?.classList.toggle('active',!!ui.compact);
+
+  if(!p.collection.length){box.innerHTML='<div class="profile-empty">Коллекция пока пустая.</div>';return;}
+  if(!cards.length){box.innerHTML='<div class="profile-empty">По этим фильтрам ничего не нашлось.</div>';return;}
+  box.innerHTML=cards.map(c=>{
+    const id=Number(c.characterId)||0;
+    const type=c.ticketType==='waifu'?'<span class="collection-ticket-type">💗 WAIFU</span>':c.ticketType==='anime'?'<span class="collection-ticket-type anime">🎟️ TITLE</span>':'';
+    const folders=(c.folderIds||[]).map(fid=>p.cardFoldersV247.find(f=>f.id===fid)?.name).filter(Boolean);
+    return `<article class="collection-card collection-card-v254 ${c.ticketType==='waifu'?'ticket-waifu':''} ${c.showcase?'in-showcase':''}" data-character-id="${id}">
+      <div class="collection-card-art-v254">
+        <img src="${esc(c.image||'')}" alt="${esc(c.name)}">
+        <span class="collection-rarity ${rarityClassV16(c.rarity)}">${esc(String(c.rarity||'common').toUpperCase())}</span>${type}
+      </div>
+      <div class="collection-card-copy collection-card-copy-v254">
+        <div class="collection-card-title-v254"><div><strong>${esc(c.name)}</strong><small>${esc(c.animeTitle||'')}</small></div><button type="button" class="collection-menu-trigger-v254" aria-label="Действия" onclick="event.stopPropagation();openCollectionCardMenuV254(${id},this)">•••</button></div>
+        ${folders.length?`<div class="card-folder-chips-v247">${folders.slice(0,2).map(x=>`<span>📁 ${esc(x)}</span>`).join('')}</div>`:''}
+        <div class="collection-global-v205">🌐 выбито: <b>${formatGlobalPullsV205(c.globalPulls)}</b></div>
+      </div>
+    </article>`;
+  }).join('');
+  setTimeout(()=>refreshGlobalPullCountsV205(),0);setTimeout(()=>syncCollectionRaritiesV205(),50);
+};
+
+// Keep controls alive whenever the profile is drawn again.
+const renderProfileBeforeV254=renderProfileV16;
+renderProfileV16=function(){
+  profileFavoriteStateV254();
+  const out=renderProfileBeforeV254();
+  setTimeout(()=>{try{bindCollectionToolsV247();renderProfileFavoritesV162()}catch{}},30);
+  return out;
+};
+
+window.SENIME_BUILD='25.4';
+console.info('Senime V25.4 profile + collection reliability ready');
