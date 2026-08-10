@@ -1,7 +1,7 @@
 Senime V24.6 · Public Beta Foundation
 Clean Steam Layer: account isolation migration, auto-layout profile, clean social workspace, unified public profiles.
 
-My Anime List V23.6 — Account First + Profile Titles
+Senime · legacy notes (V23.6) — Account First + Profile Titles
 
 - Гостевой режим теперь показывает пустую личную библиотеку и большой CTA входа/регистрации; старые локальные данные не удаляются, но гостю не показываются.
 - Каталог и поиск доступны без аккаунта, но попытка добавить аниме/очередь/прогресс открывает регистрацию.
@@ -10,7 +10,7 @@ My Anime List V23.6 — Account First + Profile Titles
 - «До 13 серий» больше не показывает онгоинги; быстрый фильтр сразу ставит статус FINISHED.
 - Карточка на аватаре больше не даёт рамку/ауру: она даёт титул профиля. В Avatar Studio можно выбрать титул по имени персонажа или названию аниме.
 
-My Anime List V23.5 — Profile Studio
+Senime · legacy notes (V23.5) — Profile Studio
 
 Free 12-column profile layout editor, explicit Save/Cancel, draggable avatar/widgets, resizable blocks, XP info moved to Quests, Supporter info moved to Shop, and smart server-side genre search (e.g. Ecchi / эччи).
 
@@ -127,3 +127,92 @@ IMPORTANT
 2. Do NOT upload the SQL file to GitHub Pages.
 3. GitHub FULL/UPDATE archives intentionally exclude SQL.
 4. Together/Watch Party is NOT part of this release.
+
+
+V24.6.1 REGRESSION FIX
+- Senime brand is hard-locked (old local custom name can no longer overwrite it).
+- Admin grants are claimed only after cloud restore; periodic pickup added.
+- Premium badge added to own/public profiles.
+- Uploaded custom avatars are included in public profile payload.
+- Own profile guestbook now uses Supabase public comments.
+- DM loading flicker removed.
+- Footer Privacy / Terms / Contact links enlarged.
+- Founder audit can re-issue grants that V24.6 already marked claimed.
+
+
+V24.7 COMMUNITY & COLLECTION UPDATE
+- Sidebar Community: Chats, Friends, Notifications, Leaderboards, Collections.
+- Redesigned chats: replies, reactions, edit/delete/copy/search, read receipts.
+- Comment likes in profiles/player + clickable author profiles.
+- Notifications deep-link to the exact liked/replied comment.
+- Public user-made anime collections with create/like/save/reorder.
+- Card collection search, rarity/anime filters, custom folders, hidden archive, compact mode.
+- Themed ticket bundles scale with completed title length and mark COMPLETE sets.
+- Cheaper ticket shop; Premium gets a 20% shop discount without leaderboard boosts.
+- Share anime now uses a deep link to the exact title.
+- Requires SUPABASE_PATCH_V247.sql once. SQL is intentionally NOT included in GitHub archives.
+
+
+V24.7.1 HOTFIX
+- Fixed Chats/Friends crash caused by missing socialState.incoming alias.
+- Removed redundant Friends tab from Profile; Community sidebar is now the single social entry point.
+- Hardened collection search/filter/folder/compact/card controls.
+- Fixed giant gradient nickname / broken avatar layout in profile, public, and player comments.
+- No new SQL required.
+
+
+V24.7.3 CACHE-BUST
+- index.html now loads app.js?v=24.7.3 and style.css?v=24.7.3.
+- Founder gets a one-time "Senime V24.7.3 loaded" toast to prove the fresh JS is active.
+- Fixes the case where GitHub Pages/browser kept serving the old V24.7.1 script.
+- No new SQL required.
+
+
+V24.8 SECURITY FOUNDATION
+- Cloudflare Turnstile frontend integration for login/signup/password recovery.
+- Official Turnstile TEST sitekey is enabled for staging only; real key required before production.
+- Kodik/SubDL browser secret fields removed and old localStorage secrets purged.
+- Public Worker URL can be fixed in auth-config.js.
+- Upload MIME/size validation.
+- Cloudflare Pages _headers security baseline.
+- Supabase V24.8 SQL hardens SECURITY DEFINER execute rights, notifications, DMs and adds abuse rate limits.
+- HLS.js is pinned to 1.6.16 instead of a floating @1 tag.
+- IMPORTANT: legacy XP/Stars/cards remain client-owned and are not yet anti-cheat/server-authoritative.
+
+
+V24.8.1 COLLECTION / CURATION HOTFIX
+- Cache-bust is now app.js?v=24.8.1 and style.css?v=24.8.1.
+- Fixes notification "Read all" after V24.8 DB hardening.
+- Replaces fragile card action row so Avatar / Folder / Showcase / Hide clicks work independently.
+- Redesigns user-made collection page into compact mosaic + info + anime cards.
+- Adds cloud comments, replies and likes to user-made collections.
+- Collection comment notifications deep-link to the exact comment.
+- Requires SUPABASE_PATCH_V2481_COLLECTION_COMMENTS.sql once.
+
+============================================================
+Senime V25.0 — INTERFACE OVERHAUL / SMART LIST / VERIFIED UX
+============================================================
+
+Что нового:
+- Большой визуальный overhaul: новый shell, sidebar, hero, карточки, каталог, detail/player/profile/community polish, адаптив и лёгкие анимации.
+- List Studio: переименование базовых разделов, emoji, порядок, hide/show, grid/compact.
+- Личные полки поверх системных статусов — статус прогресса при этом не ломается.
+- Профиль: "просмотрено" отдельно от "✓ verified".
+- Русский/английский/Romaji поиск + быстрые алиасы (включая «Табакошка») и несколько популярных опечаток.
+- Точное совпадение может показываться даже при включённом «Не показывать мой список».
+- Watch recap после verified-завершения: даты, время, серии по дням, OP/ED skip, ручное получение награды.
+- Награда за завершение ограничена: фильм 1; <=13 серий 2; <=26 — 3; <=50 — 4; <=100 — 5; >100 — 6 тематических тикетов.
+- После verified-завершения на странице аниме открывается дорогой тематический Ticket за 900 Stars; при полной коллекции покупка скрывается.
+- Leaderboard UI помечает competitive watch-метрики как verified.
+
+ОБЯЗАТЕЛЬНО ДЛЯ ЛИДЕРБОРДА:
+Запусти отдельно SUPABASE_PATCH_V250_VERIFIED_LEADERBOARD.sql в Supabase SQL Editor.
+SQL НИКОГДА не загружается на GitHub/Cloudflare Pages.
+
+Проверка кэша после деплоя:
+1) Hard reload / Ctrl+F5.
+2) DevTools Console: window.SENIME_BUILD
+3) Ожидается: "25.0"
+
+Важно перед большим публичным запуском:
+V25 отделяет verified UX и verified leaderboard-поля, но текущий legacy watch/economy ledger всё ещё частично живёт в клиентском user_state. Это НЕ финальная anti-cheat архитектура для платных функций/серьёзных соревнований. Перед включением реальных платежей нужен server-authoritative payment webhook и отдельный серверный verified-watch/economy ledger.

@@ -10265,3 +10265,248 @@ renderCollectionCommentsV2481=function(ownerId){
 
 /* Build proof. */
 console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign + comments + notifications fix loaded`);
+
+/* ========================================================================== 
+   SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
+   ========================================================================== */
+const SENIME_V25='25.0';
+window.SENIME_BUILD=SENIME_V25;
+document.documentElement.dataset.senimeBuild=SENIME_V25;
+document.body.classList.add('senime-v25');
+
+/* ---------- Custom list architecture ---------- */
+const LIST_V25_DEFAULT={
+  version:1,
+  order:['watching','planned','movies','completed','paused'],
+  base:{
+    watching:{name:'Сейчас',emoji:'▶️',hidden:false,view:'grid'},
+    planned:{name:'Посмотреть',emoji:'📺',hidden:false,view:'grid'},
+    movies:{name:'Фильмы',emoji:'🎬',hidden:false,view:'grid'},
+    completed:{name:'Посмотрел',emoji:'✅',hidden:false,view:'grid'},
+    paused:{name:'Отложено',emoji:'⏸️',hidden:false,view:'grid'}
+  },
+  shelves:[]
+};
+let listStudioDraftV25=null;
+function cloneV25(v){try{return structuredClone(v)}catch{return JSON.parse(JSON.stringify(v))}}
+function plainListTextV25(v,max=40){return String(v??'').replace(/[<>\u0000-\u001f]/g,'').replace(/\s+/g,' ').trim().slice(0,max)}
+function ensureListV25(){
+  latestData.list_v25 ||= cloneV25(LIST_V25_DEFAULT);
+  const p=latestData.list_v25;p.version=1;p.order=Array.isArray(p.order)?p.order.filter(k=>LIST_V25_DEFAULT.order.includes(k)):[];
+  for(const k of LIST_V25_DEFAULT.order)if(!p.order.includes(k))p.order.push(k);
+  p.base ||= {};
+  for(const k of LIST_V25_DEFAULT.order){p.base[k]={...LIST_V25_DEFAULT.base[k],...(p.base[k]||{})};p.base[k].name=plainListTextV25(p.base[k].name||LIST_V25_DEFAULT.base[k].name,40)||LIST_V25_DEFAULT.base[k].name;p.base[k].emoji=plainListTextV25(p.base[k].emoji||LIST_V25_DEFAULT.base[k].emoji,12)||LIST_V25_DEFAULT.base[k].emoji;}
+  p.shelves=Array.isArray(p.shelves)?p.shelves:[];
+  for(const s of p.shelves){s.id ||= `shelf_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;s.name=plainListTextV25(s.name||'Моя полка',40)||'Моя полка';s.emoji=plainListTextV25(s.emoji||'✦',12)||'✦';s.view=['grid','compact'].includes(s.view)?s.view:'grid';s.hidden=!!s.hidden;s.entryKeys=Array.isArray(s.entryKeys)?[...new Set(s.entryKeys.map(String))]:[];}
+  applyListLabelsV25(p);return p;
+}
+function listLabelV25(section,{emoji=true}={}){const p=ensureListV25(),x=p.base?.[section]||LIST_V25_DEFAULT.base[section]||{name:section,emoji:'•'};return `${emoji?`${x.emoji||'•'} `:''}${x.name||section}`.trim()}
+function applyListLabelsV25(p=ensureListV25()){
+  for(const k of LIST_V25_DEFAULT.order){const x=p.base[k];SECTION_TITLES[k]=`${x.emoji||''} ${x.name||k}`.trim();const b=document.querySelector(`[data-side-section="${k}"]`);if(b){const t=b.querySelector('.sidebar-label-text'),ic=b.querySelector('.sidebar-icon');if(t)t.textContent=x.name||k;if(ic)ic.textContent=(x.emoji||'•').replace(/\uFE0F/g,'');}}
+  const footerNames={watching:'Сейчас',planned:'Посмотреть',completed:'Посмотрел',paused:'Отложено'};
+  document.querySelectorAll('#appFooter .footer-col button[onclick^="scrollSectionV8"]').forEach(b=>{const m=String(b.getAttribute('onclick')||'').match(/'([^']+)'/),k=m?.[1];if(k&&p.base[k])b.textContent=p.base[k].name||footerNames[k]||k;});
+}
+function entryStableKeyV25(e){if(Number(e?.anilist_id)>0)return `ani:${Number(e.anilist_id)}`;if(Number(e?.mal_id)>0)return `mal:${Number(e.mal_id)}`;return `name:${normalize(e?.title||'anime')}`}
+function findEntryRefV25(key){for(const [section,entries] of Object.entries(latestData.sections||{})){const index=(entries||[]).findIndex(e=>entryStableKeyV25(e)===String(key));if(index>=0)return {section,index,entry:entries[index]};}return null}
+function verifiedTitleCountV25(){const p=ensureProfileV16?.();return Object.keys(p?.titleRewards||{}).length}
+function verifiedEpisodeCountSafeV25(){try{return Number(verifiedEpisodeCountV16?.()||0)}catch{return 0}}
+function isTitleVerifiedV25(e){try{return !!ensureProfileV16()?.titleRewards?.[entryKeyV16(e)]}catch{return false}}
+function manualCompletedCountV25(){return Number(latestData?.sections?.completed?.length||0)}
+
+function ensureListToolbarV25(){
+  const root=$('#lists');if(!root||$('#listToolbarV25'))return;
+  root.insertAdjacentHTML('beforebegin',`<section id="listToolbarV25" class="list-toolbar-v25 panel"><div><span>МОЙ СПИСОК · ТВОИ ПРАВИЛА</span><h2>Библиотека, которую можно настроить под себя</h2><p>Базовые статусы остаются для прогресса Senime, а названия, порядок и личные полки — твои.</p></div><div class="list-toolbar-stats-v25"><b id="listManualStatV25">0<small>просмотрено</small></b><b class="verified" id="listVerifiedStatV25">0 ✓<small>verified</small></b><button type="button" onclick="openListStudioV25()">✦ Настроить список</button></div></section>`);
+}
+function updateListToolbarV25(){ensureListToolbarV25();const a=$('#listManualStatV25'),b=$('#listVerifiedStatV25');if(a)a.innerHTML=`${manualCompletedCountV25()}<small>просмотрено</small>`;if(b)b.innerHTML=`${verifiedTitleCountV25()} ✓<small>verified</small>`;}
+function listSectionHtmlV25(section,entries,pref){
+  const view=pref.view||'grid',count=entries.length;
+  return `<section class="anime-section list-section-v25 view-${view}" id="section-${section}" data-v25-section="${section}"><header class="list-section-head-v25"><div class="list-section-title-v25"><i>${esc(pref.emoji||'•')}</i><span><small>СИСТЕМНЫЙ РАЗДЕЛ</small><h2>${esc(pref.name||section)}</h2></span><b>${count}</b></div><button class="list-section-edit-v25" type="button" onclick="openListStudioV25('${section}')" title="Настроить раздел">•••</button></header><div class="anime-grid">${count?entries.map((e,i)=>animeCard(e,section,i)).join(''):'<div class="empty list-empty-v25">Пока пусто. Добавь сюда аниме из поиска или каталога.</div>'}</div></section>`;
+}
+function customShelfHtmlV25(shelf){
+  const refs=(shelf.entryKeys||[]).map(findEntryRefV25).filter(Boolean),view=shelf.view||'grid';
+  return `<section class="anime-section list-section-v25 custom-shelf-v25 view-${view}" data-v25-shelf="${attrV247?.(shelf.id)||esc(shelf.id)}"><header class="list-section-head-v25"><div class="list-section-title-v25"><i>${esc(shelf.emoji||'✦')}</i><span><small>ЛИЧНАЯ ПОЛКА</small><h2>${esc(shelf.name||'Моя полка')}</h2></span><b>${refs.length}</b></div><button class="list-section-edit-v25" type="button" onclick="openListStudioV25()" title="Настроить полку">•••</button></header><div class="anime-grid">${refs.length?refs.map(r=>animeCard(r.entry,r.section,r.index)).join(''):'<div class="empty list-empty-v25">Эта полка пустая. Нажми «✦ Полки» на карточке аниме.</div>'}</div></section>`;
+}
+const renderListsBeforeV25=renderLists;
+renderLists=function(){
+  const root=$('#lists');if(!root)return;
+  if(typeof accountSignedInV236==='function'&&!accountSignedInV236()){return renderListsBeforeV25();}
+  const p=ensureListV25();applyListLabelsV25(p);ensureListToolbarV25();updateListToolbarV25();
+  const html=[];for(const k of p.order){const pref=p.base[k];if(pref?.hidden)continue;html.push(listSectionHtmlV25(k,latestData.sections?.[k]||[],pref));}
+  for(const shelf of p.shelves)if(!shelf.hidden)html.push(customShelfHtmlV25(shelf));
+  root.innerHTML=html.join('')||'<div class="list-everything-hidden-v25 panel">Все разделы скрыты. <button onclick="openListStudioV25()">Вернуть список</button></div>';
+  stageElementsV8?.('#lists .anime-section');stageElementsV8?.('#lists .anime-card');
+};
+window.renderLists=renderLists;
+
+/* Add shelf controls and verified status to every normal card without changing its core actions. */
+const animeCardBeforeV25=animeCard;
+animeCard=function(e,s,i){
+  let html=animeCardBeforeV25(e,s,i);const key=entryStableKeyV25(e),verified=isTitleVerifiedV25(e);
+  html=html.replace(/<article class="([^"]*anime-card[^"]*)">/,`<article class="$1 ${verified?'title-verified-v25':''}" data-entry-key="${esc(key)}">`);
+  html=html.replace('<div class="card-actions">',`<div class="card-actions"><button class="shelf-action-v25" onclick="openShelfPickerV25('${String(s).replace(/'/g,"\\'")}',${Number(i)})">✦ Полки</button>`);
+  if(verified)html=html.replace('<div class="card-topline">','<div class="card-topline"><span class="verified-title-badge-v25" title="Просмотр подтверждён плеером Senime">✓ VERIFIED</span>');
+  return html;
+};
+window.animeCard=animeCard;
+
+function ensureListStudioModalV25(){
+  if($('#listStudioV25'))return;
+  document.body.insertAdjacentHTML('beforeend',`<div id="listStudioV25" class="list-studio-modal-v25 hidden" role="dialog" aria-modal="true"><div class="list-studio-shell-v25"><header><div><span>LIST STUDIO · V25</span><h2>Собери свой аниме-лист</h2><p>Системный статус не ломается: можно назвать «Посмотрел» хоть «Осилено», а Senime всё равно понимает прогресс.</p></div><button class="list-studio-close-v25" onclick="closeListStudioV25()">✕</button></header><main><section><div class="list-studio-section-title-v25"><div><span>БАЗОВЫЕ РАЗДЕЛЫ</span><h3>Переименуй и расставь как хочешь</h3></div></div><div id="listBaseRowsV25" class="list-studio-rows-v25"></div></section><section><div class="list-studio-section-title-v25"><div><span>ЛИЧНЫЕ ПОЛКИ</span><h3>Дополнительные подборки поверх статуса</h3></div><button onclick="listAddShelfDraftV25()">＋ Новая полка</button></div><div id="listShelfRowsV25" class="list-studio-rows-v25"></div></section></main><footer><button class="ghost" onclick="listResetDraftV25()">↺ Стандартный список</button><div><button class="secondary" onclick="closeListStudioV25()">Отмена</button><button onclick="saveListStudioV25()">✓ Сохранить</button></div></footer></div></div>`);
+  $('#listStudioV25').addEventListener('click',e=>{if(e.target===e.currentTarget)closeListStudioV25()});
+}
+function listStudioRowV25(k,x,idx){return `<article class="list-studio-row-v25"><div class="list-order-v25"><button onclick="listMoveBaseDraftV25('${k}',-1)" ${idx===0?'disabled':''}>↑</button><button onclick="listMoveBaseDraftV25('${k}',1)" ${idx===listStudioDraftV25.order.length-1?'disabled':''}>↓</button></div><input class="list-emoji-input-v25" maxlength="12" value="${esc(x.emoji||'')}" oninput="listDraftBaseFieldV25('${k}','emoji',this.value)"><input maxlength="40" value="${esc(x.name||'')}" oninput="listDraftBaseFieldV25('${k}','name',this.value)"><select onchange="listDraftBaseFieldV25('${k}','view',this.value)"><option value="grid" ${x.view==='grid'?'selected':''}>Карточки</option><option value="compact" ${x.view==='compact'?'selected':''}>Компактно</option></select><label class="list-visible-toggle-v25"><input type="checkbox" ${!x.hidden?'checked':''} onchange="listDraftBaseFieldV25('${k}','hidden',!this.checked)"><span>Показывать</span></label><small>${esc(LIST_V25_DEFAULT.base[k].name)}</small></article>`}
+function listShelfRowV25(s,idx){return `<article class="list-studio-row-v25 shelf-row-v25"><div class="list-order-v25"><button onclick="listMoveShelfDraftV25('${s.id}',-1)" ${idx===0?'disabled':''}>↑</button><button onclick="listMoveShelfDraftV25('${s.id}',1)" ${idx===listStudioDraftV25.shelves.length-1?'disabled':''}>↓</button></div><input class="list-emoji-input-v25" maxlength="12" value="${esc(s.emoji||'')}" oninput="listDraftShelfFieldV25('${s.id}','emoji',this.value)"><input maxlength="40" value="${esc(s.name||'')}" oninput="listDraftShelfFieldV25('${s.id}','name',this.value)"><select onchange="listDraftShelfFieldV25('${s.id}','view',this.value)"><option value="grid" ${s.view==='grid'?'selected':''}>Карточки</option><option value="compact" ${s.view==='compact'?'selected':''}>Компактно</option></select><label class="list-visible-toggle-v25"><input type="checkbox" ${!s.hidden?'checked':''} onchange="listDraftShelfFieldV25('${s.id}','hidden',!this.checked)"><span>Показывать</span></label><button class="danger list-delete-shelf-v25" onclick="listDeleteShelfDraftV25('${s.id}')">Удалить</button></article>`}
+function renderListStudioV25(){if(!listStudioDraftV25)return;const b=$('#listBaseRowsV25'),s=$('#listShelfRowsV25');if(b)b.innerHTML=listStudioDraftV25.order.map((k,i)=>listStudioRowV25(k,listStudioDraftV25.base[k],i)).join('');if(s)s.innerHTML=listStudioDraftV25.shelves.length?listStudioDraftV25.shelves.map(listShelfRowV25).join(''):'<div class="list-studio-empty-v25">Например: «Пересмотреть», «С другом», «После AOT», «Шедевры».</div>';}
+function openListStudioV25(section=''){if(typeof requireAccountV236==='function'&&!requireAccountV236('настроить личный список'))return;ensureListStudioModalV25();listStudioDraftV25=cloneV25(ensureListV25());$('#listStudioV25').classList.remove('hidden');document.body.style.overflow='hidden';renderListStudioV25();if(section)setTimeout(()=>document.querySelector(`#listBaseRowsV25 article:nth-child(${Math.max(1,listStudioDraftV25.order.indexOf(section)+1)}) input:nth-of-type(2)`)?.focus(),50)}
+function closeListStudioV25(){listStudioDraftV25=null;$('#listStudioV25')?.classList.add('hidden');if($('#profileModal')?.classList.contains('hidden')&&$('#watchModal')?.classList.contains('hidden'))document.body.style.overflow=''}
+function listDraftBaseFieldV25(k,f,v){if(!listStudioDraftV25?.base?.[k])return;listStudioDraftV25.base[k][f]=v}
+function listDraftShelfFieldV25(id,f,v){const s=listStudioDraftV25?.shelves?.find(x=>x.id===id);if(s)s[f]=v}
+function listMoveBaseDraftV25(k,d){const a=listStudioDraftV25?.order||[],i=a.indexOf(k),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];renderListStudioV25()}
+function listMoveShelfDraftV25(id,d){const a=listStudioDraftV25?.shelves||[],i=a.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];renderListStudioV25()}
+function listAddShelfDraftV25(){if(!listStudioDraftV25)return;listStudioDraftV25.shelves.push({id:`shelf_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,name:'Новая полка',emoji:'✦',hidden:false,view:'grid',entryKeys:[]});renderListStudioV25();setTimeout(()=>$('#listShelfRowsV25 article:last-child input:nth-of-type(2)')?.select(),30)}
+function listDeleteShelfDraftV25(id){if(!listStudioDraftV25)return;listStudioDraftV25.shelves=listStudioDraftV25.shelves.filter(x=>x.id!==id);renderListStudioV25()}
+function listResetDraftV25(){if(!listStudioDraftV25)return;if(!confirm('Вернуть стандартные названия и удалить личные полки?'))return;listStudioDraftV25=cloneV25(LIST_V25_DEFAULT);renderListStudioV25()}
+function saveListStudioV25(){if(!listStudioDraftV25)return;latestData.list_v25=cloneV25(listStudioDraftV25);ensureListV25();saveData();closeListStudioV25();renderAll();updateSidebarStatsV12?.();profileToastV16?.('✓ Список обновлён','Названия и полки сохранены в аккаунте')}
+Object.assign(window,{openListStudioV25,closeListStudioV25,listDraftBaseFieldV25,listDraftShelfFieldV25,listMoveBaseDraftV25,listMoveShelfDraftV25,listAddShelfDraftV25,listDeleteShelfDraftV25,listResetDraftV25,saveListStudioV25});
+
+/* ---------- Shelf membership picker ---------- */
+function ensureShelfPickerV25(){if($('#shelfPickerV25'))return;document.body.insertAdjacentHTML('beforeend',`<div id="shelfPickerV25" class="shelf-picker-modal-v25 hidden"><div class="shelf-picker-card-v25"><header><div><span>ЛИЧНЫЕ ПОЛКИ</span><h3 id="shelfPickerTitleV25">Добавить на полку</h3></div><button onclick="closeShelfPickerV25()">✕</button></header><div id="shelfPickerRowsV25"></div><footer><button class="secondary" onclick="openListStudioV25();closeShelfPickerV25()">＋ Управлять полками</button><button onclick="closeShelfPickerV25()">Готово</button></footer></div></div>`);$('#shelfPickerV25').addEventListener('click',e=>{if(e.target===e.currentTarget)closeShelfPickerV25()});}
+let shelfPickerRefV25=null;
+function openShelfPickerV25(section,index){const e=latestData?.sections?.[section]?.[index];if(!e)return;ensureShelfPickerV25();const p=ensureListV25(),key=entryStableKeyV25(e);shelfPickerRefV25={section,index,key};$('#shelfPickerTitleV25').textContent=e.title;const rows=$('#shelfPickerRowsV25');rows.innerHTML=p.shelves.length?p.shelves.map(s=>`<label class="shelf-picker-row-v25"><span><i>${esc(s.emoji||'✦')}</i><b>${esc(s.name)}</b></span><input type="checkbox" ${s.entryKeys.includes(key)?'checked':''} onchange="toggleShelfMembershipV25('${s.id}',this.checked)"></label>`).join(''):'<div class="shelf-picker-empty-v25">У тебя пока нет личных полок.<br><small>Создай «Пересмотреть», «Шедевры» или любую свою.</small></div>';$('#shelfPickerV25').classList.remove('hidden')}
+function toggleShelfMembershipV25(id,on){const p=ensureListV25(),s=p.shelves.find(x=>x.id===id),key=shelfPickerRefV25?.key;if(!s||!key)return;const set=new Set(s.entryKeys||[]);on?set.add(key):set.delete(key);s.entryKeys=[...set];saveData();renderLists()}
+function closeShelfPickerV25(){$('#shelfPickerV25')?.classList.add('hidden');shelfPickerRefV25=null}
+Object.assign(window,{openShelfPickerV25,toggleShelfMembershipV25,closeShelfPickerV25});
+
+/* ---------- Search in Russian / aliases / typos without bloating initial load ---------- */
+const SEARCH_ALIASES_V25=new Map(Object.entries({
+  'табакошка':{query:'Yani Neko',anilistId:207141},'янеко':{query:'Yani Neko',anilistId:207141},'яни неко':{query:'Yani Neko',anilistId:207141},
+  'атака титанов':{query:'Attack on Titan'},'атака тетанов':{query:'Attack on Titan'},'шингэки но кёдзин':{query:'Shingeki no Kyojin'},
+  'дневник будущего':{query:'Mirai Nikki',anilistId:10620},'мирай никки':{query:'Mirai Nikki',anilistId:10620},
+  'человек бензопила':{query:'Chainsaw Man'},'чейнсо мен':{query:'Chainsaw Man'},'человек-бензопила':{query:'Chainsaw Man'},
+  'код гиас':{query:'Code Geass'},'код геасс':{query:'Code Geass'},
+  'тетрадь смерти':{query:'Death Note'},'клинок рассекающий демонов':{query:'Demon Slayer'},
+  'магическая битва':{query:'Jujutsu Kaisen'},'евангелион':{query:'Neon Genesis Evangelion'},'стальной алхимик':{query:'Fullmetal Alchemist'},
+  'врата штейна':{query:'Steins;Gate'},'безумный азарт':{query:'Kakegurui'},'дитя погоды':{query:'Weathering With You'},
+  'форма голоса':{query:'A Silent Voice',anilistId:20954},'унесенные призраками':{query:'Spirited Away',anilistId:199},'унесённые призраками':{query:'Spirited Away',anilistId:199}
+}));
+function normalizeSearchV25(q){return normalize(String(q||'').replace(/ё/g,'е')).replace(/\s+/g,' ').trim()}
+function aliasForSearchV25(q){return SEARCH_ALIASES_V25.get(normalizeSearchV25(q))||null}
+function mediaSearchNamesV25(m){return [m?.title?.english,m?.title?.romaji,m?.title?.native,...(m?.synonyms||[])].filter(Boolean).map(normalizeSearchV25)}
+function dedupMediaV25(rows){const map=new Map();for(const m of rows||[]){if(!m)continue;const key=Number(m.idMal)>0?`mal:${Number(m.idMal)}`:Number(m.id)>0?`ani:${Number(m.id)}`:`n:${normalizeSearchV25(pickTitle(m))}`;if(!map.has(key))map.set(key,m);else{const old=map.get(key);if(old?.__shikimori&&!m?.__shikimori)map.set(key,m);}}return [...map.values()]}
+async function searchMediaV25(raw){
+  const original=String(raw||'').trim(),alias=aliasForSearchV25(original),canonical=alias?.query||original,cyr=/[А-Яа-яЁё]/.test(original),jobs=[];
+  if(alias?.anilistId)jobs.push(anilistFetchDirectV20(DETAIL_BY_ID_QUERY,{id:Number(alias.anilistId)}).then(x=>x?.data?.Media?[x.data.Media]:[]).catch(()=>[]));
+  jobs.push(anilistFetchDirectV20(SEARCH_QUERY,{search:canonical}).then(x=>x?.data?.Page?.media||[]).catch(()=>[]));
+  if(cyr||canonical!==original)jobs.push(shikiGetV203(`/animes?limit=20&censored=true&search=${encodeURIComponent(original)}`).then(x=>(x||[]).map(j=>shikiMediaV203(j))).catch(()=>[]));
+  const groups=await Promise.all(jobs),merged=dedupMediaV25(groups.flat());
+  return merged.length?merged:((await shikiGetV203(`/animes?limit=20&censored=true&search=${encodeURIComponent(canonical)}`).catch(()=>[]))||[]).map(x=>shikiMediaV203(x));
+}
+function bindSmartSearchV25(){
+  const old=$('#searchForm');if(!old||old.dataset.v25)return;const form=old.cloneNode(true);form.dataset.v25='1';old.replaceWith(form);
+  form.addEventListener('submit',async e=>{e.preventDefault();const q=$('#searchInput')?.value.trim()||'';if(q.length<2)return setMessage('Введи хотя бы 2 символа.','error');setMessage('Ищу по русским, английским и японским названиям…');$('#results').innerHTML='';try{const list=await searchMediaV25(q);searchResults=await buildGroupedSearchResultsV9(list,aliasForSearchV25(q)?.query||q);if(!searchResults.length)return setMessage('Ничего не нашлось. Попробуй другое написание.','error');setMessage(`Нашлось: ${searchResults.length} · RU / EN / Romaji`,'ok');renderResults()}catch(err){setMessage(`Поиск временно недоступен: ${String(err?.message||err)}`,'error')}},true);
+  const input=$('#searchInput');if(input)input.placeholder='Табакошка, Attack on Titan, Mirai Nikki…';
+}
+setTimeout(bindSmartSearchV25,80);
+
+/* Catalog aliases are resolved only when the user actually searches. */
+const catalogReadFormBeforeV25=catalogReadFormV10;
+catalogReadFormV10=function(){const f=catalogReadFormBeforeV25();const original=String(f.search||'').trim(),a=aliasForSearchV25(original);if(a){f.searchOriginal=original;f.search=a.query;}return f};
+const catalogFetchBeforeV25=catalogFetchPageV10;
+catalogFetchPageV10=async function(opts={}){const typed=String($('#catalogSearch')?.value||'').trim(),result=await catalogFetchBeforeV25(opts);if(typed&&$('#catalogResultsTitle'))$('#catalogResultsTitle').textContent=`Поиск: ${typed}`;return result};window.catalogFetchPageV10=catalogFetchPageV10;
+const catalogClientFilterBeforeV25=catalogClientFilterV11;
+catalogClientFilterV11=function(m,f,opts={}){
+  if(f?.hideOwned&&f?.search&&catalogOwnedInfoV10(m)){
+    const q=normalizeSearchV25(f.searchOriginal||f.search),names=mediaSearchNamesV25(m),exact=names.some(n=>n===q)||aliasForSearchV25(q)?.query&&names.some(n=>n===normalizeSearchV25(aliasForSearchV25(q).query));
+    if(exact)return catalogClientFilterBeforeV25(m,{...f,hideOwned:false},opts);
+  }
+  return catalogClientFilterBeforeV25(m,f,opts);
+};
+
+/* ---------- Watch statistics, skip ledger and completion recap ---------- */
+function ensureWatchStatsV25(){latestData.watch_v25 ||= {version:1,titles:{},skipLedger:{},pending:null,shown:{}};latestData.watch_v25.titles||={};latestData.watch_v25.skipLedger||={};latestData.watch_v25.shown||={};return latestData.watch_v25}
+function watchTitleStatsV25(e,create=true){if(!e)return null;const w=ensureWatchStatsV25(),k=entryKeyV16(e);if(!w.titles[k]&&create)w.titles[k]={title:e.title||'Аниме',startedAt:Date.now(),lastAt:Date.now(),finishedAt:null};const x=w.titles[k]||null;if(x){x.title=e.title||x.title;x.lastAt=Date.now()}return x}
+const loadWatchEpisodeBeforeV25=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){const e=watchStateV15?.entry;if(e){const x=watchTitleStatsV25(e,true);if(x&&!x.startedAt)x.startedAt=Date.now();saveData()}return loadWatchEpisodeBeforeV25(opts)};window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+const skipSegmentBeforeV25=skipSegmentV18;
+skipSegmentV18=function(type){const e=watchStateV15?.entry,stamp=e?`${episodeStampV18(type)}`:'';const ok=skipSegmentBeforeV25(type);if(ok&&e&&stamp){const w=ensureWatchStatsV25();if(!w.skipLedger[stamp]){w.skipLedger[stamp]={entryKey:entryKeyV16(e),title:e.title,type:type==='ed'?'ed':'op',season:Number(watchStateV15.season)+1,episode:Number(watchStateV15.episode),at:Date.now()};saveData()}}return ok};window.skipSegmentV18=skipSegmentV18;
+
+function titleLedgerRowsV25(e){const key=entryKeyV16(e),p=ensureProfileV16();return Object.values(p.episodeLedger||{}).filter(r=>String(r?.entryKey)===String(key)&&r?.verified)}
+function completionStatsV25(e){
+  const rows=titleLedgerRowsV25(e),w=ensureWatchStatsV25(),key=entryKeyV16(e),t=w.titles[key]||{},days={};for(const r of rows){const at=Number(r.verifiedAt||r.lastAt||0);if(!at)continue;const d=new Date(at),k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;days[k]=(days[k]||0)+1;}
+  const skips=Object.values(w.skipLedger||{}).filter(x=>String(x.entryKey)===String(key));const seconds=rows.reduce((n,r)=>n+Math.max(0,Math.min(Number(r.duration||0)||Infinity,Number(watchedSecondsV16(r)||0))),0),finish=Number(t.finishedAt||Date.now()),start=Number(t.startedAt||rows.map(r=>Number(r.verifiedAt||0)).filter(Boolean).sort((a,b)=>a-b)[0]||finish),span=Math.max(1,Math.ceil((finish-start)/86400000)+1);
+  return {key,title:e.title,cover:e.cover||'',episodes:rows.length,seconds,start,finish,span,days,op:skips.filter(x=>x.type==='op').length,ed:skips.filter(x=>x.type==='ed').length};
+}
+function completionBarsV25(stats){const rows=Object.entries(stats.days).sort((a,b)=>a[0].localeCompare(b[0])),max=Math.max(1,...rows.map(x=>x[1]));if(!rows.length)return '<div class="completion-no-chart-v25">Статистика по дням появится после verified-серий.</div>';return `<div class="completion-chart-v25">${rows.map(([d,n])=>`<div class="completion-bar-col-v25" title="${esc(d)} · ${n} сер."><b>${n}</b><i style="height:${Math.max(10,n/max*100)}%"></i><small>${d.slice(5).replace('-','.')}</small></div>`).join('')}</div>`}
+function ensureCompletionModalV25(){if($('#completionModalV25'))return;document.body.insertAdjacentHTML('beforeend',`<div id="completionModalV25" class="completion-modal-v25 hidden"><div class="completion-shell-v25"><button class="completion-close-v25" onclick="closeCompletionV25()">✕</button><div id="completionBodyV25"></div></div></div>`);$('#completionModalV25').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCompletionV25()});}
+function fmtDateV25(ms){return new Date(Number(ms)||Date.now()).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'})}
+function fmtWatchV25(sec){sec=Math.max(0,Number(sec)||0);const h=Math.floor(sec/3600),m=Math.round((sec%3600)/60);return h?`${h} ч ${m} мин`:`${m} мин`}
+function completionTicketRewardV25(e){const eps=Math.max(0,Number(e?.episodes)||0),fmt=String(e?.format||'').toUpperCase();if(fmt==='MOVIE')return 1;if(!eps||eps<=13)return 2;if(eps<=26)return 3;if(eps<=50)return 4;if(eps<=100)return 5;return 6}
+function showCompletionV25(pending=null){const w=ensureWatchStatsV25(),x=pending||w.pending;if(!x)return;const ref=findEntryRefV25(x.entryKey)||profileAllEntriesV162?.().find(r=>entryKeyV16(r.entry)===x.entryKey);const e=ref?.entry;if(!e)return;const stats=completionStatsV25(e),reward=Math.max(1,Number(x.rewardTickets||completionTicketRewardV25(e))),claimed=!!x.claimed;ensureCompletionModalV25();$('#completionBodyV25').innerHTML=`<header class="completion-hero-v25">${stats.cover?`<div class="completion-cover-v25"><img src="${esc(stats.cover)}" alt=""></div>`:'<div class="completion-cover-v25 placeholder">✓</div>'}<div><span>ANIME COMPLETE · ✓ VERIFIED</span><h2>Ты закончил ${esc(stats.title)}</h2><p>${stats.episodes} подтверждённых серий · ${stats.span} ${stats.span===1?'день':'дн.'} · ${fmtWatchV25(stats.seconds)} просмотра</p></div></header><div class="completion-kpis-v25"><article><small>Начал</small><b>${fmtDateV25(stats.start)}</b></article><article><small>Закончил</small><b>${fmtDateV25(stats.finish)}</b></article><article><small>OP пропущено</small><b>${stats.op}</b></article><article><small>ED пропущено</small><b>${stats.ed}</b></article></div><section class="completion-chart-card-v25"><div><span>ТЕМП ПРОСМОТРА</span><h3>Серии по дням</h3></div>${completionBarsV25(stats)}</section><section class="completion-reward-v25 ${claimed?'claimed':''}"><div><span>НАГРАДА ЗА VERIFIED-ПРОСМОТР</span><h3>🎟️ ${esc(e.title)} Ticket ×${reward}</h3><p>Награда даёт только часть коллекции — весь каст автоматически не собирается.</p></div><button ${claimed?'disabled':''} onclick="claimCompletionRewardV25()">${claimed?'✓ Получено':'Забрать награду'}</button></section><footer class="completion-actions-v25"><button class="secondary" onclick="completionKeepStatusV25()">Оставить как есть</button><button onclick="completionMoveDoneV25()">Добавить в «${esc(ensureListV25().base.completed.name)}»</button></footer>`;$('#completionModalV25').classList.remove('hidden');document.body.style.overflow='hidden'}
+function closeCompletionV25(){const w=ensureWatchStatsV25();if(w.pending){w.shown[w.pending.entryKey]=Date.now();w.pending.shown=true;saveData()}$('#completionModalV25')?.classList.add('hidden');if($('#profileModal')?.classList.contains('hidden')&&$('#watchModal')?.classList.contains('hidden'))document.body.style.overflow=''}
+function claimCompletionRewardV25(){const w=ensureWatchStatsV25(),x=w.pending;if(!x||x.claimed)return;const ref=findEntryRefV25(x.entryKey)||profileAllEntriesV162?.().find(r=>entryKeyV16(r.entry)===x.entryKey);const e=ref?.entry;if(!e)return;const n=Math.max(1,Number(x.rewardTickets||1));addAnimeTicketV205(e,n,{reason:`${e.title} · verified completion V25`});x.claimed=true;x.claimedAt=Date.now();saveData();showCompletionV25(x);renderProfileV16?.()}
+function moveEntryToCompletedV25(e){let ref=null;for(const [s,a] of Object.entries(latestData.sections||{})){const i=(a||[]).indexOf(e);if(i>=0){ref={section:s,index:i};break}}if(!ref)return;if(ref.section==='completed')return;const x=latestData.sections[ref.section].splice(ref.index,1)[0];removeSame(x);latestData.sections.completed.push(x);saveData();renderAll()}
+function completionMoveDoneV25(){const x=ensureWatchStatsV25().pending;if(x){const ref=findEntryRefV25(x.entryKey)||profileAllEntriesV162?.().find(r=>entryKeyV16(r.entry)===x.entryKey);if(ref?.entry)moveEntryToCompletedV25(ref.entry)}closeCompletionV25()}
+function completionKeepStatusV25(){closeCompletionV25()}
+Object.assign(window,{showCompletionV25,closeCompletionV25,claimCompletionRewardV25,completionMoveDoneV25,completionKeepStatusV25});
+
+/* Defer newly earned themed tickets until the completion recap button is pressed. */
+const verifyEpisodeBeforeV25=verifyEpisodeV16;
+verifyEpisodeV16=function(){
+  const e=watchStateV15?.entry,key=e?entryKeyV16(e):'',p=ensureCardProfileV205?.()||ensureProfileV16(),was=key&&!!p.titleRewards?.[key];let captured=0;
+  const addAnimeOriginal=addAnimeTicketV205,toastOriginal=profileToastV16;
+  if(e&&key&&!was){
+    addAnimeTicketV205=function(entry,n=1,opts={}){if(entryKeyV16(entry)===key){captured+=Math.max(0,Number(n)||0);return;}return addAnimeOriginal(entry,n,opts)};window.addAnimeTicketV205=addAnimeTicketV205;
+    profileToastV16=function(title,detail=''){if(String(title||'').includes('Ticket')&&String(title||'').includes(e.title))return;return toastOriginal(title,detail)};
+  }
+  let ok=false;try{ok=verifyEpisodeBeforeV25()}finally{addAnimeTicketV205=addAnimeOriginal;window.addAnimeTicketV205=addAnimeOriginal;profileToastV16=toastOriginal;}
+  if(ok&&e&&key&&!was&&p.titleRewards?.[key]){
+    const w=ensureWatchStatsV25(),ts=watchTitleStatsV25(e,true);ts.finishedAt=Date.now();const reward=Math.max(1,completionTicketRewardV25(e));w.pending={entryKey:key,title:e.title,rewardTickets:reward,claimed:false,createdAt:Date.now(),shown:false};saveData();profileToastV16('✓ Аниме завершено',`Итоги и награда ждут на главной · ${e.title}`);
+  }
+  updateListToolbarV25();schedulePublicSyncV244?.(450);return ok;
+};window.verifyEpisodeV16=verifyEpisodeV16;
+
+const closeWatchBeforeV25=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){const r=closeWatchBeforeV25();setTimeout(()=>{const x=ensureWatchStatsV25().pending;if(x&&!x.shown)showCompletionV25(x)},180);return r};window.closeWatchPlayerV15=closeWatchPlayerV15;
+
+/* ---------- Themed-ticket shop on anime pages, unlocked only by verified completion ---------- */
+const ANIME_TICKET_PRICE_V25=900;
+function detailEntryV25(){try{return currentEntryV5?.()||openedDetail&&latestData.sections?.[openedDetail.section]?.[openedDetail.index]||null}catch{return null}}
+function ensureDetailTicketV25(){const side=$('.detail-sidebar');if(!side||$('#detailTicketShopV25'))return;side.insertAdjacentHTML('beforeend','<section id="detailTicketShopV25" class="detail-ticket-shop-v25"></section>')}
+function renderDetailTicketV25(){ensureDetailTicketV25();const box=$('#detailTicketShopV25'),e=detailEntryV25();if(!box||!e){if(box)box.innerHTML='';return}const p=ensureCardProfileV205?.()||ensureProfileV16(),key=entryKeyV16(e),verified=!!p.titleRewards?.[key],t=p.animeTickets?.[key],complete=!!t?.complete;if(!verified){box.innerHTML=`<span>ТЕМАТИЧЕСКИЙ ТИКЕТ</span><h4>🔒 Откроется после verified-просмотра</h4><p>Ручное «Просмотрено» не разблокирует магазин персонажей.</p>`;return}if(complete){box.innerHTML=`<span>КОЛЛЕКЦИЯ</span><h4>✓ COLLECTION COMPLETE</h4><p>Все доступные персонажи этого аниме уже собраны.</p>`;box.classList.add('complete');return}box.classList.remove('complete');const stars=Number(p.stars||0);box.innerHTML=`<span>ТЕМАТИЧЕСКИЙ ТИКЕТ</span><h4>🎟️ ${esc(e.title)} Ticket</h4><p>Гарантированно персонаж только из этого аниме. Цена специально выше обычного Ticket.</p><div><b>✦ ${ANIME_TICKET_PRICE_V25}</b><small>у тебя ${stars.toLocaleString('ru-RU')} ✦</small><button ${stars<ANIME_TICKET_PRICE_V25?'disabled':''} onclick="buyDetailAnimeTicketV25()">Купить</button></div>`}
+function buyDetailAnimeTicketV25(){const e=detailEntryV25();if(!e)return;const p=ensureCardProfileV205?.()||ensureProfileV16(),key=entryKeyV16(e);if(!p.titleRewards?.[key])return profileToastV16('Сначала досмотри аниме','Нужен ✓ verified completion');const t=p.animeTickets?.[key];if(t?.complete)return profileToastV16('COLLECTION COMPLETE',e.title);if(Number(p.stars||0)<ANIME_TICKET_PRICE_V25)return profileToastV16('Не хватает Stars',`Нужно ${ANIME_TICKET_PRICE_V25} ✦`);p.stars-=ANIME_TICKET_PRICE_V25;addAnimeTicketV205(e,1,{silent:true,reason:`Покупка на странице аниме · −${ANIME_TICKET_PRICE_V25} ✦`});profileActivityV16('🛒',`${e.title} Ticket`,`−${ANIME_TICKET_PRICE_V25} ✦`);saveData();renderProfileChromeV16?.();renderDetailTicketV25();profileToastV16(`🎟️ ${e.title} Ticket`,`−${ANIME_TICKET_PRICE_V25} ✦`)}
+window.buyDetailAnimeTicketV25=buyDetailAnimeTicketV25;
+const openDetailsBeforeV25=openDetails;
+openDetails=async function(...args){const r=await openDetailsBeforeV25(...args);setTimeout(renderDetailTicketV25,80);return r};window.openDetails=openDetails;
+
+/* ---------- Own/public profile: "312 просмотрено · 47 ✓ verified" ---------- */
+const renderOverviewBeforeV25=renderOverviewV16;
+renderOverviewV16=function(){const box=$('#profileOverviewStats');if(!box)return renderOverviewBeforeV25();const p=ensureProfileV16(),seconds=Object.values(p.episodeLedger||{}).filter(r=>r?.verified).reduce((n,r)=>n+Number(watchedSecondsV16?.(r)||0),0),hours=Math.floor(seconds/3600);box.innerHTML=[['📚',manualCompletedCountV25(),'просмотрено'],['✓',verifiedTitleCountV25(),'verified тайтлов'],['▶',verifiedEpisodeCountSafeV25(),'verified серий'],['⌛',hours,'часов учтено'],['⭐',profileRatingCountV16?.()||0,'оценок'],['🃏',(p.collection||[]).length,'карточек']].map((x,i)=>`<article class="${i===1?'verified-overview-v25':''}"><b>${x[0]} ${x[1]}</b><span>${x[2]}</span></article>`).join('')};
+
+const socialBuildPublicPayloadBeforeV25=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){const out=socialBuildPublicPayloadBeforeV25();out.completed=manualCompletedCountV25();out.verifiedTitles=verifiedTitleCountV25();out.verifiedEpisodes=verifiedEpisodeCountSafeV25();out.listLabels=Object.fromEntries(Object.entries(ensureListV25().base).map(([k,v])=>[k,{name:v.name,emoji:v.emoji}]));out.senimeVersion=SENIME_V25;return out};
+
+const socialOpenPublicProfileBeforeV25=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){await socialOpenPublicProfileBeforeV25(id);const p=socialStateV241?.profiles?.get(id),pp=p?.public_payload||{};const prog=document.querySelector('#publicProfileBodyV242 .public-progress-widget-v243');if(prog&&!prog.querySelector('.public-verified-summary-v25'))prog.insertAdjacentHTML('beforeend',`<div class="public-verified-summary-v25"><b>${Number(pp.completed||0)} просмотрено</b><span>${Number(pp.verifiedTitles||0)} ✓ verified</span></div>`);const kpis=prog?.querySelectorAll('.public-kpis-v243 > div');if(kpis?.[0])kpis[0].innerHTML=`<b>${Number(pp.verifiedEpisodes||0)}</b><span>verified серий</span>`;if(kpis?.[1])kpis[1].innerHTML=`<b>${Number(pp.verifiedTitles||0)}</b><span>verified тайтлов</span>`};window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+/* ---------- Leaderboard language: titles are now verified-only after V25 SQL ---------- */
+try{const t=LEADER_METRICS_V247.find(x=>x[0]==='titles');if(t)t[1]='✓ Verified тайтлы';const e=LEADER_METRICS_V247.find(x=>x[0]==='episodes');if(e)e[1]='▶ Verified серии';}catch{}
+const loadLeaderboardBeforeV25=loadLeaderboardV247;
+loadLeaderboardV247=async function(metric='level'){const r=await loadLeaderboardBeforeV25(metric);const p=$('#communityLeaderboardsV247 .community-page-head-v247 p');if(p)p.textContent='Просмотры и тайтлы в рейтинге считаются только по ✓ verified. Premium не влияет на место.';return r};window.loadLeaderboardV247=loadLeaderboardV247;
+
+/* ---------- V25 visual/content wiring ---------- */
+function injectV25Chrome(){
+  ensureListV25();applyListLabelsV25();
+  const brand=document.querySelector('.sidebar-brand-copy small');if(brand)brand.textContent='watch · list · social';
+  const search=$('#catalogSearch');if(search)search.placeholder='Табакошка, Code Geass, жанр…';
+  const hint=$('#catalogSmartGenreHintV235');if(hint)hint.innerHTML='RU / EN / Romaji · алиасы · жанры · <b>опечатки для популярных названий</b>';
+  const tag=$('#footerTagline');if(tag)tag.textContent='Смотри · собирай · оценивай · общайся. Список, который подстраивается под тебя.';
+  const foot=document.querySelector('.footer-bottom > span:last-child');if(foot)foot.textContent='V25 · Public Beta · Cloud Sync · RLS';
+  renderAll();updateListToolbarV25();updateSidebarStatsV12?.();
+  document.querySelectorAll('.panel,.anime-section,.catalog-card,.home-side-card,.profile-card-v16').forEach((el,i)=>{el.style.setProperty('--v25-delay',`${Math.min(i,10)*18}ms`)});
+}
+setTimeout(injectV25Chrome,160);
+setTimeout(()=>{if(senimeSignedV247?.())socialSyncPublicProfileV242?.().catch?.(()=>{})},1100);
+
+/* Build proof only — concise and intentionally brand-only. */
+console.info(`Senime V${SENIME_V25} ready`);
