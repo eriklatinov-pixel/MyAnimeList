@@ -14,7 +14,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.6.1">
+  <link rel="stylesheet" href="style.css?v=25.7">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -350,7 +350,7 @@
           </div>
         </div>
         <div class="watch-head-actions">
-          <button id="watchPartyBtn" class="watch-party-btn" type="button">◉ Смотреть вместе <span>позже</span></button>
+          <button id="watchPartyBtn" class="watch-party-btn watch-party-soon-v257" type="button">◉ Смотреть вместе <span>скоро</span></button>
         </div>
       </header>
 
@@ -404,8 +404,8 @@
               <p id="watchEmptyText">В режиме «Авто» сайт сам переберёт подключённые источники и выберет подходящий. Ручной URL остаётся только запасным вариантом.</p>
               <div class="watch-empty-actions">
                 <button id="watchRetryAuto" type="button">↻ Найти ещё раз</button>
-                <button id="watchPickFolder" class="secondary" type="button">📁 Локальная папка</button>
-                <button id="watchImportManifest" class="secondary" type="button">↥ Manifest</button>
+                <button id="watchPickFolder" class="secondary founder-only-v257" type="button">📁 Локальная папка</button>
+                <button id="watchImportManifest" class="secondary founder-only-v257" type="button">↥ Manifest</button>
               </div>
             </div>
           </div>
@@ -416,7 +416,7 @@
               <div><b id="watchMediaStatusTextV22">Умный режим</b><small id="watchMediaStatusHintV22">Собираю доступные дорожки для этой серии</small></div>
             </div>
             <span id="watchProviderState" class="watch-provider-state watch-provider-internal-v22" aria-hidden="true">Авто</span>
-            <button id="watchSourcesBtn" class="secondary watch-sources-btn" type="button">⚙ Медиа</button>
+            <button id="watchSourcesBtn" class="secondary watch-sources-btn founder-only-v257" type="button">⚙ Медиа</button>
           </div>
 
           <div class="watch-quickbar">
@@ -449,7 +449,7 @@
                 <label class="watch-setting-toggle"><input id="watchDoubleSeek" type="checkbox" checked><span>Двойной клик ±10 секунд</span></label>
                 <label class="watch-setting-toggle"><input id="watchShowBuffer" type="checkbox" checked><span>Показывать буфер на таймлайне</span></label>
               </section>
-              <section class="watch-setting-card watch-setting-sources">
+              <section class="watch-setting-card watch-setting-sources founder-only-v257">
                 <h4>Источники</h4>
                 <p class="watch-setting-help">Публичный клиент не хранит секретные API-ключи. AniLiberty/AnimeVost работают как доступные источники, а Kodik/SubDL подключаются через серверный Cloudflare Worker. Свои разрешённые HLS/MP4 и дорожки можно добавлять через Manifest.</p>
                 <div class="security-secret-note-v248">
@@ -470,13 +470,13 @@
                 <div class="watch-color-row"><label>Текст<input id="watchSubColor" type="color" value="#ffffff"></label><label>Фон<input id="watchSubBgColor" type="color" value="#000000"></label></div>
                 <label class="watch-setting-toggle"><input id="watchSubShadow" type="checkbox" checked><span>Контур / тень</span></label>
               </section>
-              <section class="watch-setting-card watch-setting-subs">
+              <section class="watch-setting-card watch-setting-subs founder-only-v257">
                 <h4>Добавить субтитры</h4>
                 <p>Плеер понимает WebVTT и SRT. Если источник отдаёт дорожки сам, они появятся в селекте автоматически.</p>
                 <button id="watchImportSubtitle" class="secondary" type="button">＋ SRT / VTT файл</button>
                 <div class="watch-sub-url-row"><input id="watchSubtitleLabel" type="text" maxlength="40" placeholder="Название: Русские"><input id="watchSubtitleUrl" type="url" placeholder="https://.../subtitles.vtt"><button id="watchAddSubtitleUrl" type="button">Добавить URL</button></div>
               </section>
-              <section class="watch-setting-card watch-player-lab">
+              <section class="watch-setting-card watch-player-lab founder-only-v257">
                 <div class="watch-lab-head"><h4>Лаборатория плеера</h4><span>DEV</span></div>
                 <p>Можно проверить интерфейс дорожек до подключения новых провайдеров. Видео не меняется — это только безопасный UI-тест.</p>
                 <button id="watchDemoTracks" class="secondary" type="button">🧪 Добавить демо-дорожки</button>
@@ -552,7 +552,7 @@
               <div id="watchSubtitleEmptyV22" class="watch-track-empty-v22">Пока нет субтитров для этой серии.</div>
             </div>
 
-            <div id="watchResolverStatus" class="watch-resolver-status watch-resolver-status-v22">
+            <div id="watchResolverStatus" class="watch-resolver-status watch-resolver-status-v22 founder-only-v257">
               <div><strong>Media Resolver</strong><span>готов</span></div>
               <small>Источники работают под капотом; здесь показываются только реальные дорожки.</small>
             </div>
@@ -569,7 +569,7 @@
             </div>
             <div id="watchEpisodeGrid" class="watch-episode-grid"></div>
 
-            <details class="watch-deck-lab-v22">
+            <details class="watch-deck-lab-v22 founder-only-v257">
               <summary>Свои медиа</summary>
               <div class="watch-online-box watch-manual-source">
                 <div class="watch-online-title"><strong>HLS / MP4</strong><span id="watchOnlineKindLabel">URL</span></div>
@@ -586,7 +586,7 @@
             </details>
           </section>
 
-          <div class="watch-deck-footer-v22">
+          <div class="watch-deck-footer-v22 founder-only-v257">
             <button id="watchDeckSettingsV22" class="secondary" type="button">⚙ Дорожки и источники</button>
             <small>Провайдеры скрыты от обычного просмотра</small>
           </div>
@@ -911,7 +911,7 @@
           <label class="setting-toggle"><span><b>Показывать футер</b><small>Большой нижний блок как у аниме-сервисов</small></span><input id="settingFooter" type="checkbox"><i></i></label>
         </section>
 
-        <section class="settings-group settings-mascot-group">
+        <section class="settings-group settings-mascot-group release-hidden-v257">
           <h3>🧩 Картинка в углу</h3>
           <label class="setting-toggle"><span><b>Показывать картинку</b><small>Закрепить изображение снизу экрана</small></span><input id="settingMascotEnabled" type="checkbox"><i></i></label>
           <div class="mascot-upload-grid">
@@ -939,7 +939,7 @@
           <div class="settings-note">При загрузке PNG сайт автоматически обрезает пустые прозрачные края. Поэтому персонаж занимает реальный размер, а настройки положения работают точнее.</div>
         </section>
 
-        <section class="settings-group settings-server-group">
+        <section class="settings-group settings-server-group founder-only-v257">
           <h3>🌐 Сервер проекта</h3>
           <label class="setting-field"><span><b>Backend URL</b><small>Скрытый сервер для AniList/Jikan и API-ключей. Для локального режима можно оставить пустым.</small></span><input id="settingBackendUrl" type="url" autocomplete="off" placeholder="https://myanimelist-api....workers.dev"></label>
           <div class="settings-server-actions"><button id="settingBackendTest" class="secondary" type="button">↻ Проверить сервер</button><span id="settingBackendStatus">Не настроен</span></div>
@@ -1076,6 +1076,6 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
   <script src="auth-config.js"></script>
-  <script src="app.js?v=25.6.1"></script>
+  <script src="app.js?v=25.7"></script>
 </body>
 </html>

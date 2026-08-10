@@ -3033,3 +3033,47 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
 .senime-v25 .catalog-poster-wrap>.catalog-owned-badge,
 .senime-v25 .catalog-poster-wrap>.catalog-airing-badge{z-index:2!important}
 .senime-v25 .catalog-poster-wrap>.catalog-poster-actions{z-index:3!important}
+
+
+/* ==========================================================================\n   SENIME V25.7 · release cleanup\n   ========================================================================== */
+/* Developer plumbing is not part of the public viewing UI. */
+body:not(.senime-founder-v257) .founder-only-v257{display:none!important}
+.release-hidden-v257{display:none!important}
+
+/* One favorite should still look like one poster card, not a full-width banner. */
+.senime-v25 .profile-favorites-grid.style-posters,
+.senime-v25 .profile-favorites-grid:not(.style-cards):not(.style-compact){
+  grid-template-columns:repeat(var(--fav-cols,6),minmax(110px,150px))!important;
+  justify-content:start!important;
+}
+
+/* 'Watch together' remains visible as a roadmap hint, but not as a primary CTA. */
+.senime-v25 .watch-party-soon-v257{
+  background:transparent!important;
+  border-color:rgba(255,255,255,.09)!important;
+  color:#aaa7b2!important;
+  box-shadow:none!important;
+}
+.senime-v25 .watch-party-soon-v257 span{color:#777481!important}
+
+/* Technical metadata stays quiet on ordinary anime pages. */
+.senime-v25 .detail-description-source{font-size:8px!important;opacity:.46!important}
+.senime-v25 .detail-extra{font-size:10px!important;color:#8f8d98!important}
+
+/* No empty status line after a successful silent background migration. */
+.message:empty{display:none!important}
+
+/* Guest hero focuses on joining / browsing instead of file-management tools. */
+body.account-guest-v236 #exportBtn,
+body.account-guest-v236 #backupBtn,
+body.account-guest-v236 #importBtn,
+body.account-guest-v236 #coversBtn{display:none!important}
+
+@media(max-width:900px){
+  .senime-v25 .profile-favorites-grid.style-posters,
+  .senime-v25 .profile-favorites-grid:not(.style-cards):not(.style-compact){grid-template-columns:repeat(3,minmax(100px,145px))!important}
+}
+@media(max-width:560px){
+  .senime-v25 .profile-favorites-grid.style-posters,
+  .senime-v25 .profile-favorites-grid:not(.style-cards):not(.style-compact){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}

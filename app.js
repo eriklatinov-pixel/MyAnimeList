@@ -1581,10 +1581,10 @@ function renderDetailPage(e,m,section){
   $('#detailBadges').innerHTML=[avg?`<span class="detail-badge score">⭐ ${avg}</span>`:'',`<span class="detail-badge">${esc(humanFormat(m?.format||e.format))}</span>`,(m?.seasonYear||e.year)?`<span class="detail-badge">📅 ${esc(m?.seasonYear||e.year)}</span>`:'',m?.status?`<span class="detail-badge">${esc(humanStatus(m.status))}</span>`:''].join('');
   const studio=m?.studios?.nodes?.map(x=>x.name).filter(Boolean).join(', ')||'—';
   const ep=m?.episodes??e.episodes; const duration=m?.duration?`${m.duration} мин.`:'—';
-  $('#detailFacts').innerHTML=[['Эпизоды',ep??'не объявлено'],['Длительность',duration],['Студия',studio],['Начало',formatDateObj(m?.startDate)],['Популярность',m?.popularity?Number(m.popularity).toLocaleString('ru-RU'):'—'],['MAL ID',e.mal_id||'—']].map(([a,b])=>`<div class="detail-fact"><small>${esc(a)}</small><strong>${esc(b)}</strong></div>`).join('');
+  $('#detailFacts').innerHTML=[['Эпизоды',ep??'не объявлено'],['Длительность',duration],['Студия',studio],['Начало',formatDateObj(m?.startDate)],['Популярность',m?.popularity?Number(m.popularity).toLocaleString('ru-RU'):'—']].map(([a,b])=>`<div class="detail-fact"><small>${esc(a)}</small><strong>${esc(b)}</strong></div>`).join('');
   $('#detailGenres').innerHTML=(m?.genres||[]).map(g=>`<span class="genre-chip">${esc(g)}</span>`).join('');
   $('#detailDescription').textContent=stripHtmlText(m?.description)||'Описание пока не найдено.';
-  $('#detailExtra').innerHTML=`<strong>Источник:</strong> ${esc(m?.source||'—')}<br><strong>Твоя характеристика:</strong> ${esc(e.descriptor||'—')}<br><strong>Твой эмодзи:</strong> ${esc(e.emoji||'—')}`;
+  $('#detailExtra').innerHTML=`<strong>Характеристика:</strong> ${esc(e.descriptor||'—')}<br><strong>Эмодзи:</strong> ${esc(e.emoji||'—')}`;
   $('#detailUserScore').value=e.score??''; $('#detailProgress').max=ep||9999; $('#detailProgress').value=e.progress??0; $('#detailSection').innerHTML=detailSectionOptions(e,section); updateOldExternalButton(e,m);
 }
 function closeDetails(){ $('#detailModal').classList.add('hidden'); document.body.style.overflow=''; openedDetail=null; }
@@ -3169,7 +3169,7 @@ async function syncExistingFranchisesV91({force=false,auto=false}={}){
       await sleepV91(force?300:650);
     }
     saveData();renderAll();
-    safeSyncMessageV91(changed?`Готово: ${changed} ${changed===1?'тайтл обновлён':'тайтлов обновлено'} до формата «все сезоны вместе».`:'Данные проверены — новых объединений не понадобилось.','ok');
+    if(changed)safeSyncMessageV91(`Готово: ${changed} ${changed===1?'тайтл обновлён':'тайтлов обновлено'} до формата «все сезоны вместе».`,'ok');else setMessage('');
   }finally{franchiseSyncRunningV91=false;}
 }
 window.syncExistingFranchisesV91=syncExistingFranchisesV91;
@@ -10317,7 +10317,7 @@ function ensureListToolbarV25(){
   const root=$('#lists');if(!root||$('#listToolbarV25'))return;
   root.insertAdjacentHTML('beforebegin',`<section id="listToolbarV25" class="list-toolbar-v25 panel"><div><span>МОЙ СПИСОК · ТВОИ ПРАВИЛА</span><h2>Библиотека, которую можно настроить под себя</h2><p>Базовые статусы остаются для прогресса Senime, а названия, порядок и личные полки — твои.</p></div><div class="list-toolbar-stats-v25"><b id="listManualStatV25">0<small>просмотрено</small></b><b class="verified" id="listVerifiedStatV25">0 ✓<small>verified</small></b><button type="button" onclick="openListStudioV25()">✦ Настроить список</button></div></section>`);
 }
-function updateListToolbarV25(){ensureListToolbarV25();const a=$('#listManualStatV25'),b=$('#listVerifiedStatV25');if(a)a.innerHTML=`${manualCompletedCountV25()}<small>просмотрено</small>`;if(b)b.innerHTML=`${verifiedTitleCountV25()} ✓<small>verified</small>`;}
+function updateListToolbarV25(){ensureListToolbarV25();const a=$('#listManualStatV25'),b=$('#listVerifiedStatV25'),signed=typeof accountSignedInV236==='function'?accountSignedInV236():!!accountSessionV23?.access_token;if(a)a.innerHTML=`${signed?manualCompletedCountV25():0}<small>просмотрено</small>`;if(b)b.innerHTML=`${signed?verifiedTitleCountV25():0} ✓<small>verified</small>`;}
 function listSectionHtmlV25(section,entries,pref){
   const view=pref.view||'grid',count=entries.length;
   return `<section class="anime-section list-section-v25 view-${view}" id="section-${section}" data-v25-section="${section}"><header class="list-section-head-v25"><div class="list-section-title-v25"><i>${esc(pref.emoji||'•')}</i><span><small>СИСТЕМНЫЙ РАЗДЕЛ</small><h2>${esc(pref.name||section)}</h2></span><b>${count}</b></div><button class="list-section-edit-v25" type="button" onclick="openListStudioV25('${section}')" title="Настроить раздел">•••</button></header><div class="anime-grid">${count?entries.map((e,i)=>animeCard(e,section,i)).join(''):'<div class="empty list-empty-v25">Пока пусто. Добавь сюда аниме из поиска или каталога.</div>'}</div></section>`;
@@ -11130,3 +11130,18 @@ setTimeout(()=>{
 
 window.SENIME_BUILD=SENIME_V2561;
 console.info('Senime V25.6.1 catalog poster hard fix ready');
+
+
+/* ==========================================================================\n   SENIME V25.7 · RELEASE CLEANUP\n   - founder-only developer controls\n   - guest counters never leak account state\n   - calmer anime detail metadata\n   - favorites keep card size even when only one is selected\n   ========================================================================== */
+const SENIME_V257='25.7';
+function applyReleaseFounderUiV257(){
+  let founder=false;try{founder=!!founderSessionV245?.()}catch{}
+  document.body.classList.toggle('senime-founder-v257',founder);
+  updateListToolbarV25?.();
+}
+const renderAccountChromeBeforeV257=renderAccountChromeV23;
+renderAccountChromeV23=function(){const out=renderAccountChromeBeforeV257?.apply(this,arguments);setTimeout(applyReleaseFounderUiV257,0);return out};
+setTimeout(applyReleaseFounderUiV257,0);
+setTimeout(applyReleaseFounderUiV257,700);
+window.SENIME_BUILD=SENIME_V257;
+console.info('Senime V25.7 release cleanup ready');
