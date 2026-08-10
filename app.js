@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.5';
+const SENIME_V25='25.6';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');
@@ -10777,7 +10777,7 @@ console.info('Senime V25.4 profile + collection reliability ready');
    - frame changes re-sync the public profile immediately
    - public frame class is allow-listed before touching the DOM
    ========================================================================== */
-const SENIME_V255='25.5';
+const SENIME_V255='25.6';
 function profileFrameClassV255(value){
   const v=String(value||'');
   return PROFILE_SHOP_V16.some(x=>x.type==='frame'&&x.className===v)?v:'';
@@ -10848,3 +10848,137 @@ if(typeof buyOrEquipCosmeticV16==='function'){
 setTimeout(()=>{try{renderProfileAvatarV163?.()}catch{}},80);
 window.SENIME_BUILD=SENIME_V255;
 console.info('Senime V25.5 cosmetic frames ready');
+
+
+/* ==========================================================================
+   SENIME V25.6 · CATALOG SOURCE + COVER RELIABILITY
+   - restores AniList as the primary catalog source (Jikan remains fallback)
+   - one consistent global catalog count instead of source-local totals
+   - eager-loads visible posters and retries alternate cover URLs on failure
+   - never leaves a failed poster as an unexplained grey rectangle
+   ========================================================================== */
+const SENIME_V256='25.6';
+
+function catalogCoverCandidatesV256(m){
+  const out=[];
+  const add=v=>{v=String(v||'').trim();if(!v)return;v=v.replace(/^http:\/\//i,'https://');if(!out.includes(v))out.push(v);};
+  for(const v of (m?.__coverCandidatesV256||[]))add(v);
+  add(m?.coverImage?.extraLarge);add(m?.coverImage?.large);add(m?.coverImage?.medium);
+  return out;
+}
+window.catalogCoverCandidatesV256=catalogCoverCandidatesV256;
+
+// Keep every Jikan cover variant. Previously we kept only one WebP branch, so a
+// single failed CDN variant could turn the whole catalog into grey rectangles.
+if(typeof catalogJikanMediaV11==='function'){
+  const catalogJikanMediaBeforeV256=catalogJikanMediaV11;
+  catalogJikanMediaV11=function(j){
+    const m=catalogJikanMediaBeforeV256(j);
+    m.__coverCandidatesV256=[
+      j?.images?.webp?.large_image_url,
+      j?.images?.jpg?.large_image_url,
+      j?.images?.webp?.image_url,
+      j?.images?.jpg?.image_url,
+      j?.images?.webp?.small_image_url,
+      j?.images?.jpg?.small_image_url
+    ].filter(Boolean);
+    return m;
+  };
+}
+
+function catalogPosterLoadedV256(img){
+  if(!img)return;
+  img.dataset.loaded='1';
+}
+window.catalogPosterLoadedV256=catalogPosterLoadedV256;
+
+function catalogPosterFallbackV256(img){
+  if(!img)return;
+  const card=img.closest?.('[data-catalog-id]');
+  const key=Number(card?.dataset?.catalogId||0);
+  const m=catalogStateV10?.media?.get?.(key);
+  const candidates=catalogCoverCandidatesV256(m);
+  let i=Number(img.dataset.coverTry||0)+1;
+  while(i<candidates.length && candidates[i]===img.currentSrc)i++;
+  if(i<candidates.length){
+    img.dataset.coverTry=String(i);
+    img.src=candidates[i];
+    return;
+  }
+  const ph=document.createElement('div');
+  ph.className='catalog-poster-placeholder';
+  ph.innerHTML='<span style="font-size:12px;font-weight:900;opacity:.52;text-align:center;padding:12px">Нет обложки</span>';
+  img.replaceWith(ph);
+}
+window.catalogPosterFallbackV256=catalogPosterFallbackV256;
+
+catalogCardV10=function(m,{recommendation=false,why='',eager=false}={}){
+  const key=catalogMediaKeyV11(m);if(!key)return '';
+  catalogStateV10.media.set(key,m);
+  const candidates=catalogCoverCandidatesV256(m),cover=candidates[0]||'',title=pickTitle(m),score=m.averageScore?`★ ${(m.averageScore/10).toFixed(1)}`:'',owned=catalogOwnedInfoV10(m),ownedText=owned?SECTION_TITLES[owned.section]?.replace(/^[^ ]+\s*/,'')||'В списке':'',airing=String(m.status||'').toUpperCase()==='RELEASING'&&!owned,statusBadge=owned?`<span class="catalog-owned-badge">✓ ${esc(ownedText)}</span>`:(airing?`<span class="catalog-airing-badge">● Онгоинг</span>`:''),addLabel=owned?'Открыть':(m.format==='MOVIE'?'+ Фильм':'+ В список');
+  const poster=cover?`<img class="catalog-poster" src="${esc(cover)}" alt="${esc(title)}" loading="${eager?'eager':'lazy'}" decoding="async" referrerpolicy="no-referrer" data-cover-try="0" onload="catalogPosterLoadedV256(this)" onerror="catalogPosterFallbackV256(this)">`:`<div class="catalog-poster-placeholder"><span style="font-size:12px;font-weight:900;opacity:.52">Нет обложки</span></div>`;
+  return `<article class="catalog-card ${recommendation?'catalog-rec-card':''}" data-catalog-id="${key}"><div class="catalog-poster-wrap"><button type="button" onclick="openCatalogMediaV10(${key})" style="position:absolute;inset:0;border:0;padding:0;background:transparent;z-index:1" aria-label="Открыть ${esc(title)}"></button>${poster}${score?`<span class="catalog-score-badge">${score}</span>`:''}${statusBadge}<div class="catalog-poster-actions"><button type="button" onclick="event.stopPropagation();openCatalogMediaV10(${key})">Подробнее</button><button class="primary" type="button" onclick="event.stopPropagation();catalogAddMenuV10(${key})">${addLabel}</button></div></div><div class="catalog-card-title">${esc(title)}</div><div class="catalog-card-meta">${m.seasonYear?`<span class="year">${m.seasonYear}</span><span>·</span>`:''}<span>${esc(catalogFormatTextV10(m))}</span></div>${why?`<div class="catalog-why">${esc(why)}</div>`:''}</article>`;
+};
+window.catalogCardV10=catalogCardV10;
+
+function catalogNormalizeCountV256(){
+  const el=$('#catalogResultCount');if(!el)return;
+  const recMode=catalogStateV10.mode==='recommendations';
+  const arr=recMode?catalogStateV10.recommendations:catalogStateV10.items;
+  if(recMode){el.textContent=`${arr.length} рекомендаций`;return;}
+  if(!arr.length)return;
+  const total=Number(catalogUniverseV12?.total||0);
+  const source=String($('#catalogSourceStatus')?.textContent||'').trim();
+  el.innerHTML=`${arr.length} загружено${total?` · ${fmtNumV12(total)}+ в каталоге`:''}${source?`<span class="catalog-source-note">${esc(source)}</span>`:''}`;
+}
+window.catalogNormalizeCountV256=catalogNormalizeCountV256;
+
+catalogRenderGridV10=function(){
+  const grid=$('#catalogGrid'),empty=$('#catalogEmpty'),load=$('#catalogLoadMore');if(!grid)return;
+  const recMode=catalogStateV10.mode==='recommendations';
+  const arr=recMode?catalogStateV10.recommendations:catalogStateV10.items;
+  grid.innerHTML=arr.map((x,i)=>{const m=x?.media||x;return catalogCardV10(m,{recommendation:recMode,why:x?.why||'',eager:i<24}).replace('<article class="catalog-card','<article style="animation-delay:'+Math.min(i,20)*18+'ms" class="catalog-card');}).join('');
+  empty.classList.toggle('hidden',arr.length>0);load.classList.toggle('hidden',recMode||!catalogStateV10.hasNext);
+  catalogNormalizeCountV256();
+};
+window.catalogRenderGridV10=catalogRenderGridV10;
+
+if(typeof catalogRenderPersonalV10==='function'){
+  catalogRenderPersonalV10=function(){
+    const rail=$('#catalogPersonalRail');if(!rail)return;
+    const items=catalogStateV10.recommendations.slice(0,10);catalogRegisterItemsV10(items);
+    rail.innerHTML=items.length?items.map((x,i)=>catalogCardV10(x.media,{recommendation:true,why:x.why,eager:i<10})).join(''):'<div class="catalog-empty" style="min-height:180px;min-width:100%"><span>✨</span><b>Пока мало данных</b><p>Оцени несколько просмотренных аниме — рекомендации станут точнее.</p></div>';
+    const chips=$('#catalogTasteChips');if(chips)chips.innerHTML=(catalogStateV10.tasteGenres||[]).slice(0,6).map(x=>`<span class="catalog-taste-chip"><strong>${esc(x.name)}</strong> ${Math.round(x.value*10)/10}</span>`).join('');
+    const h=$('#catalogTasteHint');if(h){const src=(catalogStateV10.tasteSources||[]).slice(0,3);h.textContent=src.length?`Основано прежде всего на: ${src.join(' · ')}. Запланированное не влияет на вкус.`:'Поставь оценки просмотренному — тогда подборка будет точнее.';}
+  };
+  window.catalogRenderPersonalV10=catalogRenderPersonalV10;
+}
+
+// V20.2 made Jikan the primary catalog source. That is why the UI could show
+// a ~5k source-local total while the universe counter correctly showed 65k+.
+// Restore the already-tested AniList-first V12 loader; Jikan stays its reserve.
+if(typeof catalogFetchPageBeforeV202==='function'){
+  catalogFetchPageV10=async function(opts={}){
+    const typed=String($('#catalogSearch')?.value||'').trim();
+    const universePromise=Number(catalogUniverseV12?.total||0)>0?Promise.resolve(catalogUniverseV12):catalogLoadUniverseV12().catch(()=>null);
+    const out=await catalogFetchPageBeforeV202(opts);
+    await universePromise;
+    if(typed&&$('#catalogResultsTitle'))$('#catalogResultsTitle').textContent=`Поиск: ${typed}`;
+    catalogNormalizeCountV256();
+    return out;
+  };
+  window.catalogFetchPageV10=catalogFetchPageV10;
+}
+
+// Replace stale source-local count text after a cached universe count arrives.
+const catalogUpdateUniverseBeforeV256=catalogUpdateUniverseUIV12;
+catalogUpdateUniverseUIV12=function(){
+  const out=catalogUpdateUniverseBeforeV256();
+  catalogNormalizeCountV256();
+  return out;
+};
+window.catalogUpdateUniverseUIV12=catalogUpdateUniverseUIV12;
+
+window.SENIME_BUILD=SENIME_V256;
+document.documentElement.dataset.senimeBuild=SENIME_V256;
+console.info('Senime V25.6 catalog covers + count consistency ready');
