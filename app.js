@@ -10982,3 +10982,151 @@ window.catalogUpdateUniverseUIV12=catalogUpdateUniverseUIV12;
 window.SENIME_BUILD=SENIME_V256;
 document.documentElement.dataset.senimeBuild=SENIME_V256;
 console.info('Senime V25.6 catalog covers + count consistency ready');
+
+/* ========================================================================== 
+   SENIME V25.6.1 · CATALOG POSTER HARD FIX
+   - removes the full-poster overlay button that could visually cover posters
+   - forces poster images into their own visible layer
+   - accepts every historical cover field shape used by Senime providers
+   - drops stale page/recommendation caches once so broken cached media is refetched
+   - repairs a failed poster through MAL/Shikimori fallback when possible
+   ========================================================================== */
+const SENIME_V2561='25.6.1';
+
+function catalogCoverCandidatesV2561(m){
+  const out=[];
+  const add=v=>{
+    if(v&&typeof v==='object')return;
+    v=String(v||'').trim();
+    if(!v)return;
+    v=v.replace(/^http:\/\//i,'https://');
+    if(!out.includes(v))out.push(v);
+  };
+  for(const v of (m?.__coverCandidatesV256||[]))add(v);
+  add(m?.coverImage?.extraLarge);add(m?.coverImage?.large);add(m?.coverImage?.medium);
+  add(m?.cover);add(m?.image);add(m?.poster);add(m?.posterUrl);add(m?.imageUrl);
+  add(m?.images?.webp?.large_image_url);add(m?.images?.jpg?.large_image_url);
+  add(m?.images?.webp?.image_url);add(m?.images?.jpg?.image_url);
+  add(m?.images?.webp?.small_image_url);add(m?.images?.jpg?.small_image_url);
+  return out;
+}
+window.catalogCoverCandidatesV2561=catalogCoverCandidatesV2561;
+
+function catalogPosterKeyV2561(ev,key){
+  if(ev.key!=='Enter'&&ev.key!==' ')return;
+  if(ev.target?.closest?.('.catalog-poster-actions'))return;
+  ev.preventDefault();
+  openCatalogMediaV10(Number(key));
+}
+window.catalogPosterKeyV2561=catalogPosterKeyV2561;
+
+function catalogPosterPlaceholderV2561(text='Нет обложки'){
+  const ph=document.createElement('div');
+  ph.className='catalog-poster-placeholder catalog-poster-placeholder-v2561';
+  ph.innerHTML=`<span>${esc(text)}</span>`;
+  return ph;
+}
+
+async function catalogRepairPosterV2561(img,key){
+  if(!img||img.dataset.coverRepair==='1')return false;
+  img.dataset.coverRepair='1';
+  const m=catalogStateV10?.media?.get?.(Number(key));
+  if(!m)return false;
+  let repaired=null;
+  try{
+    if(m.idMal&&typeof jikanFetchV6==='function'){
+      const raw=await jikanFetchV6(`/anime/${Number(m.idMal)}/full`).catch(()=>null);
+      const j=raw?.data||raw;
+      if(j?.images){
+        const jm=typeof catalogJikanMediaV11==='function'?catalogJikanMediaV11(j):null;
+        if(jm)repaired=jm;
+      }
+    }
+    if(!repaired&&m.idMal&&typeof shikiGetV203==='function'&&typeof shikiMediaV203==='function'){
+      const s=await shikiGetV203(`/animes/${Number(m.idMal)}`).catch(()=>null);
+      if(s)repaired=shikiMediaV203(s,{full:true});
+    }
+    const fresh=catalogCoverCandidatesV2561(repaired);
+    if(fresh.length){
+      m.__coverCandidatesV256=[...fresh,...catalogCoverCandidatesV2561(m)].filter((v,i,a)=>a.indexOf(v)===i);
+      if(repaired?.coverImage)m.coverImage={...(m.coverImage||{}),...repaired.coverImage};
+      img.dataset.coverTry='0';
+      img.src=fresh[0];
+      return true;
+    }
+  }catch(e){console.warn('V25.6.1 poster repair',e);}
+  return false;
+}
+window.catalogRepairPosterV2561=catalogRepairPosterV2561;
+
+async function catalogPosterFallbackV2561(img){
+  if(!img)return;
+  const card=img.closest?.('[data-catalog-id]');
+  const key=Number(card?.dataset?.catalogId||0);
+  const m=catalogStateV10?.media?.get?.(key);
+  const candidates=catalogCoverCandidatesV2561(m);
+  let i=Number(img.dataset.coverTry||0)+1;
+  const current=String(img.currentSrc||img.src||'');
+  while(i<candidates.length&&String(candidates[i])===current)i++;
+  if(i<candidates.length){
+    img.dataset.coverTry=String(i);
+    img.src=candidates[i];
+    return;
+  }
+  if(await catalogRepairPosterV2561(img,key))return;
+  img.replaceWith(catalogPosterPlaceholderV2561());
+}
+window.catalogPosterFallbackV2561=catalogPosterFallbackV2561;
+
+catalogCardV10=function(m,{recommendation=false,why='',eager=false}={}){
+  const key=catalogMediaKeyV11(m);if(!key)return '';
+  catalogStateV10.media.set(key,m);
+  const candidates=catalogCoverCandidatesV2561(m),cover=candidates[0]||'',title=pickTitle(m),score=m.averageScore?`★ ${(m.averageScore/10).toFixed(1)}`:'',owned=catalogOwnedInfoV10(m),ownedText=owned?SECTION_TITLES[owned.section]?.replace(/^[^ ]+\s*/,'')||'В списке':'',airing=String(m.status||'').toUpperCase()==='RELEASING'&&!owned,statusBadge=owned?`<span class="catalog-owned-badge">✓ ${esc(ownedText)}</span>`:(airing?`<span class="catalog-airing-badge">● Онгоинг</span>`:''),addLabel=owned?'Открыть':(m.format==='MOVIE'?'+ Фильм':'+ В список');
+  const poster=cover
+    ?`<img class="catalog-poster catalog-poster-v2561" src="${esc(cover)}" alt="${esc(title)}" loading="${eager?'eager':'lazy'}" ${eager?'fetchpriority="high"':''} decoding="async" data-cover-try="0" onerror="catalogPosterFallbackV2561(this)">`
+    :`<div class="catalog-poster-placeholder catalog-poster-placeholder-v2561"><span>Нет обложки</span></div>`;
+  return `<article class="catalog-card ${recommendation?'catalog-rec-card':''}" data-catalog-id="${key}"><div class="catalog-poster-wrap catalog-poster-click-v2561" role="button" tabindex="0" onclick="openCatalogMediaV10(${key})" onkeydown="catalogPosterKeyV2561(event,${key})" aria-label="Открыть ${esc(title)}">${poster}${score?`<span class="catalog-score-badge">${score}</span>`:''}${statusBadge}<div class="catalog-poster-actions"><button type="button" onclick="event.stopPropagation();openCatalogMediaV10(${key})">Подробнее</button><button class="primary" type="button" onclick="event.stopPropagation();catalogAddMenuV10(${key})">${addLabel}</button></div></div><div class="catalog-card-title">${esc(title)}</div><div class="catalog-card-meta">${m.seasonYear?`<span class="year">${m.seasonYear}</span><span>·</span>`:''}<span>${esc(catalogFormatTextV10(m))}</span></div>${why?`<div class="catalog-why">${esc(why)}</div>`:''}</article>`;
+};
+window.catalogCardV10=catalogCardV10;
+
+catalogRenderGridV10=function(){
+  const grid=$('#catalogGrid'),empty=$('#catalogEmpty'),load=$('#catalogLoadMore');if(!grid)return;
+  const recMode=catalogStateV10.mode==='recommendations';
+  const arr=recMode?catalogStateV10.recommendations:catalogStateV10.items;
+  grid.innerHTML=arr.map((x,i)=>{const m=x?.media||x;return catalogCardV10(m,{recommendation:recMode,why:x?.why||'',eager:i<30}).replace('<article class="catalog-card','<article style="animation-delay:'+Math.min(i,20)*18+'ms" class="catalog-card');}).join('');
+  empty.classList.toggle('hidden',arr.length>0);load.classList.toggle('hidden',recMode||!catalogStateV10.hasNext);
+  catalogNormalizeCountV256?.();
+};
+window.catalogRenderGridV10=catalogRenderGridV10;
+
+if(typeof catalogRenderPersonalV10==='function'){
+  catalogRenderPersonalV10=function(){
+    const rail=$('#catalogPersonalRail');if(!rail)return;
+    const items=catalogStateV10.recommendations.slice(0,10);catalogRegisterItemsV10(items);
+    rail.innerHTML=items.length?items.map((x,i)=>catalogCardV10(x.media,{recommendation:true,why:x.why,eager:true})).join(''):'<div class="catalog-empty" style="min-height:180px;min-width:100%"><span>✨</span><b>Пока мало данных</b><p>Оцени несколько просмотренных аниме — рекомендации станут точнее.</p></div>';
+    const chips=$('#catalogTasteChips');if(chips)chips.innerHTML=(catalogStateV10.tasteGenres||[]).slice(0,6).map(x=>`<span class="catalog-taste-chip"><strong>${esc(x.name)}</strong> ${Math.round(x.value*10)/10}</span>`).join('');
+    const h=$('#catalogTasteHint');if(h){const src=(catalogStateV10.tasteSources||[]).slice(0,3);h.textContent=src.length?`Основано прежде всего на: ${src.join(' · ')}. Запланированное не влияет на вкус.`:'Поставь оценки просмотренному — тогда подборка будет точнее.';}
+  };
+  window.catalogRenderPersonalV10=catalogRenderPersonalV10;
+}
+
+// Old catalog page cache could preserve provider objects created while poster mapping was broken.
+// Purge it exactly once after this fix; user lists and profile data are untouched.
+try{
+  if(localStorage.getItem('senimeCatalogPosterRepairV2561')!=='1'){
+    localStorage.removeItem('animeCatalogLastGoodV12');
+    localStorage.removeItem('animeCatalogRecommendationsV10');
+    localStorage.setItem('senimeCatalogPosterRepairV2561','1');
+  }
+}catch{}
+
+setTimeout(()=>{
+  try{
+    if(document.body.classList.contains('catalog-mode')&&catalogStateV10?.items?.length){
+      catalogStateV10.items=[];catalogStateV10.page=1;catalogFetchPageV10?.();
+    }
+  }catch(e){console.warn('V25.6.1 catalog refresh',e);}
+},180);
+
+window.SENIME_BUILD=SENIME_V2561;
+console.info('Senime V25.6.1 catalog poster hard fix ready');

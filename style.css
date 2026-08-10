@@ -3012,3 +3012,24 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
 
 /* Shop preview remains a preview, not a separate implementation. */
 .shop-preview .frame-rose,.shop-preview .frame-violet,.shop-preview .frame-gold,.shop-preview .frame-cyber{position:relative}
+
+/* SENIME V25.6.1 · catalog poster hard layering fix */
+.senime-v25 .catalog-poster-wrap.catalog-poster-click-v2561{cursor:pointer;isolation:isolate}
+.senime-v25 .catalog-poster-wrap>.catalog-poster-v2561{
+  position:absolute!important;inset:0!important;z-index:0!important;
+  width:100%!important;height:100%!important;display:block!important;
+  object-fit:cover!important;opacity:1!important;visibility:visible!important;
+  background:#14151e!important;
+}
+.senime-v25 .catalog-poster-wrap>.catalog-poster-placeholder-v2561{
+  position:absolute!important;inset:0!important;z-index:0!important;
+  display:grid!important;place-items:center!important;
+  background:linear-gradient(145deg,#171821,#12131a)!important;
+}
+.senime-v25 .catalog-poster-placeholder-v2561 span{
+  color:#777683;font-size:11px;font-weight:850;letter-spacing:.01em;text-align:center;padding:12px
+}
+.senime-v25 .catalog-poster-wrap>.catalog-score-badge,
+.senime-v25 .catalog-poster-wrap>.catalog-owned-badge,
+.senime-v25 .catalog-poster-wrap>.catalog-airing-badge{z-index:2!important}
+.senime-v25 .catalog-poster-wrap>.catalog-poster-actions{z-index:3!important}
