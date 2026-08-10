@@ -2647,3 +2647,49 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
   .senime-v25 .public-profile-page-v243{padding:12px!important}.senime-v25 .public-profile-cover-v243{margin:-12px -12px 10px;height:105px}
   .senime-v25 .public-anime-grid-v243{grid-template-columns:repeat(3,minmax(0,1fr));justify-content:stretch}
 }
+
+
+/* ==========================================================================
+   SENIME V25.2 · CLEAN LIBRARY ACTIONS
+   ========================================================================== */
+.senime-v25 .anime-card{position:relative}
+/* V25.1 intentionally left the old row faintly visible. V25.2 removes it completely. */
+.senime-v25 .anime-card .card-actions{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+.senime-v25 .card-menu-trigger-v252{
+  position:absolute!important;
+  top:8px!important;
+  right:8px!important;
+  width:28px!important;
+  height:28px!important;
+  min-height:28px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:9px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#72717d!important;
+  font-size:14px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  letter-spacing:1px!important;
+  box-shadow:none!important;
+  opacity:.38!important;
+  z-index:4;
+}
+.senime-v25 .anime-card:hover .card-menu-trigger-v252,
+.senime-v25 .anime-card:focus-within .card-menu-trigger-v252{
+  opacity:1!important;
+  color:#d7d5df!important;
+  background:rgba(255,255,255,.055)!important;
+  border-color:rgba(255,255,255,.09)!important;
+}
+.senime-v25 .card-menu-trigger-v252:hover{transform:none!important;background:rgba(151,118,255,.10)!important;color:#fff!important}
+.senime-v25 .anime-card>div{padding-right:24px}
+.senime-v25 .anime-card .verified-title-badge-v25{max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.senime-v25 .anime-card-menu-actions-v252{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+.senime-v25 .anime-card-menu-actions-v252 button{min-height:39px!important;border-radius:10px!important;text-align:center!important}
+@media (max-width:620px){
+  .senime-v25 .card-menu-trigger-v252{opacity:.8!important;background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.06)!important}
+  .senime-v25 .anime-card-menu-actions-v252{grid-template-columns:1fr!important}
+}

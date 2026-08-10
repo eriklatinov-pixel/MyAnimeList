@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.1';
+const SENIME_V25='25.2';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');
@@ -10510,3 +10510,45 @@ setTimeout(()=>{if(senimeSignedV247?.())socialSyncPublicProfileV242?.().catch?.(
 
 /* Build proof only — concise and intentionally brand-only. */
 console.info(`Senime V${SENIME_V25} ready`);
+
+
+/* ========================================================================== 
+   SENIME V25.2 · LIBRARY ACTION MENU
+   Keep cards clean: one subtle menu trigger instead of five permanent buttons.
+   ========================================================================== */
+function openAnimeCardMenuV252(section,index){
+  const e=latestData.sections?.[section]?.[index];
+  if(!e)return;
+  const safeSection=String(section).replace(/'/g,"\\'");
+  const i=Number(index);
+  $('#modalTitle').textContent=e.title||'Аниме';
+  $('#modalText').textContent='Что сделать с этим тайтлом?';
+  $('#modalActions').classList.add('anime-card-menu-actions-v252');
+  $('#modalActions').innerHTML=`
+    <button onclick="closeModal();openDetails('${safeSection}',${i})">Открыть</button>
+    <button onclick="closeModal();openShelfPickerV25('${safeSection}',${i})">✦ Полки</button>
+    <button onclick="closeModal();openMove('${safeSection}',${i})">Переместить</button>
+    <button onclick="closeModal();editEntry('${safeSection}',${i})">✏️ Изменить</button>
+    <button onclick="closeModal();toggleQueue('${safeSection}',${i})">🗓️ Далее</button>
+    <button class="danger" onclick="closeModal();deleteEntry('${safeSection}',${i})">Удалить</button>`;
+  $('#modal').classList.remove('hidden');
+}
+window.openAnimeCardMenuV252=openAnimeCardMenuV252;
+
+const closeModalBeforeV252=closeModal;
+closeModal=function(){
+  $('#modalActions')?.classList.remove('anime-card-menu-actions-v252');
+  return closeModalBeforeV252();
+};
+window.closeModal=closeModal;
+
+const animeCardBeforeV252=animeCard;
+animeCard=function(e,s,i){
+  let html=animeCardBeforeV252(e,s,i);
+  const safeSection=String(s).replace(/'/g,"\\'");
+  html=html.replace(/<div class="card-actions">[\s\S]*?<\/div>/,`<button class="card-menu-trigger-v252" type="button" onclick="event.stopPropagation();openAnimeCardMenuV252('${safeSection}',${Number(i)})" aria-label="Действия с ${esc(e.title||'аниме')}" title="Действия">•••</button>`);
+  return html;
+};
+window.animeCard=animeCard;
+
+console.info('Senime V25.2 library cards cleaned');

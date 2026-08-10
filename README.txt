@@ -227,3 +227,11 @@ V25 отделяет verified UX и verified leaderboard-поля, но теку
 - Public profile widgets size to their content; small Watching blocks no longer consume full width.
 - Player chrome is quieter so the video remains the focal point.
 - Reduced blanket entrance animations and visual nesting.
+
+
+Senime V25.2 — CLEAN LIBRARY ACTIONS
+- Убрана постоянно видимая строка кнопок на карточках библиотеки.
+- На карточке остаётся только тихая кнопка •••; все действия открываются по клику в компактном меню.
+- На мобильном ••• всегда достаточно заметна.
+- Cache bust: app.js?v=25.2 / style.css?v=25.2.
+- SQL не нужен.
