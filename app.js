@@ -8202,7 +8202,7 @@ function publicApplyOwnerLayoutV244(pp){
     const x=Math.max(1,Math.min(12,Number(v.x)||1)),w=Math.max(1,Math.min(13-x,Number(v.w)||12));
     el.style.gridColumn=`${x} / span ${w}`;el.style.gridRow='auto';el.style.order=String((Number(v.y)||1)*20+x);maxOrder=Math.max(maxOrder,(Number(v.y)||1)*20+x);
   }
-  const watching=canvas.querySelector('.public-watching-widget-v243');if(watching){watching.style.gridColumn='1 / span 12';watching.style.gridRow='auto';watching.style.order=String(maxOrder+5)}
+  const watching=canvas.querySelector('.public-watching-widget-v243');if(watching){const wc=Array.isArray(pp?.watching)?pp.watching.length:0;watching.style.gridColumn=wc<=2?'1 / span 6':'1 / span 12';watching.style.gridRow='auto';watching.style.order=String(maxOrder+5)}
 }
 
 const socialOpenPublicProfileBeforeV244=socialOpenPublicProfileV242;
@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.0';
+const SENIME_V25='25.1';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');

@@ -216,3 +216,14 @@ SQL НИКОГДА не загружается на GitHub/Cloudflare Pages.
 
 Важно перед большим публичным запуском:
 V25 отделяет verified UX и verified leaderboard-поля, но текущий legacy watch/economy ledger всё ещё частично живёт в клиентском user_state. Это НЕ финальная anti-cheat архитектура для платных функций/серьёзных соревнований. Перед включением реальных платежей нужен server-authoritative payment webhook и отдельный серверный verified-watch/economy ledger.
+
+
+=== V25.1 · QUIET UI POLISH ===
+- Profile now uses the desktop width instead of looking like a small modal.
+- Profile tabs and utility controls are neutral; gradients are reserved for primary actions.
+- Collection grid is responsive and no longer forms a horizontal wall of cards.
+- Card actions are progressively disclosed on desktop hover/focus, always visible on touch.
+- Library cards are cleaner and place title/progress before controls.
+- Public profile widgets size to their content; small Watching blocks no longer consume full width.
+- Player chrome is quieter so the video remains the focal point.
+- Reduced blanket entrance animations and visual nesting.

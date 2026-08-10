@@ -2401,3 +2401,249 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
   .senime-v25 .detail-shell{border-radius:20px}.senime-v25 .detail-hero{min-height:300px}.senime-v25 .detail-hero-copy{padding:82px 18px 30px}.senime-v25 .detail-hero h2{font-size:38px}.senime-v25 .detail-body{padding:0 15px 25px}.senime-v25 .detail-sidebar{grid-template-columns:105px 1fr}.senime-v25 .detail-cover{width:105px;height:149px}.senime-v25 .detail-main{padding-top:0}
   .senime-v25 .completion-shell-v25{padding:14px;border-radius:20px}.senime-v25 .completion-hero-v25{grid-template-columns:78px 1fr;gap:12px;padding-right:30px}.senime-v25 .completion-cover-v25{width:78px;height:110px}.senime-v25 .completion-hero-v25 h2{font-size:25px}.senime-v25 .completion-kpis-v25{grid-template-columns:repeat(2,1fr)}.senime-v25 .completion-reward-v25{align-items:stretch;flex-direction:column}.senime-v25 .completion-actions-v25{display:grid;grid-template-columns:1fr 1fr}.senime-v25 .completion-actions-v25 button{white-space:normal}
 }
+
+/* ==========================================================================\n   SENIME V25.1 · QUIET UI POLISH\n   Cleaner composition, less chrome, fewer always-visible controls.\n   ========================================================================== */
+.senime-v25{
+  --v251-surface:#101118;
+  --v251-surface-2:#13141c;
+  --v251-line:rgba(255,255,255,.075);
+  --v251-line-strong:rgba(255,255,255,.12);
+  --v251-muted:#92919d;
+}
+
+/* Motion should feel alive, not like every panel is flying in. */
+.senime-v25 .panel,
+.senime-v25 .anime-section,
+.senime-v25 .catalog-card,
+.senime-v25 .home-side-card,
+.senime-v25 .profile-card-v16{animation:none!important}
+.senime-v25 .anime-card,
+.senime-v25 .collection-card,
+.senime-v25 .public-anime-card-v243,
+.senime-v25 button{transition:transform .16s ease,border-color .16s ease,background-color .16s ease,opacity .16s ease,color .16s ease!important}
+
+/* Generic secondary controls: neutral by default. Keep gradients for real primary CTAs. */
+.senime-v25 .profile-tabs button,
+.senime-v25 .profile-head-actions button,
+.senime-v25 .profile-collection-filters button,
+.senime-v25 .collection-toolbar-v247 button,
+.senime-v25 .collection-card-controls-v2481 button,
+.senime-v25 .watch-top-v15 button,
+.senime-v25 .watch-topbar-v18 button,
+.senime-v25 .watch-controls-v18 button,
+.senime-v25 .watch-controls-v15 button{
+  background:rgba(255,255,255,.035)!important;
+  border:1px solid var(--v251-line)!important;
+  color:#b9b8c2!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+
+/* -------------------- library: content first, controls second -------------------- */
+.senime-v25 .list-toolbar-v25{
+  padding:22px 24px;
+  border-radius:22px;
+  background:linear-gradient(110deg,rgba(146,118,255,.075),rgba(17,18,26,.96) 40%,rgba(255,255,255,.012));
+}
+.senime-v25 .list-toolbar-v25::before{opacity:.55}
+.senime-v25 .list-section-v25{border-radius:20px;box-shadow:none!important}
+.senime-v25 .list-section-head-v25{padding:15px 17px 13px;background:rgba(255,255,255,.012)}
+.senime-v25 .list-section-v25 .anime-grid{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:8px;padding:10px}
+.senime-v25 .anime-card{
+  grid-template-columns:78px minmax(0,1fr);
+  min-height:118px;
+  border-radius:14px;
+  padding:9px;
+  background:#101118;
+}
+.senime-v25 .anime-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,.17)}
+.senime-v25 .card-cover,.senime-v25 .card-cover-click{width:78px;height:108px;border-radius:10px}
+.senime-v25 .card-title-button{font-size:13px!important;line-height:1.25}
+.senime-v25 .card-line{font-size:9px!important;color:#7f7e8a!important;margin-top:4px}
+.senime-v25 .card-progress{margin-top:7px}
+.senime-v25 .card-actions{margin-top:7px;opacity:.12;transform:translateY(2px);pointer-events:none}
+.senime-v25 .anime-card:hover .card-actions,
+.senime-v25 .anime-card:focus-within .card-actions{opacity:1;transform:none;pointer-events:auto}
+.senime-v25 .card-actions button{font-size:9px!important;padding:5px 7px!important;min-height:28px!important}
+
+/* -------------------- own profile: make it a page, not a tiny modal -------------------- */
+.senime-v25 .profile-modal{
+  padding:12px!important;
+  background:rgba(5,6,10,.82)!important;
+  backdrop-filter:blur(14px)!important;
+}
+.senime-v25 .profile-shell{
+  width:min(1460px,calc(100vw - 24px))!important;
+  margin:0 auto 28px!important;
+  border-radius:22px!important;
+  border:1px solid var(--v251-line-strong)!important;
+  background:#0e0f15!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.5)!important;
+  overflow:hidden!important;
+}
+.senime-v25 .profile-head{
+  padding:18px 22px 14px!important;
+  background:linear-gradient(100deg,rgba(143,113,255,.09),rgba(255,255,255,.008) 48%,rgba(255,103,151,.025))!important;
+  border-bottom:0!important;
+}
+.senime-v25 .profile-avatar{width:68px;height:68px;border-radius:19px;box-shadow:none}
+.senime-v25 .profile-head h2{font-size:27px;margin:2px 0 5px}
+.senime-v25 .profile-status-line span{font-size:10px;padding:4px 7px;background:rgba(255,255,255,.035)}
+.senime-v25 .profile-head-actions{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.senime-v25 .profile-head-actions button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important;border-radius:10px!important}
+.senime-v25 .profile-close{width:36px!important;height:36px!important;padding:0!important}
+
+.senime-v25 .profile-progress-card{
+  margin:0 22px 10px!important;
+  padding:15px 17px!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.018)!important;
+  border-color:var(--v251-line)!important;
+  box-shadow:none!important;
+}
+.senime-v25 .profile-level-main strong{font-size:38px}
+.senime-v25 .profile-xp-track{height:7px;margin:10px 0 12px}
+.senime-v25 .profile-currencies{gap:7px}
+.senime-v25 .profile-currencies>div{padding:9px 11px;border-radius:12px;background:rgba(255,255,255,.02)}
+.senime-v25 .profile-currencies>div>span{font-size:16px}.senime-v25 .profile-currencies b{font-size:14px}.senime-v25 .profile-currencies small{font-size:9px}
+
+.senime-v25 .profile-tabs{
+  gap:3px!important;
+  padding:0 22px 9px!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+}
+.senime-v25 .profile-tabs button{
+  min-height:34px!important;
+  padding:7px 10px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  color:#85848f!important;
+}
+.senime-v25 .profile-tabs button:hover{background:rgba(255,255,255,.035)!important;color:#dddce4!important;transform:none!important}
+.senime-v25 .profile-tabs button.active{
+  background:rgba(155,129,255,.09)!important;
+  color:#ece9ff!important;
+  border-color:rgba(164,142,255,.19)!important;
+}
+.senime-v25 .profile-body{padding:16px 22px 24px!important;overflow:hidden}
+.senime-v25 .profile-section-head{margin:19px 0 10px}
+.senime-v25 .profile-section-head h3{font-size:18px!important}
+.senime-v25 .profile-section-head span{font-size:9px!important;color:#9789e0!important}
+.senime-v25 .profile-overview-blocks{gap:12px!important}
+.senime-v25 .profile-overview-block{
+  min-width:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.senime-v25 .profile-favorites-grid{grid-template-columns:repeat(auto-fill,minmax(120px,150px));gap:9px;justify-content:start}
+.senime-v25 .profile-overview-stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px!important}
+.senime-v25 .profile-overview-stats article{padding:12px!important;border-radius:12px!important;background:#11121a!important}
+.senime-v25 .profile-overview-stats article b{font-size:18px!important}.senime-v25 .profile-overview-stats article span{font-size:9px!important}
+.senime-v25 .profile-comment-composer,.senime-v25 .profile-comment-card{border-radius:13px;background:#101118;border-color:var(--v251-line)}
+
+/* Collection: responsive, no horizontal wall of cards. */
+.senime-v25 #profileTabCollection{min-width:0;overflow:hidden}
+.senime-v25 .profile-ticket-actions button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important}
+.senime-v25 .profile-collection-note{font-size:11px;line-height:1.55;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.012)}
+.senime-v25 .collection-toolbar-v247{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:7px!important;
+  margin:10px 0!important;
+}
+.senime-v25 .collection-search-v247{flex:1 1 260px;min-width:210px;height:38px}
+.senime-v25 .collection-toolbar-v247 select{flex:0 1 170px;min-width:125px;height:38px;padding:7px 9px!important;font-size:10px!important}
+.senime-v25 .collection-toolbar-v247 button{height:36px!important;min-height:36px!important;padding:6px 9px!important;font-size:10px!important;border-radius:10px!important}
+.senime-v25 .profile-collection-filters{margin:8px 0 11px;gap:5px}
+.senime-v25 .profile-collection-filters button{min-height:32px!important;padding:6px 9px!important;background:transparent!important}
+.senime-v25 .profile-collection-grid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr))!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.senime-v25 .collection-card{min-width:0!important;border-radius:14px;background:#101118;box-shadow:none!important}
+.senime-v25 .collection-card:hover{transform:translateY(-2px)}
+.senime-v25 .collection-card-copy{padding:8px 8px 9px}.senime-v25 .collection-card-copy strong{font-size:12px!important}.senime-v25 .collection-card-copy small{font-size:9px!important}
+.senime-v25 .collection-card-controls-v2481{gap:4px!important;padding:0 8px 8px!important;opacity:.10;pointer-events:none;transition:opacity .16s ease!important}
+.senime-v25 .collection-card:hover .collection-card-controls-v2481,.senime-v25 .collection-card:focus-within .collection-card-controls-v2481{opacity:1;pointer-events:auto}
+.senime-v25 .collection-card-controls-v2481 button{min-height:27px!important;padding:4px 5px!important;border-radius:8px!important}
+.senime-v25 .collection-card-controls-v2481 button b{display:none!important}.senime-v25 .collection-card-controls-v2481 button span{font-size:9px!important}
+
+/* -------------------- public profile: content-sized widgets, less empty acreage -------------------- */
+.senime-v25 .public-profile-modal-v242{padding:12px!important;background:rgba(5,6,10,.82)!important}
+.senime-v25 .public-profile-shell-v242,.senime-v25 .public-profile-shell-v242.public-profile-shell-v243{
+  width:min(1380px,calc(100vw - 24px))!important;
+  margin:0 auto 28px!important;
+  padding:0!important;
+  border-radius:22px!important;
+  overflow:hidden!important;
+  background:#0e0f15!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.5)!important;
+}
+.senime-v25 .public-profile-page-v243{padding:18px!important}
+.senime-v25 .public-profile-cover-v243{height:128px;margin:-18px -18px 12px;border-radius:21px 21px 0 0}
+.senime-v25 .public-profile-canvas-v243{gap:10px!important;align-items:start!important}
+.senime-v25 .public-profile-custom-layout-v244{grid-auto-flow:row dense!important}
+.senime-v25 .public-widget-v243{
+  min-height:0!important;
+  height:auto!important;
+  padding:14px 15px!important;
+  border-radius:15px!important;
+  background:#101118!important;
+  border-color:var(--v251-line)!important;
+  box-shadow:none!important;
+  align-self:start!important;
+}
+.senime-v25 .public-widget-head-v243{margin-bottom:9px}
+.senime-v25 .public-widget-head-v243 h3{font-size:17px!important}.senime-v25 .public-widget-head-v243 span{font-size:8px!important}
+.senime-v25 .public-anime-grid-v243{grid-template-columns:repeat(auto-fill,minmax(94px,112px));justify-content:start;gap:8px}
+.senime-v25 .public-anime-card-v243 b{font-size:9px}.senime-v25 .public-anime-card-v243 small{font-size:8px}
+.senime-v25 .public-tier-row-v244{min-height:60px;border-radius:11px}.senime-v25 .public-tier-label-v244{font-size:16px;padding:8px}.senime-v25 .public-tier-items-v244{padding:6px}
+.senime-v25 .public-comments-widget-v246{margin-top:0!important}
+
+/* -------------------- player: video is the hero, chrome is quieter -------------------- */
+.senime-v25 .watch-shell-v15,.senime-v25 .watch-shell-v18{
+  width:min(1540px,calc(100vw - 20px))!important;
+  border-radius:20px!important;
+  border-color:var(--v251-line-strong)!important;
+}
+.senime-v25 .watch-top-v15,.senime-v25 .watch-topbar-v18{background:#0e0f15!important}
+.senime-v25 .watch-side-v15,.senime-v25 .watch-sidebar-v18{background:#0f1017!important}
+.senime-v25 .watch-video-wrap-v15,.senime-v25 .watch-stage-v18{border-color:rgba(255,255,255,.06)!important}
+.senime-v25 .watch-comments-v18,.senime-v25 .watch-comments-v15{background:transparent!important;border-color:var(--v251-line)!important}
+
+/* Desktop-only progressive disclosure. Touch users always see controls. */
+@media(hover:none){
+  .senime-v25 .card-actions,.senime-v25 .collection-card-controls-v2481{opacity:1!important;transform:none!important;pointer-events:auto!important}
+}
+@media(max-width:900px){
+  .senime-v25 .profile-shell{width:100%!important;border-radius:18px!important}
+  .senime-v25 .profile-head{padding:15px 16px 11px!important}
+  .senime-v25 .profile-progress-card{margin:0 16px 9px!important}
+  .senime-v25 .profile-tabs{padding:0 16px 8px!important}
+  .senime-v25 .profile-body{padding:13px 16px 20px!important}
+  .senime-v25 .profile-collection-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))!important}
+  .senime-v25 .public-profile-shell-v242,.senime-v25 .public-profile-shell-v242.public-profile-shell-v243{width:100%!important;border-radius:18px!important}
+}
+@media(max-width:650px){
+  .senime-v25 .list-section-v25 .anime-grid{grid-template-columns:1fr!important}
+  .senime-v25 .anime-card{grid-template-columns:72px minmax(0,1fr);min-height:106px}
+  .senime-v25 .card-cover,.senime-v25 .card-cover-click{width:72px;height:100px}
+  .senime-v25 .card-actions{opacity:1;transform:none;pointer-events:auto}
+  .senime-v25 .profile-identity{gap:10px}.senime-v25 .profile-avatar{width:54px;height:54px;border-radius:15px}.senime-v25 .profile-head h2{font-size:22px}
+  .senime-v25 .profile-currencies{grid-template-columns:repeat(2,1fr)!important}
+  .senime-v25 .profile-tabs button{font-size:10px!important;padding:6px 8px!important}
+  .senime-v25 .profile-collection-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  .senime-v25 .collection-card-controls-v2481{opacity:1;pointer-events:auto}
+  .senime-v25 .collection-toolbar-v247 select{flex:1 1 44%}
+  .senime-v25 .public-profile-page-v243{padding:12px!important}.senime-v25 .public-profile-cover-v243{margin:-12px -12px 10px;height:105px}
+  .senime-v25 .public-anime-grid-v243{grid-template-columns:repeat(3,minmax(0,1fr));justify-content:stretch}
+}
