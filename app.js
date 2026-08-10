@@ -11217,7 +11217,7 @@ window.SENIME_BUILD=SENIME_V258;
 console.info('Senime V25.8 Character Ticket pool fix ready');
 
 /* ==========================================================================\n   SENIME V25.9 · CLEAN ROUTES\n   Real clean URLs for catalog/list/profile/community/anime/watch.\n   The old UI functions remain the source of truth; this layer only maps them\n   to browser history so the release stays stable while the app becomes\n   page-oriented.\n   ========================================================================== */
-const SENIME_V259='25.9';
+const SENIME_V259='25.9.1';
 let senimeRouteApplyingV259=false;
 
 function senimeBasePathV259(){
@@ -11421,4 +11421,4 @@ window.addEventListener('popstate',()=>senimeApplyRouteV259());
 setTimeout(()=>senimeApplyRouteV259(),420);
 window.SENIME_BUILD=SENIME_V259;
 document.documentElement.dataset.senimeBuild=SENIME_V259;
-console.info('Senime V25.9 clean routes ready');
+console.info('Senime V25.9.1 route canvas fix ready');

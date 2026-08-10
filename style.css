@@ -3147,3 +3147,62 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
   }
 }
 @keyframes senimeRoutePageInV259{from{opacity:.55;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+/* ==========================================================================
+   SENIME V25.9.1 · ROUTE CANVAS FIX
+   Routed screens are real pages: the home/list canvas must not shine through
+   profile, community, anime detail, player or public-profile views.
+   ========================================================================== */
+@media(min-width:861px){
+  html[data-senime-route-kind="profile"] #top,
+  html[data-senime-route-kind="profile"] #appFooter,
+  html[data-senime-route-kind="community"] #top,
+  html[data-senime-route-kind="community"] #appFooter,
+  html[data-senime-route-kind="watch"] #top,
+  html[data-senime-route-kind="watch"] #appFooter,
+  html[data-senime-route-kind="anime-detail"] #top,
+  html[data-senime-route-kind="anime-detail"] #appFooter,
+  html[data-senime-route-kind="public-profile"] #top,
+  html[data-senime-route-kind="public-profile"] #appFooter{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  html[data-senime-route-kind="profile"] #profileModal,
+  html[data-senime-route-kind="community"] #communityModalV247,
+  html[data-senime-route-kind="watch"] #watchModal,
+  html[data-senime-route-kind="anime-detail"] #detailModal,
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242{
+    background:
+      radial-gradient(circle at 16% 8%,rgba(128,92,255,.075),transparent 30%),
+      radial-gradient(circle at 88% 4%,rgba(237,91,158,.045),transparent 26%),
+      linear-gradient(180deg,#090a0f 0%,#07080c 58%,#06070a 100%)!important;
+    backdrop-filter:none!important;
+    isolation:isolate!important;
+  }
+
+  html[data-senime-route-kind="profile"] .profile-shell,
+  html[data-senime-route-kind="community"] .community-shell-v247,
+  html[data-senime-route-kind="watch"] .watch-shell,
+  html[data-senime-route-kind="anime-detail"] .detail-shell,
+  html[data-senime-route-kind="public-profile"] .public-profile-shell-v242{
+    position:relative!important;
+    z-index:1!important;
+  }
+}
+
+@media(max-width:860px){
+  html[data-senime-route-kind="profile"] #top,
+  html[data-senime-route-kind="profile"] #appFooter,
+  html[data-senime-route-kind="community"] #top,
+  html[data-senime-route-kind="community"] #appFooter,
+  html[data-senime-route-kind="watch"] #top,
+  html[data-senime-route-kind="watch"] #appFooter,
+  html[data-senime-route-kind="anime-detail"] #top,
+  html[data-senime-route-kind="anime-detail"] #appFooter,
+  html[data-senime-route-kind="public-profile"] #top,
+  html[data-senime-route-kind="public-profile"] #appFooter{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+}
