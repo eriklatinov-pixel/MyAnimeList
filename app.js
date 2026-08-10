@@ -10269,7 +10269,7 @@ console.info(`Senime V${SENIME_V2481}: collection controls + curation redesign +
 /* ========================================================================== 
    SENIME V25.0 · INTERFACE OVERHAUL + SMART LIST + WATCH RECAP
    ========================================================================== */
-const SENIME_V25='25.2';
+const SENIME_V25='25.3';
 window.SENIME_BUILD=SENIME_V25;
 document.documentElement.dataset.senimeBuild=SENIME_V25;
 document.body.classList.add('senime-v25');
@@ -10513,7 +10513,7 @@ console.info(`Senime V${SENIME_V25} ready`);
 
 
 /* ========================================================================== 
-   SENIME V25.2 · LIBRARY ACTION MENU
+   SENIME V25.3 · CLEAN ACTION SYSTEM
    Keep cards clean: one subtle menu trigger instead of five permanent buttons.
    ========================================================================== */
 function openAnimeCardMenuV252(section,index){
@@ -10551,4 +10551,4 @@ animeCard=function(e,s,i){
 };
 window.animeCard=animeCard;
 
-console.info('Senime V25.2 library cards cleaned');
+console.info('Senime V25.3 calm action system ready');

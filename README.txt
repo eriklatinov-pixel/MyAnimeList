@@ -1,3 +1,12 @@
+Senime V25.3 — Calm Action System
+
+- Global purple/pink button flood removed.
+- Neutral buttons by default; color reserved for true primary actions.
+- Anime titles/covers no longer inherit button gradients.
+- Queue/list/profile/collection/player utility controls are quiet neutral chrome.
+- Old library action rows are forcibly hidden; card actions live in the ••• menu.
+- No SQL required for this visual patch.
+
 Senime V24.6 · Public Beta Foundation
 Clean Steam Layer: account isolation migration, auto-layout profile, clean social workspace, unified public profiles.
 

@@ -2693,3 +2693,203 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
   .senime-v25 .card-menu-trigger-v252{opacity:.8!important;background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.06)!important}
   .senime-v25 .anime-card-menu-actions-v252{grid-template-columns:1fr!important}
 }
+
+/* ==========================================================================
+   SENIME V25.3 · CALM ACTION SYSTEM
+   One accent means one important action. Everything else stays neutral.
+   ========================================================================== */
+
+/* Generic controls are intentionally quiet. This also fixes title/cover buttons
+   inheriting the old global purple→pink gradient. */
+.senime-v25 button{
+  background:#171922!important;
+  color:#d8d7df!important;
+  border:1px solid rgba(255,255,255,.085)!important;
+  box-shadow:none!important;
+  filter:none!important;
+  text-shadow:none!important;
+}
+.senime-v25 button:hover{
+  background:#1d202a!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.15)!important;
+  box-shadow:none!important;
+  filter:none!important;
+  transform:translateY(-1px);
+}
+.senime-v25 button:active{transform:translateY(0)!important;background:#151720!important}
+.senime-v25 button:disabled{opacity:.42!important;cursor:not-allowed!important;transform:none!important}
+
+/* Buttons that are actually content, not controls. */
+.senime-v25 .card-cover-click,
+.senime-v25 .card-title-button,
+.senime-v25 .queue-chip-title,
+.senime-v25 .social-comment-author-v247,
+.senime-v25 .social-comment-name-v247,
+.senime-v25 .leader-podium-card-v247,
+.senime-v25 .curation-item-main-v2481,
+.senime-v25 .curation-anime-open-v247,
+.senime-v25 .public-curations-grid-v247 button,
+.senime-v25 .public-comment-avatar-v246,
+.senime-v25 .profile-comment-avatar,
+.senime-v25 .watch-comment-avatar,
+.senime-v25 .social-person-avatar-v241{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+.senime-v25 .card-cover-click:hover,
+.senime-v25 .card-title-button:hover,
+.senime-v25 .queue-chip-title:hover,
+.senime-v25 .social-comment-author-v247:hover,
+.senime-v25 .social-comment-name-v247:hover{
+  background:transparent!important;
+  border-color:transparent!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.senime-v25 .card-title-button{color:#f1f0f5!important;border-radius:0!important;padding:0!important}
+.senime-v25 .card-title-button:hover{color:#c8c2ef!important}
+.senime-v25 .card-cover-click{padding:0!important}
+
+/* Secondary / ghost are the default visual language now. */
+.senime-v25 .secondary,
+.senime-v25 .ghost{
+  background:#15171f!important;
+  color:#aaa9b3!important;
+  border-color:rgba(255,255,255,.075)!important;
+}
+.senime-v25 .secondary:hover,
+.senime-v25 .ghost:hover{
+  background:#1c1e27!important;
+  color:#e7e6eb!important;
+  border-color:rgba(255,255,255,.13)!important;
+}
+.senime-v25 .danger{
+  background:transparent!important;
+  color:#c98590!important;
+  border-color:rgba(217,101,117,.19)!important;
+}
+.senime-v25 .danger:hover{
+  background:rgba(217,101,117,.065)!important;
+  color:#ee9eaa!important;
+  border-color:rgba(217,101,117,.30)!important;
+}
+
+/* Only true primary actions get color. Solid violet, no candy gradient. */
+.senime-v25 #searchSection form>button,
+.senime-v25 .catalog-apply-btn,
+.senime-v25 .account-primary,
+.senime-v25 .detail-watch-here,
+.senime-v25 .detail-save,
+.senime-v25 .watch-center-play,
+.senime-v25 .watch-control-icon.primary,
+.senime-v25 .completion-reward-v25 button,
+.senime-v25 .detail-ticket-shop-v25>div>button{
+  background:#7968e8!important;
+  color:#fff!important;
+  border-color:#8a7af0!important;
+  box-shadow:none!important;
+}
+.senime-v25 #searchSection form>button:hover,
+.senime-v25 .catalog-apply-btn:hover,
+.senime-v25 .account-primary:hover,
+.senime-v25 .detail-watch-here:hover,
+.senime-v25 .detail-save:hover,
+.senime-v25 .watch-center-play:hover,
+.senime-v25 .watch-control-icon.primary:hover,
+.senime-v25 .completion-reward-v25 button:hover,
+.senime-v25 .detail-ticket-shop-v25>div>button:hover{
+  background:#8575ee!important;
+  border-color:#9a8df5!important;
+  box-shadow:none!important;
+}
+
+/* Settings / list / queue are tools, not calls-to-action. */
+.senime-v25 .list-toolbar-stats-v25>button,
+.senime-v25 .queue-chip button,
+.senime-v25 .queue-add-btn,
+.senime-v25 .settings-top-btn,
+.senime-v25 .profile-quick-edit,
+.senime-v25 .profile-ticket-actions button,
+.senime-v25 .collection-toolbar-v247 button,
+.senime-v25 .profile-collection-filters button,
+.senime-v25 .community-tabs-v247 button,
+.senime-v25 .profile-tabs button,
+.senime-v25 .mini-tab,
+.senime-v25 .watch-control-chip,
+.senime-v25 .watch-control-icon,
+.senime-v25 .watch-sources-btn,
+.senime-v25 .watch-download-quick-v21,
+.senime-v25 .watch-download-inline-v21{
+  background:#15171f!important;
+  color:#aaa9b3!important;
+  border-color:rgba(255,255,255,.075)!important;
+  box-shadow:none!important;
+}
+
+/* Selected state = subtle tint/border, not a bright filled pill. */
+.senime-v25 .profile-tabs button.active,
+.senime-v25 .community-tabs-v247 button.active,
+.senime-v25 .mini-tab.active,
+.senime-v25 .profile-collection-filters button.active,
+.senime-v25 .collection-toolbar-v247 button.active,
+.senime-v25 button.active:not(.account-primary){
+  background:rgba(132,114,232,.10)!important;
+  color:#d7d0ff!important;
+  border-color:rgba(151,132,242,.25)!important;
+  box-shadow:none!important;
+}
+
+/* Queue ordering controls should almost disappear until hover. */
+.senime-v25 .queue-chip button{
+  width:24px!important;
+  min-width:24px!important;
+  height:24px!important;
+  min-height:24px!important;
+  padding:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:#686773!important;
+  border-color:transparent!important;
+}
+.senime-v25 .queue-chip button:hover{
+  background:rgba(255,255,255,.055)!important;
+  color:#d8d7df!important;
+  border-color:rgba(255,255,255,.08)!important;
+}
+
+/* Library menu trigger remains quiet and old inline action rows are impossible. */
+.senime-v25 .anime-card .card-actions{display:none!important}
+.senime-v25 .card-menu-trigger-v252{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:#62616c!important;
+  box-shadow:none!important;
+}
+.senime-v25 .card-menu-trigger-v252:hover{
+  background:rgba(255,255,255,.055)!important;
+  border-color:rgba(255,255,255,.08)!important;
+  color:#dddce3!important;
+  transform:none!important;
+}
+
+/* Remove pink/purple button-like title pills left by old global button styling. */
+.senime-v25 .anime-card .card-topline{align-items:flex-start}
+.senime-v25 .anime-card .card-title-button{
+  display:inline!important;
+  width:auto!important;
+  min-height:0!important;
+  line-height:1.28!important;
+}
+
+/* Keep accent in data visualisation, not chrome. */
+.senime-v25 .progress-fill{box-shadow:none!important}
+.senime-v25 .list-toolbar-v25::before{opacity:.24!important}
+.senime-v25 .list-toolbar-v25{background:#11121a!important}
+.senime-v25 .home-pulse{background:#11121a!important}
+.senime-v25 .profile-head{background:#101119!important}
+
+@media(hover:none){
+  .senime-v25 .queue-chip button{color:#8b8995!important;background:rgba(255,255,255,.025)!important}
+}
