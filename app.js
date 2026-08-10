@@ -11145,3 +11145,73 @@ setTimeout(applyReleaseFounderUiV257,0);
 setTimeout(applyReleaseFounderUiV257,700);
 window.SENIME_BUILD=SENIME_V257;
 console.info('Senime V25.7 release cleanup ready');
+
+
+/* ==========================================================================
+   SENIME V25.8 · CHARACTER TICKET POOL FIX
+   - generic Character Tickets draw from the whole personal anime library
+   - owned characters are excluded before the pull
+   - title batches are checked until an actually new card is found
+   - a ticket is consumed only after a new card has been committed
+   ========================================================================== */
+const SENIME_V258='25.8';
+const CHARACTER_TICKET_BATCH_QUERY_V258=`query($ids:[Int]){Page(page:1,perPage:12){media(id_in:$ids,type:ANIME){id idMal popularity title{english romaji native} c1:characters(page:1,perPage:50,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} image{large} favourites}}} c2:characters(page:2,perPage:50,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} image{large} favourites}}} c3:characters(page:3,perPage:50,sort:[ROLE,RELEVANCE,FAVOURITES_DESC]){edges{role node{id name{full} image{large} favourites}}}}}}`;
+
+function characterTicketLibraryEntriesV258(){
+  const rows=[];
+  for(const entries of Object.values(latestData?.sections||{})){
+    for(const e of entries||[]){
+      const id=Number(e?.anilist_id)||0;
+      if(id>0)rows.push(e);
+    }
+  }
+  const seen=new Set();
+  return shuffleV246(rows).filter(e=>{
+    const id=String(Number(e?.anilist_id)||0);
+    if(id==='0'||seen.has(id))return false;
+    seen.add(id);return true;
+  });
+}
+
+async function characterTicketBatchV258(entries){
+  const ids=entries.map(e=>Number(e?.anilist_id)||0).filter(Boolean);
+  if(!ids.length)return [];
+  const res=await anilistFetch(CHARACTER_TICKET_BATCH_QUERY_V258,{ids});
+  return (res?.data?.Page?.media||[]).map(m=>({...m,characters:{edges:[...(m?.c1?.edges||[]),...(m?.c2?.edges||[]),...(m?.c3?.edges||[])]}}));
+}
+
+openCharacterTicketV16=async function(){
+  const p=ensureCardProfileV205();
+  if(p.tickets<1){profileToastV16('Нет Character Ticket','Получай их за уровни, задания и достижения.');return}
+
+  const entries=characterTicketLibraryEntriesV258();
+  if(!entries.length){profileToastV16('Нет подходящих тайтлов','Добавь аниме в библиотеку и обнови его данные. Ticket сохранён.');return}
+
+  let anySourceWorked=false;
+  const batchSize=10;
+  for(let offset=0;offset<entries.length;offset+=batchSize){
+    const batch=entries.slice(offset,offset+batchSize);
+    let mediaRows=[];
+    try{mediaRows=await characterTicketBatchV258(batch);anySourceWorked=true}catch{continue}
+    mediaRows=shuffleV246(mediaRows||[]);
+    for(const media of mediaRows){
+      const edge=chooseUnownedEdgeV246(media?.characters?.edges||[],media?.popularity),node=edge?.node;
+      if(!node?.id)continue;
+      const out=await commitCardPullV205(node,media,{characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});
+      if(out?.duplicate)continue;
+      p.tickets--;
+      profileActivityV16('🎴',`Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · новая карточка`);
+      saveData();renderProfileChromeV16();
+      revealCardV205(node,media,out.rarity,'Новая карточка · без повторов','character');
+      renderProfileV16();
+      return;
+    }
+  }
+
+  if(!anySourceWorked){profileToastV16('Не удалось открыть Ticket','Источник персонажей временно недоступен. Ticket сохранён.');return}
+  profileToastV16('Новых карточек не нашлось','Все проверенные персонажи из твоей библиотеки уже собраны. Ticket сохранён.');
+};
+window.openCharacterTicketV16=openCharacterTicketV16;
+
+window.SENIME_BUILD=SENIME_V258;
+console.info('Senime V25.8 Character Ticket pool fix ready');

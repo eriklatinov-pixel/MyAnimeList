@@ -248,7 +248,15 @@ Senime V25.2 — CLEAN LIBRARY ACTIONS
 - SQL не нужен.
 
 
-V25.6: cosmetic profile frames now apply to own avatar, sidebar avatar and public profile; frame choice syncs through public_payload. No SQL required.
+V25.6.1: cosmetic profile frames now apply to own avatar, sidebar avatar and public profile; frame choice syncs through public_payload. No SQL required.
 
 
-V25.6: каталог снова AniList-first; Jikan только резерв. Исправлен конфликт 65k/5k и добавлены надежные fallback-обложки каталога.
+V25.6.1: каталог снова AniList-first; Jikan только резерв. Исправлен конфликт 65k/5k и добавлены надежные fallback-обложки каталога.
+
+
+V25.8 — Character Ticket pool fix
+- Generic Character Ticket now searches the whole personal anime library instead of only Watching + Completed.
+- Already-owned characters are filtered out before a pull.
+- The ticket is spent only after a genuinely new character card is added.
+- Candidate titles are checked in batches, so a completed themed set no longer incorrectly blocks generic Character Tickets.
+- Cache bust: app.js?v=25.8 / style.css?v=25.8.
