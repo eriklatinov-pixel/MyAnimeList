@@ -11422,3 +11422,63 @@ setTimeout(()=>senimeApplyRouteV259(),420);
 window.SENIME_BUILD=SENIME_V259;
 document.documentElement.dataset.senimeBuild=SENIME_V259;
 console.info('Senime V25.9.1 route canvas fix ready');
+
+/* ==========================================================================\n   SENIME V25.9.3 · PRODUCTION TURNSTILE + HERO OPENING STABILITY\n   Prevent the home OP from being torn down and restarted by ordinary UI\n   re-renders. A hero reload now happens only when the actual featured title\n   changes (or when there is no usable video left to resume).\n   ========================================================================== */
+const SENIME_V2592='25.9.3';
+const renderHeroBeforeV2592=renderHeroTrailerV13;
+let heroRenderKeyV2592='',heroRenderPromiseV2592=null;
+
+function heroIntentKeyV2592(){
+  try{
+    if(typeof heroNeedsTopFallbackV238==='function'&&heroNeedsTopFallbackV238()){
+      const e=(Array.isArray(topHeroListV238)?topHeroListV238:[])[Number(topHeroIndexV238)||0]||null;
+      const id=e?.mal_id||e?.anilist_id||e?.title||'pending';
+      return `top:${id}:${Number(topHeroIndexV238)||0}`;
+    }
+    const e=typeof currentFeaturedWatchingV14==='function'?currentFeaturedWatchingV14():null;
+    const p=e&&typeof heroPartForEntryV14==='function'?heroPartForEntryV14(e):e;
+    const id=p?.mal_id||e?.mal_id||p?.anilist_id||e?.anilist_id||e?.title||'empty';
+    return `watch:${id}:${Number(homeFeatureIndexV14)||0}`;
+  }catch{return 'hero:unknown'}
+}
+function resumeHeroVideoV2592(layer){
+  const videos=layer?.querySelectorAll?.('.hero-anime-video,.hero-anime-video-bg')||[];
+  videos.forEach(v=>{try{if(v.paused&&v.readyState>=2)v.play().catch(()=>{})}catch{}});
+}
+async function renderHeroStableV2592(){
+  const layer=$('#heroTrailerLayer');if(!layer)return;
+  const intent=heroIntentKeyV2592();
+  const hasVideo=!!layer.querySelector('.hero-anime-video');
+  const same=layer.dataset.senimeHeroIntent===intent;
+  if(same&&(hasVideo||layer.classList.contains('video-loading'))){resumeHeroVideoV2592(layer);return;}
+  if(heroRenderPromiseV2592&&heroRenderKeyV2592===intent)return heroRenderPromiseV2592;
+
+  layer.dataset.senimeHeroIntent=intent;
+  heroRenderKeyV2592=intent;
+  const job=(async()=>{
+    try{await renderHeroBeforeV2592();}
+    finally{
+      // V23.8 may move the top index while looking for the first title that has
+      // an AnimeThemes OP. Store the resolved intent so normal renderAll calls
+      // do not immediately restart that freshly loaded video.
+      const now=$('#heroTrailerLayer');if(now)now.dataset.senimeHeroIntent=heroIntentKeyV2592();
+      if(heroRenderPromiseV2592===job){heroRenderPromiseV2592=null;heroRenderKeyV2592='';}
+    }
+  })();
+  heroRenderPromiseV2592=job;
+  return job;
+}
+renderHeroAnimeV14=renderHeroStableV2592;
+renderHeroTrailerV13=renderHeroStableV2592;
+scheduleHeroTrailerV13=function(){
+  clearTimeout(heroTrailerTimerV13);
+  const layer=$('#heroTrailerLayer'),intent=heroIntentKeyV2592();
+  if(layer&&layer.dataset.senimeHeroIntent===intent&&(layer.querySelector('.hero-anime-video')||layer.classList.contains('video-loading'))){
+    resumeHeroVideoV2592(layer);return;
+  }
+  heroTrailerTimerV13=setTimeout(()=>renderHeroStableV2592(),140);
+};
+
+window.SENIME_BUILD=SENIME_V2592;
+document.documentElement.dataset.senimeBuild=SENIME_V2592;
+console.info('Senime V25.9.3 production Turnstile + hero opening stability ready');

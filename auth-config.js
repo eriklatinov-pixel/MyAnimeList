@@ -10,12 +10,10 @@ window.ANIME_AUTH_CONFIG = {
      backendUrl: "https://senime-api.<account>.workers.dev" */
   backendUrl: "",
 
-  /* DEVELOPMENT / TESTING ONLY.
-     Cloudflare's official always-pass visible TEST sitekey.
-     Before public launch replace it with your real Turnstile sitekey and
-     change turnstileMode to "production". */
-  turnstileSiteKey: "1x00000000000000000000AA",
-  turnstileMode: "test",
+  /* Production Cloudflare Turnstile sitekey for senime.fun.
+     This sitekey is public by design; the matching secret stays only in Supabase. */
+  turnstileSiteKey: "0x4AAAAAAENQ2GQR2QLqBJY7",
+  turnstileMode: "production",
 
   securityVersion: "24.8"
 };
