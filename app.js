@@ -11482,3 +11482,167 @@ scheduleHeroTrailerV13=function(){
 window.SENIME_BUILD=SENIME_V2592;
 document.documentElement.dataset.senimeBuild=SENIME_V2592;
 console.info('Senime V25.9.3 production Turnstile + hero opening stability ready');
+
+/* ==========================================================================
+   SENIME V25.9.4 · ACCOUNT SWITCH ISOLATION GUARD
+   A shared browser localStorage cache must never become another user's cloud
+   state. While a different account is hydrating, show a neutral local state
+   and block background cloud pushes until the target user's payload is loaded.
+   Also keep legacy short passwords usable for sign-in (the 10-char rule stays
+   on registration/password reset) and always use the production auth return URL.
+   ========================================================================== */
+const SENIME_V2594='25.9.4';
+const ACCOUNT_CACHE_PREFIX_V2594='senimeAccountCacheV2594:';
+let accountHydratingV2594=false;
+let accountHydrationInternalPushV2594=false;
+let accountPendingSwitchV2594=null;
+
+function accountUserIdV2594(s=accountSessionV23){return String(s?.user?.id||'')}
+function accountCacheSnapshotV2594(owner){
+  owner=String(owner||'');if(!owner)return;
+  try{localStorage.setItem(ACCOUNT_CACHE_PREFIX_V2594+owner,JSON.stringify(accountSnapshotV23()))}catch{}
+}
+function accountNeutralLocalV2594(user){
+  accountApplyingRemoteV23=true;
+  try{
+    latestData=accountFreshDataV242();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(latestData));
+    if(uiSettings){
+      uiSettings={...uiSettings,nickname:accountDisplayNameV23(user)};
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(uiSettings));
+      try{applySettings(uiSettings)}catch{}
+    }
+    try{if(typeof WATCH_RESUME_KEY_V15!=='undefined')localStorage.removeItem(WATCH_RESUME_KEY_V15)}catch{}
+    try{renderAll()}catch{}
+    try{renderProfileChromeV16()}catch{}
+    try{renderSidebarProfileV13()}catch{}
+  }finally{accountApplyingRemoteV23=false}
+}
+function accountOwnerMismatchV2594(){
+  const uid=accountUserIdV2594(),owner=typeof accountLocalOwnerV242==='function'?String(accountLocalOwnerV242()||''):'';
+  return !!(uid&&owner&&uid!==owner);
+}
+
+const accountWriteSessionBeforeV2594=accountWriteSessionV23;
+accountWriteSessionV23=function(s){
+  const previousOwner=typeof accountLocalOwnerV242==='function'?String(accountLocalOwnerV242()||''):'';
+  const nextId=String(s?.user?.id||'');
+  if(!s&&previousOwner)accountCacheSnapshotV2594(previousOwner);
+  if(nextId&&previousOwner&&nextId!==previousOwner){
+    if(accountPendingSwitchV2594?.toOwner!==nextId){
+      accountCacheSnapshotV2594(previousOwner);
+      accountPendingSwitchV2594={fromOwner:previousOwner,toOwner:nextId,startedAt:Date.now()};
+      accountHydratingV2594=true;
+    }
+    accountWriteSessionBeforeV2594(s);
+    // Do not render the previous account's library even for a single frame.
+    accountNeutralLocalV2594(s.user);
+    return;
+  }
+  return accountWriteSessionBeforeV2594(s);
+};
+window.accountWriteSessionV23=accountWriteSessionV23;
+
+const accountPushCloudBeforeV2594=accountPushCloudV23;
+accountPushCloudV23=async function(opts={}){
+  if(!accountHydrationInternalPushV2594&&(accountHydratingV2594||accountOwnerMismatchV2594())){
+    console.warn('Senime V25.9.4: blocked cloud push while account ownership is unresolved');
+    return false;
+  }
+  const ok=await accountPushCloudBeforeV2594(opts);
+  if(ok){const uid=accountUserIdV2594();if(uid)accountCacheSnapshotV2594(uid)}
+  return ok;
+};
+window.accountPushCloudV23=accountPushCloudV23;
+
+const scheduleAccountCloudSyncBeforeV2594=scheduleAccountCloudSyncV23;
+scheduleAccountCloudSyncV23=function(delay=1400){
+  if(accountHydratingV2594||accountOwnerMismatchV2594())return;
+  return scheduleAccountCloudSyncBeforeV2594(delay);
+};
+window.scheduleAccountCloudSyncV23=scheduleAccountCloudSyncV23;
+
+const accountPullCloudBeforeV2594=accountPullCloudV23;
+accountPullCloudV23=async function(opts={}){
+  const uid=accountUserIdV2594();
+  accountHydratingV2594=true;
+  accountHydrationInternalPushV2594=true;
+  try{
+    const ok=await accountPullCloudBeforeV2594(opts);
+    const resolved=accountUserIdV2594()||uid;
+    if(ok&&resolved){
+      try{accountSetLocalOwnerV242(resolved)}catch{}
+      accountCacheSnapshotV2594(resolved);
+    }
+    return ok;
+  }finally{
+    accountHydrationInternalPushV2594=false;
+    accountHydratingV2594=false;
+    accountPendingSwitchV2594=null;
+    try{renderAll()}catch{}
+    try{renderAccountChromeV23()}catch{}
+  }
+};
+window.accountPullCloudV23=accountPullCloudV23;
+
+// Production-safe auth redirects: never bake an old GitHub Pages path into mail links.
+function accountReturnUrlV2594(){
+  const configured=String(window.ANIME_AUTH_CONFIG?.siteUrl||'').trim().replace(/\/$/,'');
+  if(/^https:\/\//i.test(configured))return configured+'/';
+  return location.origin+'/';
+}
+accountRecoverV23=async function(email){
+  if(!accountConfiguredV23())throw new Error('Backend аккаунтов пока не подключён.');
+  const c=accountConfigV23(),redirect=accountReturnUrlV2594();
+  await accountJsonFetchV23(`${c.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email})});
+};
+window.accountRecoverV23=accountRecoverV23;
+
+const accountRegisterBeforeV2594=accountRegisterV23;
+accountRegisterV23=async function(name,email,password){
+  if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');
+  const c=accountConfigV23(),redirect=accountReturnUrlV2594();
+  const d=await accountJsonFetchV23(`${c.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,data:{display_name:name}})});
+  const s=accountSessionFromResponseV23(d);
+  if(s){accountWriteSessionV23(s);uiSettings.nickname=name;saveSettings();await accountPullCloudV23({firstLogin:true});return {signed:true}}
+  return {signed:false,user:d?.user||null};
+};
+window.accountRegisterV23=accountRegisterV23;
+
+// One-time manual repair for an account that was already polluted by an older
+// build. It deliberately preserves profile economy, cards, cosmetics and social
+// identity; only the anime library/queue and watch-verification ledger are reset.
+async function senimeRepairMixedLibraryV2594(){
+  const s=await accountValidSessionV23();if(!s?.user)return false;
+  if(!confirm('Очистить ТОЛЬКО смешавшийся аниме-список и прогресс этого аккаунта? Карточки, Stars, Premium, оформление и профиль останутся.'))return false;
+  if(!confirm('Подтверждение: библиотека и очередь этого аккаунта будут очищены и сохранены в его облако.'))return false;
+  accountApplyingRemoteV23=true;
+  try{
+    latestData.sections={watching:[],planned:[],movies:[],completed:[],paused:[]};
+    latestData.next_queue=[];
+    const p=latestData.profile_v16;
+    if(p){p.episodeLedger={};p.seasonRewards={};p.titleRewards={};p.ratingRewards={};p.stats={...(p.stats||{}),nightEpisodes:0}}
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(latestData));
+    try{if(typeof WATCH_RESUME_KEY_V15!=='undefined')localStorage.removeItem(WATCH_RESUME_KEY_V15)}catch{}
+    accountSetLocalOwnerV242(s.user.id);
+  }finally{accountApplyingRemoteV23=false}
+  try{renderAll();renderProfileChromeV16();renderSidebarProfileV13()}catch{}
+  const ok=await accountPushCloudV23({force:true});
+  if(ok){try{profileToastV16('Аккаунт разделён','Чужой список удалён, профиль и коллекция сохранены.')}catch{}}
+  return ok;
+}
+window.senimeRepairMixedLibraryV2594=senimeRepairMixedLibraryV2594;
+
+// Clear expired Supabase auth error parameters after surfacing a useful message.
+try{
+  const q=new URLSearchParams(location.search);
+  if(q.get('error_code')==='otp_expired'){
+    setTimeout(()=>{try{openAccountV23();setAccountTabV23('login');accountMessageV23('Ссылка восстановления истекла. Запроси новое письмо.','error')}catch{}},120);
+    q.delete('error');q.delete('error_code');q.delete('error_description');q.delete('sb');
+    const qs=q.toString();history.replaceState(null,'',location.pathname+(qs?'?'+qs:'')+location.hash);
+  }
+}catch{}
+
+window.SENIME_BUILD=SENIME_V2594;
+document.documentElement.dataset.senimeBuild=SENIME_V2594;
+console.info('Senime V25.9.4 account switch isolation guard ready');

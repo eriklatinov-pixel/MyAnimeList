@@ -4,6 +4,7 @@
 window.ANIME_AUTH_CONFIG = {
   supabaseUrl: "https://gyjhhgnukyxlsjfkfjmw.supabase.co",
   supabaseAnonKey: "sb_publishable_5Iw4LAOAYigz5p82ctvugg_bBKEiEdd",
+  siteUrl: "https://senime.fun",
 
   /* Public URL of your existing Cloudflare Worker. Not a secret.
      Paste it here before the public domain launch, e.g.
@@ -15,5 +16,5 @@ window.ANIME_AUTH_CONFIG = {
   turnstileSiteKey: "0x4AAAAAAENQ2GQR2QLqBJY7",
   turnstileMode: "production",
 
-  securityVersion: "24.8"
+  securityVersion: "25.9.4"
 };
