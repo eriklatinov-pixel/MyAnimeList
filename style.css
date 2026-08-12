@@ -1780,6 +1780,92 @@ textarea:focus{border-color:color-mix(in srgb,var(--accent2) 62%,var(--line));bo
 
 
 /* ==========================================================================
+   Senime V25.9.9 · Mobile CAPTCHA + scrollable Media Deck
+   ========================================================================== */
+.account-captcha-v248>div{
+  width:100%;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+}
+.account-captcha-v248 iframe{max-width:100%!important}
+.account-captcha-v248 small[data-state="success"]{color:#8ee0a8}
+.account-captcha-v248 small[data-state="loading"]{color:#cbbfff}
+.account-captcha-v248 small[data-state="error"]{color:#ff9cab}
+
+@media(max-width:760px){
+  .senime-v25 .sidebar-inner{
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    scrollbar-width:thin;
+  }
+  .senime-v25 .sidebar-spacer{flex:0 0 8px}
+  .watch-stage>.watch-media-deck-v22.watch-media-deck-mobile-v2599{
+    width:100%;
+    height:min(66dvh,620px);
+    min-height:min(430px,66dvh);
+    max-height:620px;
+    margin-top:12px;
+    padding:12px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:17px;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--panel2) 92%,#05060a),color-mix(in srgb,var(--panel) 98%,#020307));
+    overscroll-behavior:contain;
+  }
+  .watch-media-deck-mobile-v2599 .watch-deck-head-v22,
+  .watch-media-deck-mobile-v2599 .watch-deck-tabs-v22,
+  .watch-media-deck-mobile-v2599 .watch-deck-footer-v22{flex:0 0 auto}
+  .watch-media-deck-mobile-v2599 .watch-deck-tabs-v22{position:sticky;top:0;z-index:2}
+  .watch-media-deck-mobile-v2599 .watch-deck-pane-v22.active{
+    display:block;
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+    scrollbar-gutter:stable;
+    padding:0 3px 18px 0;
+  }
+  .watch-media-deck-mobile-v2599 .watch-episode-grid{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    overflow:visible;
+  }
+  .watch-media-deck-mobile-v2599 .watch-episode-grid button{min-height:48px;aspect-ratio:auto}
+  .watch-media-deck-mobile-v2599 .watch-track-button-v22{min-height:52px}
+  .watch-comments{margin-top:14px}
+}
+@media(max-width:480px){
+  .watch-stage>.watch-media-deck-v22.watch-media-deck-mobile-v2599{
+    height:min(68dvh,570px);
+    min-height:min(390px,68dvh);
+    padding:10px;
+  }
+  .watch-media-deck-mobile-v2599 .watch-episode-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .watch-deck-head-v22{padding-bottom:9px}
+  .watch-deck-tabs-v22 button{min-height:44px}
+  .account-modal{padding:0;align-items:end}
+  .account-shell{
+    width:100%;
+    max-height:96dvh;
+    padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+    border-radius:22px 22px 0 0;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .account-form input,.account-primary{min-height:48px}
+}
+@media(max-width:370px){
+  .account-captcha-v248>div{min-height:145px}
+}
+
+
+/* ==========================================================================
    Senime V24.8.1 · Collection & Curation UX
    ========================================================================== */
 

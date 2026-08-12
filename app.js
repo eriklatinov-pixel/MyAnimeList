@@ -11605,19 +11605,27 @@ function accountReturnUrlV2594(){
 }
 accountRecoverV23=async function(email){
   if(!accountConfiguredV23())throw new Error('Backend аккаунтов пока не подключён.');
-  const c=accountConfigV23(),redirect=accountReturnUrlV2594();
-  await accountJsonFetchV23(`${c.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email})});
+  const c=accountConfigV23(),redirect=accountReturnUrlV2594(),meta=turnstileAuthMetaV248('login');
+  try{
+    await accountJsonFetchV23(`${c.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,{
+      method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,...meta})
+    });
+  }finally{turnstileResetV248('login')}
 };
 window.accountRecoverV23=accountRecoverV23;
 
 const accountRegisterBeforeV2594=accountRegisterV23;
 accountRegisterV23=async function(name,email,password){
   if(!accountConfiguredV23())throw new Error('Сначала подключи backend аккаунтов в auth-config.js.');
-  const c=accountConfigV23(),redirect=accountReturnUrlV2594();
-  const d=await accountJsonFetchV23(`${c.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,data:{display_name:name}})});
-  const s=accountSessionFromResponseV23(d);
-  if(s){accountWriteSessionV23(s);uiSettings.nickname=name;saveSettings();await accountPullCloudV23({firstLogin:true});return {signed:true}}
-  return {signed:false,user:d?.user||null};
+  const c=accountConfigV23(),redirect=accountReturnUrlV2594(),meta=turnstileAuthMetaV248('register');
+  try{
+    const d=await accountJsonFetchV23(`${c.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect)}`,{
+      method:'POST',headers:accountAuthHeadersV23(),body:JSON.stringify({email,password,data:{display_name:name},...meta})
+    });
+    const s=accountSessionFromResponseV23(d);
+    if(s){accountWriteSessionV23(s);uiSettings.nickname=name;saveSettings();await accountPullCloudV23({firstLogin:true});return {signed:true}}
+    return {signed:false,user:d?.user||null};
+  }finally{turnstileResetV248('register')}
 };
 window.accountRegisterV23=accountRegisterV23;
 
@@ -11840,3 +11848,146 @@ showKodikV19=function(){
 window.SENIME_BUILD=SENIME_V2596;
 document.documentElement.dataset.senimeBuild=SENIME_V2596;
 console.info('Senime V25.9.8 Kodik stale episode links invalidated');
+
+
+/* ==========================================================================
+   SENIME V25.9.9 · MOBILE CAPTCHA + PLAYER DECK
+   - registration/recovery keep their Turnstile token in the Supabase request
+   - only the visible account tab owns a widget (important on mobile browsers)
+   - compact CAPTCHA on very narrow screens, automatic retry on flaky networks
+   - the Media Deck sits directly under the player on phones and scrolls itself
+   ========================================================================== */
+const SENIME_V2599='25.9.9';
+let turnstileRenderTimerV2599=0;
+
+function activeTurnstileKindV2599(){
+  const register=$('#accountRegisterForm'),login=$('#accountLoginForm');
+  if(register&&!register.classList.contains('hidden')&&!register.closest('.hidden'))return 'register';
+  if(login&&!login.classList.contains('hidden')&&!login.closest('.hidden'))return 'login';
+  return '';
+}
+function turnstileNoteV2599(kind,text,state=''){
+  const note=$(kind==='register'?'#accountRegisterCaptchaNoteV248':'#accountLoginCaptchaNoteV248');
+  if(!note)return;
+  note.textContent=text;
+  note.dataset.state=state;
+}
+function removeTurnstileKindV2599(kind){
+  const key=kind==='register'?'registerWidget':'loginWidget';
+  const tokenKey=kind==='register'?'registerToken':'loginToken';
+  const id=kind==='register'?'accountRegisterTurnstileV248':'accountLoginTurnstileV248';
+  const widget=turnstileV248[key];
+  if(widget!==null&&widget!==undefined&&window.turnstile?.remove){
+    try{window.turnstile.remove(widget)}catch{}
+  }
+  turnstileV248[key]=null;
+  turnstileV248[tokenKey]='';
+  const el=$(`#${id}`);
+  if(el)el.replaceChildren();
+}
+
+renderTurnstileKindV248=function(kind){
+  const cfg=securityConfigV248();
+  if(!cfg.turnstileSiteKey||!window.turnstile?.render)return false;
+  if(kind!==activeTurnstileKindV2599())return false;
+
+  const id=kind==='register'?'accountRegisterTurnstileV248':'accountLoginTurnstileV248';
+  const el=$(`#${id}`);if(!el)return false;
+  const key=kind==='register'?'registerWidget':'loginWidget';
+  const tokenKey=kind==='register'?'registerToken':'loginToken';
+  if(turnstileV248[key]!==null&&turnstileV248[key]!==undefined)return true;
+
+  try{
+    const narrow=(el.clientWidth>0&&el.clientWidth<300)||window.matchMedia('(max-width: 370px)').matches;
+    const widget=window.turnstile.render(el,{
+      sitekey:cfg.turnstileSiteKey,
+      theme:'dark',
+      size:narrow?'compact':'flexible',
+      action:kind==='register'?'signup':'login',
+      retry:'auto',
+      'retry-interval':5000,
+      'refresh-expired':'auto',
+      'refresh-timeout':'auto',
+      callback:token=>{
+        turnstileV248[tokenKey]=String(token||'');
+        turnstileNoteV2599(kind,'Проверка пройдена ✓','success');
+      },
+      'expired-callback':()=>{
+        turnstileV248[tokenKey]='';
+        turnstileNoteV2599(kind,'Проверка обновляется…','loading');
+      },
+      'timeout-callback':()=>{
+        turnstileV248[tokenKey]='';
+        turnstileNoteV2599(kind,'Связь прервалась — CAPTCHA обновляется…','loading');
+      },
+      'error-callback':code=>{
+        turnstileV248[tokenKey]='';
+        turnstileNoteV2599(kind,`CAPTCHA не загрузилась${code?' · '+code:''}. Проверяю ещё раз…`,'error');
+        return false;
+      },
+      'unsupported-callback':()=>turnstileNoteV2599(kind,'Этот браузер не поддерживает CAPTCHA. Открой Senime в Chrome, Safari или Firefox.','error')
+    });
+    turnstileV248[key]=widget;
+    return true;
+  }catch(e){
+    console.warn('Turnstile mobile render',kind,e);
+    turnstileNoteV2599(kind,'Не удалось открыть CAPTCHA. Проверь интернет и обнови страницу.','error');
+    return false;
+  }
+};
+
+renderTurnstileV248=function(){
+  const cfg=securityConfigV248();
+  const active=activeTurnstileKindV2599();
+  if(!active){
+    removeTurnstileKindV2599('login');
+    removeTurnstileKindV2599('register');
+    return;
+  }
+  const inactive=active==='register'?'login':'register';
+  removeTurnstileKindV2599(inactive);
+
+  const normal=cfg.turnstileMode==='test'
+    ? 'Cloudflare Turnstile · тестовый режим'
+    : 'Cloudflare Turnstile · защита от ботов';
+  turnstileNoteV2599(active,normal,cfg.turnstileMode==='test'?'test':'');
+  if(!cfg.turnstileSiteKey)return;
+
+  clearInterval(turnstileRenderTimerV2599);
+  let tries=0;
+  turnstileRenderTimerV2599=setInterval(()=>{
+    tries++;
+    if(renderTurnstileKindV248(active)||tries>=40){
+      clearInterval(turnstileRenderTimerV2599);
+      turnstileRenderTimerV2599=0;
+      if(tries>=40&&!turnstileV248[active==='register'?'registerWidget':'loginWidget']){
+        turnstileNoteV2599(active,'CAPTCHA не загрузилась. Проверь интернет или отключи блокировщик для senime.fun.','error');
+      }
+    }
+  },150);
+};
+
+const mobileWatchDeckQueryV2599=window.matchMedia('(max-width: 760px)');
+function syncMobileWatchDeckV2599(){
+  const layout=$('.watch-layout');
+  const stage=$('.watch-stage');
+  const deck=$('.watch-media-deck-v22');
+  const comments=$('.watch-comments');
+  if(!layout||!stage||!deck||!comments)return;
+
+  if(mobileWatchDeckQueryV2599.matches){
+    if(deck.parentElement!==stage||deck.nextElementSibling!==comments)stage.insertBefore(deck,comments);
+    deck.classList.add('watch-media-deck-mobile-v2599');
+  }else{
+    if(deck.parentElement!==layout)layout.appendChild(deck);
+    deck.classList.remove('watch-media-deck-mobile-v2599');
+  }
+}
+if(mobileWatchDeckQueryV2599.addEventListener)mobileWatchDeckQueryV2599.addEventListener('change',syncMobileWatchDeckV2599);
+else mobileWatchDeckQueryV2599.addListener(syncMobileWatchDeckV2599);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',syncMobileWatchDeckV2599,{once:true});
+else syncMobileWatchDeckV2599();
+
+window.SENIME_BUILD=SENIME_V2599;
+document.documentElement.dataset.senimeBuild=SENIME_V2599;
+console.info('Senime V25.9.9 mobile CAPTCHA and player deck active');
