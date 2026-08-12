@@ -3234,6 +3234,61 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
 }
 
 /* ==========================================================================
+   SENIME V25.9.15 · STABLE ONLINE UI + SINGLE-VIEW MOBILE NAV
+   ========================================================================== */
+.profile-public-preview-v25915{
+  min-height:38px!important;padding:8px 12px!important;border:1px solid rgba(126,105,255,.55)!important;
+  border-radius:12px!important;background:linear-gradient(135deg,rgba(126,105,255,.24),rgba(229,90,158,.13))!important;
+  color:#eeeaff!important;font-size:10px!important;font-weight:950!important
+}
+.social-person-v241.online-v25915 .social-person-avatar-v241{position:relative;overflow:visible!important}
+.social-person-v241.online-v25915 .social-person-avatar-v241 img{border-radius:inherit;display:block}
+.social-avatar-presence-v25915{position:absolute;right:-3px;top:-3px;width:10px;height:10px;border-radius:50%;background:#46df90;border:2px solid #0e1119;box-shadow:0 0 0 3px rgba(70,223,144,.12),0 0 12px rgba(70,223,144,.5);pointer-events:none}
+.public-avatar-widget-v243{align-self:start!important;contain:layout paint;overflow:hidden}
+.public-avatar-widget-v243 .public-profile-avatar-v242{flex:0 0 auto;aspect-ratio:1/1}
+.public-profile-name-row-v242{min-width:0}.public-profile-name-row-v242 h2{min-width:0;overflow-wrap:anywhere}
+.mobile-bottom-nav-v25915{display:none}
+
+@media(max-width:900px){
+  html.senime-mobile-nav-ready-v25915 .sidebar-mobile-btn{display:none!important}
+  .mobile-bottom-nav-v25915{
+    position:fixed;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:180;
+    display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:5px;
+    border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(13,14,20,.94);
+    box-shadow:0 14px 44px rgba(0,0,0,.5);backdrop-filter:blur(18px) saturate(1.15)
+  }
+  .mobile-bottom-nav-v25915 button{min-width:0;min-height:52px!important;padding:5px 2px!important;border:0!important;border-radius:13px!important;background:transparent!important;color:#858995!important;display:grid!important;place-items:center;align-content:center;gap:2px;box-shadow:none!important}
+  .mobile-bottom-nav-v25915 button span{font-size:17px;line-height:1}.mobile-bottom-nav-v25915 button b{font-size:8px;line-height:1.15;white-space:nowrap}
+  .mobile-bottom-nav-v25915 button.active{background:rgba(145,119,255,.14)!important;color:#eeeaff!important}
+  body .page,body .app-footer{padding-bottom:calc(78px + env(safe-area-inset-bottom))!important}
+  html[data-senime-route-kind="watch"] .mobile-bottom-nav-v25915{display:none}
+  html[data-senime-route-kind="watch"] body .page{padding-bottom:0!important}
+  .profile-tabs{scroll-snap-type:x proximity;scrollbar-width:none}.profile-tabs::-webkit-scrollbar{display:none}.profile-tabs button{scroll-snap-align:start;min-height:44px;white-space:nowrap}
+  .sidebar-inner{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+}
+
+@media(max-width:680px){
+  .public-profile-page-v243{padding:10px!important}
+  .public-profile-cover-v243{height:92px!important;margin:-10px -10px 9px!important}
+  .public-profile-canvas-v243{
+    display:grid!important;grid-template-columns:82px minmax(0,1fr)!important;
+    grid-template-areas:"avatar identity" "progress progress" "favorites favorites" "stats stats" "activity activity" "watching watching" "library library" "tier tier"!important;
+    gap:8px!important
+  }
+  .public-avatar-widget-v243{grid-area:avatar!important;min-height:104px!important;padding:9px!important;align-self:stretch!important}
+  .public-avatar-widget-v243 .public-profile-avatar-v242{width:66px!important;height:66px!important;border-radius:18px!important}
+  .public-identity-widget-v243{grid-area:identity!important;min-height:104px!important;padding:11px!important;justify-content:center!important}
+  .public-identity-widget-v243 h2{font-size:21px!important;margin:3px 0!important}.public-identity-widget-v243 .public-handle-v243{font-size:10px}.public-identity-widget-v243>p,.public-about-v246{font-size:10px!important}
+  .public-online-label-v25910{padding:5px 7px;font-size:7px}.public-online-label-v25910 .presence-dot-v25910{width:6px;height:6px}
+  .public-progress-widget-v243{grid-area:progress!important}.public-kpis-v243{grid-template-columns:1fr 1fr!important}.public-kpis-v243 div{padding:10px!important}
+  .public-live-slot-v25910{min-height:96px}.public-live-slot-v25910 .public-live-watch-v25910,.public-live-slot-v25910 .public-presence-empty-v25910{min-height:96px}
+  .public-live-slot-v25910 .public-live-watch-v25910 img{width:54px;height:74px}.public-live-slot-v25910 .public-live-watch-v25910 b{font-size:12px}
+  .social-person-v241{grid-template-columns:42px minmax(0,1fr)!important}.social-person-actions-v241{padding-left:0!important;grid-column:1/-1!important}.social-person-actions-v241 button{min-height:40px!important}
+  .profile-head{display:grid!important;grid-template-columns:1fr auto!important;gap:12px!important}.profile-head-actions{grid-column:1/-1;width:100%;justify-content:stretch!important}.profile-head-actions button{flex:1}.profile-public-preview-v25915{flex-basis:100%!important}
+  .community-tabs-v247{display:flex!important;overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none;scroll-snap-type:x proximity}.community-tabs-v247::-webkit-scrollbar{display:none}.community-tabs-v247 button{flex:0 0 auto;min-height:44px;scroll-snap-align:start;white-space:nowrap}
+}
+
+/* ==========================================================================
    SENIME V25.9.10 · handles, live presence and mobile-safe profile slot
    ========================================================================== */
 .profile-handle-v25910,.account-user-handle-v25910{

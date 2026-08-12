@@ -22,7 +22,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.9.10">
+  <link rel="stylesheet" href="style.css?v=25.9.15">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -91,6 +91,13 @@
   </aside>
   <button id="sidebarMobileBtn" class="sidebar-mobile-btn" type="button" aria-label="Открыть меню">☰</button>
   <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+  <nav id="mobileBottomNavV25915" class="mobile-bottom-nav-v25915" aria-label="Главная навигация">
+    <button type="button" data-mobile-route-v25915="/"><span>⌂</span><b>Обзор</b></button>
+    <button type="button" data-mobile-route-v25915="/anime"><span>◇</span><b>Каталог</b></button>
+    <button type="button" data-mobile-route-v25915="/list"><span>▦</span><b>Список</b></button>
+    <button type="button" data-mobile-route-v25915="/profile"><span>●</span><b>Профиль</b></button>
+    <button type="button" data-mobile-menu-v25915><span>☰</span><b>Ещё</b></button>
+  </nav>
   <main id="top" class="page">
     <header class="hero hero-live">
       <div id="heroTrailerLayer" class="hero-trailer-layer" aria-hidden="true"></div>
@@ -620,6 +627,7 @@
           </div>
         </div>
         <div class="profile-head-actions">
+          <button id="profilePublicPreviewV25915" class="profile-public-preview-v25915 hidden" type="button">👁 Посмотреть как профиль видят другие</button>
           <button id="profileAccountBtn" class="profile-account-btn" type="button">☁ Войти</button>
           <button id="profileQuickEditBtn" class="profile-quick-edit" type="button">✎ Редактировать</button>
           <button id="profileClose" class="profile-close" type="button" aria-label="Закрыть">✕</button>
@@ -1084,7 +1092,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-  <script src="auth-config.js?v=25.9.10"></script>
-  <script src="app.js?v=25.9.10"></script>
+  <script src="auth-config.js?v=25.9.15"></script>
+  <script src="app.js?v=25.9.15"></script>
 </body>
 </html>

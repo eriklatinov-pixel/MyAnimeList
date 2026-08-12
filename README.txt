@@ -1,3 +1,9 @@
+Senime V25.9.11 — Cross-tab Live Watching Fix
+
+- Вкладка публичного профиля больше не затирает «Смотрит сейчас», пока видео реально играет в соседней вкладке.
+- Play/timeupdate поддерживают heartbeat даже для фоновой вкладки; pause/ended/закрытие плеера очищают тайтл.
+- Несколько вкладок координируют текущий тайтл через короткоживущий локальный presence, без ложной вечной активности.
+
 Senime V25.9.10 — Identity + Live Profile + Card Owners
 
 - @handle создаётся автоматически при входе и всегда виден в профиле/Account Hub; нажатием копируется.
@@ -318,5 +324,18 @@ Major sections now have clean URLs without duplicating application logic:
 /collections/<id> — collection page
 /watch/<AniList ID>/<episode>?season=1 — player
 /u/<profile UUID> — public profile
+
+=== V25.9.11 LIVE PRESENCE HOTFIX ===
+- Player and profile tabs now share the active title, season and episode.
+- A background player tab no longer gets overwritten by an idle profile tab.
+- An open public profile refreshes its online/watching block every 20 seconds.
+
+=== V25.9.15 PROFILE + MOBILE POLISH ===
+- Added "Посмотреть как профиль видят другие" for signed-in users.
+- Online dots are pinned to avatars and no longer shift names or images.
+- Opening a primary screen closes the previous one instead of stacking overlays.
+- Mobile now has a simple bottom bar: Overview, Catalog, List, Profile and More.
+- Public profile, profile tabs and community tabs are compact and scroll-safe on phones.
+- Production Supabase accounts and Cloudflare Turnstile remain enabled.
 
 Cloudflare Pages uses _redirects. GitHub Pages uses 404.html fallback while the project is still tested at the old GitHub URL.

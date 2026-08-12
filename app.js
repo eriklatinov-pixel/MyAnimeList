@@ -11994,13 +11994,17 @@ console.info('Senime V25.9.9 mobile CAPTCHA and player deck active');
 
 
 /* ==========================================================================
-   SENIME V25.9.10 · IDENTITY + LIVE PROFILE + UNIQUE CARD OWNERS
+   SENIME V25.9.11 · IDENTITY + CROSS-TAB LIVE PROFILE + UNIQUE CARD OWNERS
    ========================================================================== */
-const SENIME_V25910='25.9.10';
+const SENIME_V25910='25.9.15';
 const PRESENCE_TTL_V25910=110000;
 const PRESENCE_HEARTBEAT_V25910=35000;
+const PRESENCE_SHARED_KEY_V25911='senime-live-watching-v25911';
+const PRESENCE_SHARED_TTL_V25911=90000;
+const PRESENCE_TAB_ID_V25911=`tab-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 let presenceBusyV25910=false;
 let cardOwnerFetchAtV25910=0;
+let presencePlaybackPushAtV25911=0;
 
 function effectiveHandleV25910(p){
   if(p?.handle)return String(p.handle).replace(/^@/,'');
@@ -12016,14 +12020,32 @@ function presenceTimeV25910(p){
   return Number.isFinite(n)?n:0;
 }
 function isOnlineV25910(p){return !!p&&Date.now()-presenceTimeV25910(p)<PRESENCE_TTL_V25910}
-function currentWatchingV25910(){
+function directWatchingV25911(){
   const modal=$('#watchModal'),e=watchStateV15?.entry;
-  if(document.visibilityState!=='visible'||!e||!modal||modal.classList.contains('hidden'))return null;
+  if(!e||!modal||modal.classList.contains('hidden'))return null;
+  const video=$('#watchVideo'),embed=$('#watchEmbed');
+  const nativePlaying=!!video&&!video.classList.contains('hidden')&&!video.paused&&!video.ended&&!!(video.currentSrc||video.getAttribute('src'));
+  const embedSrc=String(embed?.getAttribute('src')||'');
+  const embedActive=!!embed&&!embed.classList.contains('hidden')&&!!embedSrc&&!/^about:blank$/i.test(embedSrc);
+  if(!nativePlaying&&!embedActive)return null;
   return {
     title:String(e.title||'Аниме').slice(0,160),cover:String(e.cover||'').slice(0,600),
     animeId:Number(e.anilist_id)||0,season:Math.max(1,(Number(watchStateV15.season)||0)+1),
     episode:Math.max(1,Number(watchStateV15.episode)||1)
   };
+}
+function readSharedWatchingV25911(){
+  try{const x=JSON.parse(localStorage.getItem(PRESENCE_SHARED_KEY_V25911)||'null');return x?.watching&&Date.now()-Number(x.at||0)<PRESENCE_SHARED_TTL_V25911?x:null}catch{return null}
+}
+function writeSharedWatchingV25911(watching){
+  if(!watching)return;try{localStorage.setItem(PRESENCE_SHARED_KEY_V25911,JSON.stringify({tabId:PRESENCE_TAB_ID_V25911,at:Date.now(),watching}))}catch{}
+}
+function clearSharedWatchingV25911(){
+  try{const x=JSON.parse(localStorage.getItem(PRESENCE_SHARED_KEY_V25911)||'null');if(!x||x.tabId===PRESENCE_TAB_ID_V25911)localStorage.removeItem(PRESENCE_SHARED_KEY_V25911)}catch{}
+}
+function currentWatchingV25910(){
+  const direct=directWatchingV25911();if(direct){writeSharedWatchingV25911(direct);return direct}
+  return readSharedWatchingV25911()?.watching||null;
 }
 
 const publicPayloadBeforeV25910=socialBuildPublicPayloadV242;
@@ -12132,7 +12154,7 @@ function publicWatchingHtmlV25910(p){
 function patchPublicPresenceV25910(p){
   const body=$('#publicProfileBodyV242');if(!body||!p)return;
   const online=isOnlineV25910(p),nameRow=body.querySelector('.public-profile-name-row-v242');
-  if(nameRow&&!nameRow.querySelector('.public-online-label-v25910'))nameRow.insertAdjacentHTML('beforeend',`<span class="public-online-label-v25910 ${online?'online':'offline'}"><i class="presence-dot-v25910 ${online?'':'offline'}"></i>${online?'в сети':'не в сети'}</span>`);
+  if(nameRow){let label=nameRow.querySelector('.public-online-label-v25910');if(!label){label=document.createElement('span');label.className='public-online-label-v25910';nameRow.appendChild(label)}label.className=`public-online-label-v25910 ${online?'online':'offline'}`;label.innerHTML=`<i class="presence-dot-v25910 ${online?'':'offline'}"></i>${online?'в сети':'не в сети'}`}
   const handle=body.querySelector('.public-handle-v243');if(handle)handle.textContent=socialHandleV241(p);
   const progress=body.querySelector('.public-progress-widget-v243');if(progress){let slot=progress.querySelector('.public-live-slot-v25910');if(!slot){slot=document.createElement('div');slot.className='public-live-slot-v25910';progress.appendChild(slot)}slot.innerHTML=publicWatchingHtmlV25910(p)}
   body.querySelector('.public-watching-widget-v243')?.remove();
@@ -12152,12 +12174,124 @@ const closeWatchBeforeV25910=closeWatchPlayerV15;
 closeWatchPlayerV15=function(){const r=closeWatchBeforeV25910?.apply(this,arguments);setTimeout(()=>socialSyncPublicProfileV242?.(),120);return r};
 window.openWatchPlayerV15=openWatchPlayerV15;window.closeWatchPlayerV15=closeWatchPlayerV15;
 
-async function heartbeatV25910(){if(document.visibilityState!=='visible'||!socialSignedV241())return;await socialSyncPublicProfileV242()}
+async function heartbeatV25910(){if(!socialSignedV241())return;await socialSyncPublicProfileV242()}
 setInterval(heartbeatV25910,PRESENCE_HEARTBEAT_V25910);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')heartbeatV25910()});
 window.addEventListener('focus',heartbeatV25910);
+async function pushPlaybackPresenceV25911(force=false){
+  const direct=directWatchingV25911();if(direct)writeSharedWatchingV25911(direct);else clearSharedWatchingV25911();
+  const now=Date.now();if(!force&&now-presencePlaybackPushAtV25911<15000)return;
+  presencePlaybackPushAtV25911=now;if(socialSignedV241())await socialSyncPublicProfileV242();
+}
+async function refreshOpenPublicPresenceV25911(){
+  const modal=$('#publicProfileModalV242'),id=publicProfileActiveV246;
+  if(!id||!modal||modal.classList.contains('hidden'))return;
+  try{
+    const q=new URLSearchParams();q.set('id',`eq.${id}`);q.set('limit','1');
+    const fresh=(await socialFetchProfilesV242(q.toString()))?.[0];
+    if(fresh){socialStateV241.profiles.set(id,fresh);if(id===socialMeV241())socialStateV241.own=fresh;patchPublicPresenceV25910(fresh)}
+  }catch{}
+}
+const presenceVideoV25911=$('#watchVideo');
+presenceVideoV25911?.addEventListener('play',()=>pushPlaybackPresenceV25911(true));
+presenceVideoV25911?.addEventListener('timeupdate',()=>pushPlaybackPresenceV25911(false));
+presenceVideoV25911?.addEventListener('pause',()=>pushPlaybackPresenceV25911(true));
+presenceVideoV25911?.addEventListener('ended',()=>pushPlaybackPresenceV25911(true));
+setInterval(()=>{if(directWatchingV25911())pushPlaybackPresenceV25911(false);refreshOpenPublicPresenceV25911()},20000);
+window.addEventListener('storage',async e=>{
+  if(e.key!==PRESENCE_SHARED_KEY_V25911||document.visibilityState!=='visible'||!socialSignedV241())return;
+  await socialSyncPublicProfileV242();
+  if(publicProfileActiveV246===socialMeV241())patchPublicPresenceV25910(socialStateV241.own);
+});
+window.addEventListener('pagehide',clearSharedWatchingV25911);
+const closeWatchBeforeV25911=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){clearSharedWatchingV25911();const r=closeWatchBeforeV25911?.apply(this,arguments);setTimeout(()=>pushPlaybackPresenceV25911(true),80);return r};
+window.closeWatchPlayerV15=closeWatchPlayerV15;
 setTimeout(async()=>{renderOwnHandleV25910();if(socialSignedV241()){await ensureOwnHandleV25910();await heartbeatV25910();refreshGlobalPullCountsV205?.({force:true})}},900);
 
 window.SENIME_BUILD=SENIME_V25910;
 document.documentElement.dataset.senimeBuild=SENIME_V25910;
-console.info('Senime V25.9.10 identity, live profile and unique card owners active');
+console.info('Senime V25.9.11 cross-tab live watching, identity and unique card owners active');
+
+/* ==========================================================================
+   SENIME V25.9.15 · PUBLIC PREVIEW + UI COORDINATOR + MOBILE NAV
+   ========================================================================== */
+const SENIME_V25915='25.9.15';
+
+function closePrimaryViewsV25915(except=''){
+  const shown=sel=>{const el=$(sel);return !!el&&!el.classList.contains('hidden')};
+  const routeLock=senimeRouteApplyingV259;senimeRouteApplyingV259=true;
+  try{
+    if(except!=='watch'&&shown('#watchModal'))closeWatchPlayerV15?.();
+    if(except!=='detail'&&shown('#detailModal'))closeDetails?.();
+    if(except!=='profile'&&shown('#profileModal'))closeProfileV16?.();
+    if(except!=='community'&&shown('#communityModalV247'))closeCommunityV247?.();
+    if(except!=='public'&&shown('#publicProfileModalV242'))$('#publicProfileModalV242').classList.add('hidden');
+  }finally{senimeRouteApplyingV259=routeLock}
+  closeSidebarMobileV12?.();
+  if(!['#watchModal','#detailModal','#profileModal','#communityModalV247','#publicProfileModalV242'].some(shown))document.body.style.overflow='';
+}
+
+const openProfileBeforeV25915=openProfileV16;
+openProfileV16=function(){closePrimaryViewsV25915('profile');return openProfileBeforeV25915?.apply(this,arguments)};
+const openDetailsBeforeV25915=openDetails;
+openDetails=async function(){closePrimaryViewsV25915('detail');return await openDetailsBeforeV25915?.apply(this,arguments)};
+const openWatchBeforeV25915=openWatchPlayerV15;
+openWatchPlayerV15=function(){closePrimaryViewsV25915('watch');return openWatchBeforeV25915?.apply(this,arguments)};
+const openCommunityBeforeV25915=openCommunityV247;
+openCommunityV247=function(){closePrimaryViewsV25915('community');return openCommunityBeforeV25915?.apply(this,arguments)};
+const openPublicBeforeV25915=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(){closePrimaryViewsV25915('public');return await openPublicBeforeV25915?.apply(this,arguments)};
+Object.assign(window,{openProfileV16,openDetails,openWatchPlayerV15,openCommunityV247,socialOpenPublicProfileV242});
+
+const socialPersonBeforeV25915=socialPersonCardV241;
+socialPersonCardV241=function(p,opts){
+  const html=socialPersonBeforeV25915?.(p,opts)||'',box=document.createElement('div');box.innerHTML=html;
+  const card=box.firstElementChild;if(!card)return html;
+  card.querySelectorAll('.presence-dot-v25910').forEach(x=>x.remove());
+  card.classList.toggle('online-v25915',isOnlineV25910(p));
+  if(isOnlineV25910(p)){
+    const avatar=card.querySelector('.social-person-avatar-v241');
+    if(avatar){const dot=document.createElement('i');dot.className='social-avatar-presence-v25915';dot.title='В сети';avatar.appendChild(dot)}
+  }
+  return card.outerHTML;
+};
+window.socialPersonCardV241=socialPersonCardV241;
+
+function syncOwnPublicPreviewV25915(){
+  const button=$('#profilePublicPreviewV25915'),signed=socialSignedV241();
+  if(button){button.classList.toggle('hidden',!signed);button.disabled=!signed}
+}
+const renderProfileChromeBeforeV25915=renderProfileChromeV16;
+renderProfileChromeV16=function(){const r=renderProfileChromeBeforeV25915?.apply(this,arguments);syncOwnPublicPreviewV25915();return r};
+window.renderProfileChromeV16=renderProfileChromeV16;
+async function openOwnPublicPreviewV25915(){
+  if(!socialSignedV241()){openAccountV23?.();return}
+  await socialSyncPublicProfileV242?.();
+  await socialOpenPublicProfileV242?.(socialMeV241());
+}
+window.openOwnPublicPreviewV25915=openOwnPublicPreviewV25915;
+$('#profilePublicPreviewV25915')?.addEventListener('click',openOwnPublicPreviewV25915);
+syncOwnPublicPreviewV25915();
+
+function syncMobileNavV25915(){
+  const kind=document.documentElement.dataset.senimeRouteKind||'home',path=senimeLocalPathV259?.()||'/';
+  document.querySelectorAll('[data-mobile-route-v25915]').forEach(b=>{
+    const target=b.dataset.mobileRouteV25915,active=target==='/'?kind==='home':target==='/anime'?kind==='catalog'||kind==='anime-detail':target==='/list'?kind==='list':target==='/profile'?kind==='profile'||kind==='public-profile':path===target;
+    b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+}
+document.querySelectorAll('[data-mobile-route-v25915]').forEach(b=>b.addEventListener('click',()=>{closeSidebarMobileV12?.();senimeGoV259?.(b.dataset.mobileRouteV25915)}));
+$('#mobileBottomNavV25915 [data-mobile-menu-v25915]')?.addEventListener('click',()=>{
+  closePrimaryViewsV25915();
+  if(senimeLocalPathV259?.()!=='/'){history.replaceState({senimeRouteV259:true},'',senimeFullPathV259('/'));senimeMarkRouteFromLocationV259?.()}
+  document.body.classList.add('sidebar-mobile-open');
+});
+new MutationObserver(syncMobileNavV25915).observe(document.documentElement,{attributes:true,attributeFilter:['data-senime-route-kind']});
+window.addEventListener('popstate',()=>setTimeout(syncMobileNavV25915,0));
+document.documentElement.classList.add('senime-mobile-nav-ready-v25915');
+syncMobileNavV25915();
+
+window.SENIME_BUILD=SENIME_V25915;
+document.documentElement.dataset.senimeBuild=SENIME_V25915;
+console.info('Senime V25.9.15 public preview, stable presence, single-view UI and mobile navigation active');
