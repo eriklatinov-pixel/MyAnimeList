@@ -5315,7 +5315,15 @@ setWatchProviderV17=function(v){v=['auto','aniliberty','kodik','direct','embed']
 syncWatchProviderUiV17=function(){const v=watchProviderV17();document.querySelectorAll('#watchProviderBar [data-provider]').forEach(b=>b.classList.toggle('active',b.dataset.provider===v));const state=$('#watchProviderState');if(state&&!state.dataset.kind){const txt={auto:'Авто · несколько источников',aniliberty:'AniLiberty · нативный HLS',kodik:'Kodik · озвучки / субтитровые релизы',direct:'Direct · дополнительный HLS/MP4',embed:'Embed · дополнительный iframe'};state.textContent=txt[v]||txt.auto}const label=$('#watchOnlineKindLabel'),help=$('#watchOnlineHelp');if(label)label.textContent='HLS / MP4';if(help)help.textContent='Расширенный fallback: свой HLS/MP4 или разрешённый embed. Для обычного просмотра ничего сюда вводить не нужно.'};
 
 /* Kodik adapter. API access is user-owned; no hidden tokens are harvested. */
-function currentKodikSourcesV19(){return currentRemoteStreamsV17().filter(x=>String(x.provider||'').toLowerCase()==='kodik')}
+function currentKodikSourcesV19(){
+  const ep=Math.max(1,Number(watchStateV15?.episode)||1);
+  const season=Math.max(1,Number(watchStateV15?.season||0)+1);
+  return currentRemoteStreamsV17().filter(x=>
+    String(x.provider||'').toLowerCase()==='kodik' &&
+    Number(x.resolvedEpisode)===ep &&
+    Number(x.resolvedSeason)===season
+  );
+}
 function clearKodikCurrentV19(){const ep=currentManifestEpisodeV15();if(!ep)return;ep.streams=(ep.streams||[]).filter(x=>String(x.provider||'').toLowerCase()!=='kodik');if(ep.providerMeta)delete ep.providerMeta.kodik;saveWatchManifestV15(watchStateV15.entry,watchStateV15.manifest);watchResolverV19.kodikCandidates=[]}
 function absKodikLinkV19(link){let s=String(link||'').trim();if(!s)return '';if(s.startsWith('//'))return 'https:'+s;if(/^https?:\/\//i.test(s))return s;if(s.startsWith('/'))return 'https://kodik.info'+s;return s}
 function firstLinkDeepV19(v,episode){if(!v)return '';if(typeof v==='string')return /^https?:|^\/\//i.test(v)?v:'';if(Array.isArray(v)){const exact=v.find(x=>Number(x?.episode??x?.number??x?.ordinal)===Number(episode));if(exact){const r=firstLinkDeepV19(exact,episode);if(r)return r}for(const x of v){const r=firstLinkDeepV19(x,episode);if(r)return r}return ''}if(typeof v==='object'){if(v.link)return String(v.link);if(v.url)return String(v.url);const direct=v[String(episode)]??v[Number(episode)];if(direct){const r=firstLinkDeepV19(direct,episode);if(r)return r}for(const k of ['episodes','episode_data','data','items'])if(v[k]){const r=firstLinkDeepV19(v[k],episode);if(r)return r}for(const x of Object.values(v)){const r=firstLinkDeepV19(x,episode);if(r)return r}}return ''}
@@ -5326,7 +5334,7 @@ async function kodikSearchRawV19(params){const backend=backendBaseV20();if(backe
 async function ensureKodikEpisodeV19({force=false}={}){const c=providerConfigV19();if(!c.kodikToken){watchResolverV19.lastKodikError='нет API token';return false}const entry=watchStateV15.entry,part=currentPartV19(),epNo=Number(watchStateV15.episode)||1,seasonNo=Number(watchStateV15.season)||0,requestKey=resolverKeyV19(),requestSeq=++kodikRequestSeqV19;if(!entry)return false;if(!force&&currentKodikSourcesV19().length){watchResolverV19.kodikCandidates=currentKodikSourcesV19();return true}setResolverStatusV19('Kodik','ищу озвучки…','loading');clearKodikCurrentV19();let rows=[];try{const mal=Number(part?.mal_id||0);if(mal){const d=await kodikSearchRawV19({shikimori_id:mal,types:'anime-serial',with_material_data:'true',with_seasons:'true',with_episodes:'true',with_episodes_data:'true',limit:100});rows=d?.results||[]}if(!rows.length){const d=await kodikSearchRawV19({title:part?.title||entry.title,types:'anime-serial',with_material_data:'true',with_seasons:'true',with_episodes:'true',with_episodes_data:'true',limit:100});rows=d?.results||[]}}
   catch(e){if(requestSeq!==kodikRequestSeqV19||requestKey!==resolverKeyV19())return false;watchResolverV19.lastKodikError=String(e?.message||e);return false}
   if(requestSeq!==kodikRequestSeqV19||requestKey!==resolverKeyV19()||entry!==watchStateV15.entry||epNo!==Number(watchStateV15.episode)||seasonNo!==Number(watchStateV15.season))return false;
-  const ranked=rows.map(m=>({m,score:kodikCandidateScoreV19(m,part)})).sort((a,b)=>b.score-a.score);const bestScore=ranked[0]?.score??-999;const accepted=ranked.filter(x=>x.score>=Math.max(25,bestScore-25));const streams=[];for(const {m} of accepted){const url=kodikEpisodeLinkV19(m,epNo);if(!url)continue;const tr=m.translation||{},kind=String(tr.type||'voice').toLowerCase(),name=String(tr.title||'Перевод').trim()||'Перевод';const label=kind==='subtitles'?`CC ${name}`:`🎙 ${name}`;streams.push({url,type:'embed',provider:'kodik',dub:`kodik:${m.id||streams.length}`,dubLabel:label,translation:name,translationType:kind,quality:m.quality||'в плеере',label,materialId:m.id||'',year:m.year||null})}
+  const ranked=rows.map(m=>({m,score:kodikCandidateScoreV19(m,part)})).sort((a,b)=>b.score-a.score);const bestScore=ranked[0]?.score??-999;const accepted=ranked.filter(x=>x.score>=Math.max(25,bestScore-25));const streams=[];for(const {m} of accepted){const url=kodikEpisodeLinkV19(m,epNo);if(!url)continue;const tr=m.translation||{},kind=String(tr.type||'voice').toLowerCase(),name=String(tr.title||'Перевод').trim()||'Перевод';const label=kind==='subtitles'?`CC ${name}`:`🎙 ${name}`;streams.push({url,type:'embed',provider:'kodik',dub:`kodik:${m.id||streams.length}`,dubLabel:label,translation:name,translationType:kind,quality:m.quality||'в плеере',label,materialId:m.id||'',year:m.year||null,resolvedEpisode:epNo,resolvedSeason:seasonNo+1,resolverKey:requestKey})}
   const uniq=[];const seen=new Set();for(const x of streams){const k=`${x.url}|${x.translation}`;if(!seen.has(k)){seen.add(k);uniq.push(x)}}if(!uniq.length){watchResolverV19.lastKodikError='подходящих переводов нет';return false}const ep=ensureEpisodeManifestV151();ep.streams=(ep.streams||[]).filter(x=>String(x.provider||'').toLowerCase()!=='kodik');ep.streams.push(...uniq);ep.providerMeta=ep.providerMeta||{};ep.providerMeta.kodik={count:uniq.length,at:Date.now()};saveWatchManifestV15(entry,watchStateV15.manifest);watchResolverV19.kodikCandidates=uniq;watchResolverV19.lastKodikError='';return true}
 function renderKodikSelectorsV19(){const src=currentKodikSourcesV19(),dub=$('#watchDub'),q=$('#watchQuality'),subs=$('#watchSubs'),p=watchPrefsV15();if(dub){dub.innerHTML=src.map((x,i)=>`<option value="${esc(x.dub||`kodik:${i}`)}">${esc(x.dubLabel||x.translation||`Перевод ${i+1}`)}</option>`).join('')||'<option>Нет переводов</option>';const want=String(p.dub||'');dub.value=[...dub.options].some(o=>o.value===want)?want:(src[0]?.dub||'');dub.disabled=!src.length}if(q){q.innerHTML='<option value="provider">в плеере</option>';q.value='provider';q.disabled=true}if(subs){const cur=src.find(x=>x.dub===dub?.value)||src[0];subs.innerHTML=cur?.translationType==='subtitles'?`<option value="provider">${esc(cur.translation||'Субтитры')} · встроены</option>`:'<option value="off">Субтитры — через другую дорожку или нативный источник</option>';subs.disabled=true}}
 function chosenKodikSourceV19(){const src=currentKodikSourcesV19(),want=String($('#watchDub')?.value||watchPrefsV15().dub||'');return src.find(x=>x.dub===want)||src[0]||null}
@@ -11653,12 +11661,12 @@ console.info('Senime V25.9.5 Worker URL + account switch isolation guard ready')
 
 
 /* ==========================================================================
-   SENIME V25.9.7 · KODIK REQUEST RACE FIX + CLEAN EMBED
+   SENIME V25.9.8 · KODIK STALE LINK INVALIDATION
    Senime owns episode/track selection. Kodik stays only as the embedded
    playback surface: force the currently selected episode and hide duplicate
    provider selectors inside the iframe.
    ========================================================================== */
-const SENIME_V2596='25.9.7';
+const SENIME_V2596='25.9.8';
 
 function kodikEpisodeNoV2596(x){
   const n=Number(x?.episode ?? x?.number ?? x?.ordinal ?? x?.num);
@@ -11773,11 +11781,12 @@ function kodikCleanEmbedUrlV2596(raw,season,episode){
     u.searchParams.set('only_episode','true');
     u.searchParams.set('hide_selectors','true');
     u.searchParams.set('translations','false');
+    u.searchParams.set('hide_resume_button','true');
 
     return u.toString();
   }catch{
     const join=base.includes('?')?'&':'?';
-    return `${base}${join}season=${encodeURIComponent(season||1)}&episode=${encodeURIComponent(episode||1)}&only_episode=true&hide_selectors=true&translations=false`;
+    return `${base}${join}season=${encodeURIComponent(season||1)}&episode=${encodeURIComponent(episode||1)}&only_episode=true&hide_selectors=true&translations=false&hide_resume_button=true`;
   }
 }
 
@@ -11819,7 +11828,6 @@ showKodikV19=function(){
 
   const cleanUrl=kodikCleanEmbedUrlV2596(src.url,resolvedSeason,ep);
   showWatchEmbedV17(cleanUrl);
-  $('#watchEmbed')?.classList.add('kodik-clean-frame');
   renderKodikSelectorsV19();
 
   const note=$('#watchSourceNote');
@@ -11831,4 +11839,4 @@ showKodikV19=function(){
 
 window.SENIME_BUILD=SENIME_V2596;
 document.documentElement.dataset.senimeBuild=SENIME_V2596;
-console.info('Senime V25.9.7 Kodik request race fix + clean embed ready');
+console.info('Senime V25.9.8 Kodik stale episode links invalidated');
