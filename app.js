@@ -11646,3 +11646,179 @@ try{
 window.SENIME_BUILD=SENIME_V2594;
 document.documentElement.dataset.senimeBuild=SENIME_V2594;
 console.info('Senime V25.9.5 Worker URL + account switch isolation guard ready');
+
+
+/* ==========================================================================
+   SENIME V25.9.6 · KODIK EPISODE LOCK + CLEAN EMBED
+   Senime owns episode/track selection. Kodik stays only as the embedded
+   playback surface: force the currently selected episode and hide duplicate
+   provider selectors inside the iframe.
+   ========================================================================== */
+const SENIME_V2596='25.9.6';
+
+function kodikEpisodeNoV2596(x){
+  const n=Number(x?.episode ?? x?.number ?? x?.ordinal ?? x?.num);
+  return Number.isFinite(n) ? n : 0;
+}
+function kodikSeasonNoFromItemV2596(x){
+  const n=Number(x?.season ?? x?.number ?? x?.ordinal ?? x?.num);
+  return Number.isFinite(n) ? n : 0;
+}
+function kodikDirectLinkV2596(v){
+  if(!v)return '';
+  if(typeof v==='string')return /^https?:|^\/\//i.test(v)?v:'';
+  if(typeof v==='object'){
+    const s=String(v.link||v.url||'').trim();
+    if(s)return s;
+  }
+  return '';
+}
+function kodikExactEpisodeLinkV2596(container,episode,depth=0){
+  if(!container||depth>8)return '';
+  const ep=Number(episode)||1;
+
+  if(Array.isArray(container)){
+    const exact=container.find(x=>kodikEpisodeNoV2596(x)===ep);
+    if(exact){
+      const direct=kodikDirectLinkV2596(exact);
+      if(direct)return direct;
+      const nested=kodikExactEpisodeLinkV2596(exact,ep,depth+1);
+      if(nested)return nested;
+    }
+    // Search only nested episode containers; do not fall back to another
+    // episode's generic link.
+    for(const x of container){
+      if(!x||typeof x!=='object')continue;
+      for(const k of ['episodes','episode_data','episodes_data','items','data']){
+        if(x[k]){
+          const r=kodikExactEpisodeLinkV2596(x[k],ep,depth+1);
+          if(r)return r;
+        }
+      }
+    }
+    return '';
+  }
+
+  if(typeof container==='object'){
+    const keyed=container[String(ep)] ?? container[ep];
+    if(keyed){
+      const direct=kodikDirectLinkV2596(keyed);
+      if(direct)return direct;
+      const nested=kodikExactEpisodeLinkV2596(keyed,ep,depth+1);
+      if(nested)return nested;
+    }
+
+    if(kodikEpisodeNoV2596(container)===ep){
+      const direct=kodikDirectLinkV2596(container);
+      if(direct)return direct;
+    }
+
+    for(const k of ['episodes','episode_data','episodes_data','items','data']){
+      if(container[k]){
+        const r=kodikExactEpisodeLinkV2596(container[k],ep,depth+1);
+        if(r)return r;
+      }
+    }
+  }
+  return '';
+}
+function kodikSeasonContainerV2596(m){
+  const seasons=m?.seasons;
+  if(!seasons)return {number:1,value:null};
+
+  const wanted=Math.max(1,Number(watchStateV15?.season||0)+1);
+
+  if(Array.isArray(seasons)){
+    const exact=seasons.find(x=>kodikSeasonNoFromItemV2596(x)===wanted);
+    if(exact)return {number:wanted,value:exact};
+
+    const numbered=seasons
+      .map(x=>({n:kodikSeasonNoFromItemV2596(x),x}))
+      .filter(x=>x.n>0);
+    if(numbered.length===1)return {number:numbered[0].n,value:numbered[0].x};
+
+    const first=numbered.find(x=>x.n===1)||numbered[0];
+    return first?{number:first.n,value:first.x}:{number:1,value:seasons[0]||null};
+  }
+
+  if(typeof seasons==='object'){
+    if(seasons[String(wanted)]!=null)return {number:wanted,value:seasons[String(wanted)]};
+    if(seasons[wanted]!=null)return {number:wanted,value:seasons[wanted]};
+
+    const keys=Object.keys(seasons)
+      .map(k=>Number(k))
+      .filter(n=>Number.isFinite(n)&&n>0)
+      .sort((a,b)=>a-b);
+    if(keys.length===1)return {number:keys[0],value:seasons[String(keys[0])] ?? seasons[keys[0]]};
+    const n=keys.includes(1)?1:(keys[0]||1);
+    return {number:n,value:seasons[String(n)] ?? seasons[n] ?? Object.values(seasons)[0] ?? null};
+  }
+
+  return {number:1,value:null};
+}
+function kodikCleanEmbedUrlV2596(raw,season,episode){
+  const base=absKodikLinkV19?.(raw)||String(raw||'').trim();
+  if(!base)return '';
+  try{
+    const u=new URL(base,location.href);
+    u.searchParams.set('season',String(Math.max(1,Number(season)||1)));
+    u.searchParams.set('episode',String(Math.max(1,Number(episode)||1)));
+
+    // Senime already owns these controls. Keep the provider iframe focused on
+    // playback and prevent it from restoring a different episode internally.
+    u.searchParams.set('only_episode','true');
+    u.searchParams.set('hide_selectors','true');
+    u.searchParams.set('translations','false');
+
+    return u.toString();
+  }catch{
+    const join=base.includes('?')?'&':'?';
+    return `${base}${join}season=${encodeURIComponent(season||1)}&episode=${encodeURIComponent(episode||1)}&only_episode=true&hide_selectors=true&translations=false`;
+  }
+}
+
+/* Override the old generic-link resolver. It used to accept a season-level
+   link before checking the exact episode, which let Kodik reopen its own
+   remembered/latest episode (for example 12 while Senime selected 3). */
+function kodikEpisodeLinkV19(m,episode){
+  const ep=Math.max(1,Number(episode)||1);
+  const season=kodikSeasonContainerV2596(m);
+  const exact=kodikExactEpisodeLinkV2596(season.value,ep)
+    || kodikExactEpisodeLinkV2596(m,ep)
+    || kodikDirectLinkV2596(m)
+    || '';
+  return kodikCleanEmbedUrlV2596(exact,season.number,ep);
+}
+
+/* Even old cached manifest entries are corrected at playback time, so the user
+   does not need to clear localStorage or rebuild existing track caches. */
+showKodikV19=function(){
+  const src=chosenKodikSourceV19();
+  if(!src)return false;
+
+  const season=kodikSeasonContainerV2596({seasons:null}).number;
+  const ep=Math.max(1,Number(watchStateV15?.episode)||1);
+
+  // If the API result already resolved a season-specific URL, preserve the
+  // season parameter it carries. Otherwise use the current Senime part.
+  let resolvedSeason=Math.max(1,Number(watchStateV15?.season||0)+1);
+  try{
+    const parsed=new URL(absKodikLinkV19(src.url),location.href);
+    const existing=Number(parsed.searchParams.get('season'));
+    if(Number.isFinite(existing)&&existing>0)resolvedSeason=existing;
+  }catch{}
+
+  const cleanUrl=kodikCleanEmbedUrlV2596(src.url,resolvedSeason,ep);
+  showWatchEmbedV17(cleanUrl);
+  renderKodikSelectorsV19();
+
+  const note=$('#watchSourceNote');
+  if(note)note.textContent=`${src.dubLabel||src.translation||'Дорожка'} · серия ${ep}`;
+
+  setResolverStatusV19('Media Resolver',`${currentKodikSourcesV19().length} дорожек найдено`,'ok');
+  return true;
+};
+
+window.SENIME_BUILD=SENIME_V2596;
+document.documentElement.dataset.senimeBuild=SENIME_V2596;
+console.info('Senime V25.9.6 Kodik episode lock + clean embed ready');
