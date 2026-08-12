@@ -22,7 +22,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.9.9">
+  <link rel="stylesheet" href="style.css?v=25.9.10">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -615,6 +615,7 @@
           <div>
             <div class="profile-kicker">SENIME PROFILE</div>
             <h2 id="profileName">Профиль</h2>
+            <button id="profileHandleV25910" class="profile-handle-v25910 hidden" type="button" title="Нажми, чтобы скопировать свой handle">@handle <span>⧉</span></button>
             <div class="profile-status-line"><span id="profileLevelBadge">LVL 1</span><span id="profileEquippedBadge">без рамки</span><span id="profileCreatorBadgeV245" class="profile-creator-badge-v245 hidden">✦ CREATOR · #0001</span></div>
           </div>
         </div>
@@ -756,7 +757,7 @@
 
         <section id="profileTabCollection" class="profile-tab-pane">
           <div class="profile-section-head"><div><span>COLLECTION</span><h3>Карточки персонажей</h3></div><div class="profile-ticket-actions"><button id="profileOpenTicket" type="button">🎴 Character <b id="collectionRegularTicketCount">0</b></button><button id="profileOpenWaifuTicket" class="waifu-ticket-btn" type="button">💗 Waifu <b id="collectionWaifuTicketCount">0</b></button></div></div>
-          <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За полный просмотр аниме теперь выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>🌐 «выбито»</b> показывает общий счётчик карточки у всех пользователей, когда подключена статистика backend.</div>
+          <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За полный просмотр аниме теперь выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>👥 «владельцев»</b> показывает, у скольких разных пользователей есть эта карточка; повторы одного человека число не накручивают.</div>
           <div class="collection-toolbar-v247">
             <div class="collection-search-v247"><span>⌕</span><input id="collectionSearchV247" placeholder="Персонаж или аниме..." autocomplete="off" oninput="collectionToolbarInputV2471(this.value)"></div>
             <select id="collectionRarityV247" title="Редкость" onchange="collectionToolbarSelectV2471('rarity',this.value)">
@@ -1034,7 +1035,7 @@
       <div id="accountUserView" class="account-user-view hidden">
         <section class="account-user-card">
           <div id="accountUserAvatar" class="account-user-avatar">•</div>
-          <div class="account-user-copy"><span>ВЫ ВОШЛИ</span><strong id="accountUserName">Пользователь</strong><small id="accountUserEmail"></small></div>
+          <div class="account-user-copy"><span>ВЫ ВОШЛИ</span><strong id="accountUserName">Пользователь</strong><small id="accountUserEmail"></small><button id="accountUserHandleV25910" class="account-user-handle-v25910 hidden" type="button" title="Скопировать handle">@handle <span>⧉</span></button></div>
           <span id="accountCloudBadge" class="account-cloud-badge">● облако</span>
         </section>
         <section class="account-sync-card">
@@ -1083,7 +1084,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-  <script src="auth-config.js?v=25.9.9"></script>
-  <script src="app.js?v=25.9.9"></script>
+  <script src="auth-config.js?v=25.9.10"></script>
+  <script src="app.js?v=25.9.10"></script>
 </body>
 </html>

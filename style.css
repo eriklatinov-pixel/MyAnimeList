@@ -3232,6 +3232,44 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
     padding:6px!important;
   }
 }
+
+/* ==========================================================================
+   SENIME V25.9.10 · handles, live presence and mobile-safe profile slot
+   ========================================================================== */
+.profile-handle-v25910,.account-user-handle-v25910{
+  width:max-content;border:0!important;background:transparent!important;box-shadow:none!important;
+  color:#b9a7ff!important;padding:2px 0!important;font-size:11px!important;font-weight:800;letter-spacing:.02em
+}
+.profile-handle-v25910:hover,.account-user-handle-v25910:hover{color:#fff!important}
+.profile-handle-v25910 span,.account-user-handle-v25910 span{opacity:.55;margin-left:4px}
+.account-user-copy .account-user-handle-v25910{margin-top:2px}
+.presence-dot-v25910{display:inline-block;width:8px;height:8px;border-radius:50%;background:#46df90;box-shadow:0 0 0 3px rgba(70,223,144,.13),0 0 12px rgba(70,223,144,.46);vertical-align:middle;flex:0 0 auto}
+.presence-dot-v25910.offline{background:#626773;box-shadow:none}
+.social-person-main-v241 b .presence-dot-v25910{margin-right:7px}
+.public-online-label-v25910{display:inline-flex;align-items:center;gap:7px;margin-left:auto;padding:6px 10px;border:1px solid rgba(255,255,255,.08);border-radius:999px;color:#9298a7;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.public-online-label-v25910.online{color:#83e8ad;border-color:rgba(70,223,144,.22);background:rgba(70,223,144,.06)}
+.public-live-watch-v25910{width:100%;display:flex;align-items:center;gap:14px;text-align:left;border:1px solid rgba(151,125,255,.24)!important;border-radius:15px!important;padding:13px!important;background:linear-gradient(125deg,rgba(151,125,255,.13),rgba(237,91,158,.045))!important;color:#fff!important;box-shadow:none!important;min-height:132px}
+.public-live-watch-v25910 img{width:78px;height:106px;object-fit:cover;border-radius:10px}
+.public-live-watch-v25910 span{min-width:0;display:grid;gap:5px}
+.public-live-watch-v25910 small{display:flex;align-items:center;gap:7px;color:#79e6a6;font-size:8px;font-weight:900;letter-spacing:.12em}
+.public-live-watch-v25910 b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.public-live-watch-v25910 em{font-style:normal;color:var(--muted);font-size:10px}
+.public-presence-empty-v25910{min-height:132px;border:1px dashed rgba(255,255,255,.10);border-radius:15px;display:grid;grid-template-columns:auto 1fr;align-content:center;column-gap:10px;padding:16px;color:#8f94a3;background:linear-gradient(135deg,rgba(151,125,255,.035),rgba(255,255,255,.012))}
+.public-presence-empty-v25910 b{color:#bfc3cd;font-size:12px}.public-presence-empty-v25910 span{grid-column:2;font-size:9px;margin-top:3px}
+.public-presence-empty-v25910.online{border-color:rgba(70,223,144,.17);background:rgba(70,223,144,.025)}
+.public-progress-widget-v243{align-self:stretch!important}
+.public-live-slot-v25910{margin-top:12px;min-height:132px}
+@media(max-width:760px){
+  .watch-stage>.watch-media-deck-v22.watch-media-deck-mobile-v2599{overflow:hidden!important;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+  .watch-media-deck-mobile-v2599 .watch-deck-pane-v22.active{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+  .public-profile-name-row-v242{flex-wrap:wrap}.public-online-label-v25910{margin-left:0}
+  .profile-head{align-items:flex-start}.profile-handle-v25910{font-size:12px!important;min-height:30px}
+}
+@media(max-width:680px){
+  .public-live-slot-v25910{min-height:110px}
+  .public-live-slot-v25910 .public-live-watch-v25910,.public-live-slot-v25910 .public-presence-empty-v25910{min-height:110px}
+  .public-live-slot-v25910 .public-live-watch-v25910 img{width:62px;height:84px}
+}
 @keyframes senimeRoutePageInV259{from{opacity:.55;transform:translateY(7px)}to{opacity:1;transform:none}}
 
 /* ==========================================================================

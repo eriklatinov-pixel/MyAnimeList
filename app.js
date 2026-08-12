@@ -11991,3 +11991,173 @@ else syncMobileWatchDeckV2599();
 window.SENIME_BUILD=SENIME_V2599;
 document.documentElement.dataset.senimeBuild=SENIME_V2599;
 console.info('Senime V25.9.9 mobile CAPTCHA and player deck active');
+
+
+/* ==========================================================================
+   SENIME V25.9.10 · IDENTITY + LIVE PROFILE + UNIQUE CARD OWNERS
+   ========================================================================== */
+const SENIME_V25910='25.9.10';
+const PRESENCE_TTL_V25910=110000;
+const PRESENCE_HEARTBEAT_V25910=35000;
+let presenceBusyV25910=false;
+let cardOwnerFetchAtV25910=0;
+
+function effectiveHandleV25910(p){
+  if(p?.handle)return String(p.handle).replace(/^@/,'');
+  const base=socialSlugV241?.(p?.display_name||'user')||'user';
+  const tail=String(p?.id||'').replace(/-/g,'').slice(0,4);
+  return `${base.slice(0,Math.max(3,23-(tail?tail.length+1:0)))}${tail?'-'+tail:''}`.slice(0,24);
+}
+socialHandleV241=function(p){const h=effectiveHandleV25910(p);return h?`@${h}`:'@user'};
+
+function presenceTimeV25910(p){
+  const pp=p?.public_payload||{},raw=pp?.presence?.at||p?.last_seen||0;
+  const n=typeof raw==='number'?raw:Date.parse(raw);
+  return Number.isFinite(n)?n:0;
+}
+function isOnlineV25910(p){return !!p&&Date.now()-presenceTimeV25910(p)<PRESENCE_TTL_V25910}
+function currentWatchingV25910(){
+  const modal=$('#watchModal'),e=watchStateV15?.entry;
+  if(document.visibilityState!=='visible'||!e||!modal||modal.classList.contains('hidden'))return null;
+  return {
+    title:String(e.title||'Аниме').slice(0,160),cover:String(e.cover||'').slice(0,600),
+    animeId:Number(e.anilist_id)||0,season:Math.max(1,(Number(watchStateV15.season)||0)+1),
+    episode:Math.max(1,Number(watchStateV15.episode)||1)
+  };
+}
+
+const publicPayloadBeforeV25910=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){
+  const out=publicPayloadBeforeV25910?.()||{};
+  const cards=(ensureProfileV16()?.collection||[]).map(c=>Number(c.characterId)).filter(Boolean);
+  out.cardIds=[...new Set(cards)].slice(0,2500);
+  out.presence={at:Date.now(),watching:currentWatchingV25910()};
+  out.senimeVersion=SENIME_V25910;
+  return out;
+};
+
+async function ensureOwnHandleV25910(){
+  if(!socialSignedV241())return null;
+  const me=socialMeV241();let p=socialStateV241.own;
+  if(!p||p.id!==me){
+    try{const q=new URLSearchParams();q.set('id',`eq.${me}`);q.set('limit','1');p=(await socialFetchProfilesV242(q.toString()))?.[0]||p}catch{}
+  }
+  if(!p)return null;
+  if(!p.handle){
+    const preferred=effectiveHandleV25910(p),stem=(socialSlugV241?.(p.display_name||accountDisplayNameV23?.())||'user').slice(0,16);
+    const candidates=[preferred,`${stem}-${me.replace(/-/g,'').slice(0,6)}`,`${stem}-${Math.random().toString(36).slice(2,8)}`];
+    for(const candidate of [...new Set(candidates)]){
+      try{await socialRestV241(`profiles?id=eq.${encodeURIComponent(me)}`,{method:'PATCH',body:{handle:candidate,last_seen:new Date().toISOString()},prefer:'return=minimal'});p.handle=candidate;break}
+      catch(e){if(Number(e?.status)!==409)console.warn('handle init',e)}
+    }
+  }
+  socialStateV241.own=p;socialStateV241.profiles.set(me,p);renderOwnHandleV25910();return p;
+}
+
+async function copyOwnHandleV25910(){
+  const p=await ensureOwnHandleV25910(),value=socialHandleV241(p||{id:socialMeV241(),display_name:profileNicknameV16()});
+  try{await navigator.clipboard.writeText(value);profileToastV16?.('Handle скопирован',value)}catch{window.prompt('Твой handle',value)}
+}
+window.copyOwnHandleV25910=copyOwnHandleV25910;
+
+function renderOwnHandleV25910(){
+  const signed=socialSignedV241(),p=socialStateV241.own||{id:socialMeV241(),display_name:profileNicknameV16()},value=socialHandleV241(p);
+  for(const el of [$('#profileHandleV25910'),$('#accountUserHandleV25910')]){
+    if(!el)continue;el.classList.toggle('hidden',!signed);el.disabled=!signed;if(signed)el.innerHTML=`${esc(value)} <span>⧉</span>`;
+  }
+}
+$('#profileHandleV25910')?.addEventListener('click',copyOwnHandleV25910);
+$('#accountUserHandleV25910')?.addEventListener('click',copyOwnHandleV25910);
+
+const renderProfileChromeBeforeV25910=renderProfileChromeV16;
+renderProfileChromeV16=function(){const r=renderProfileChromeBeforeV25910?.apply(this,arguments);renderOwnHandleV25910();return r};
+const renderAccountChromeBeforeV25910=renderAccountChromeV23;
+renderAccountChromeV23=function(){const r=renderAccountChromeBeforeV25910?.apply(this,arguments);renderOwnHandleV25910();return r};
+window.renderProfileChromeV16=renderProfileChromeV16;window.renderAccountChromeV23=renderAccountChromeV23;
+
+const syncPublicBeforeV25910=socialSyncPublicProfileV242;
+socialSyncPublicProfileV242=async function(){
+  if(!socialSignedV241()||presenceBusyV25910)return false;
+  presenceBusyV25910=true;
+  try{await ensureOwnHandleV25910();return await syncPublicBeforeV25910?.apply(this,arguments)}
+  finally{presenceBusyV25910=false;renderOwnHandleV25910()}
+};
+window.socialSyncPublicProfileV242=socialSyncPublicProfileV242;
+
+/* Keep the legacy pull event for backend compatibility, but display a count
+   of distinct profile owners instead of duplicate openings. */
+const registerPullBeforeV25910=registerGlobalPullV205;
+registerGlobalPullV205=async function(characterId){
+  try{await registerPullBeforeV25910?.(characterId)}catch{}
+  setTimeout(()=>{socialSyncPublicProfileV242?.();refreshGlobalPullCountsV205?.({force:true})},300);return null;
+};
+const revealCardBeforeV25910=revealCardV205;
+revealCardV205=function(){
+  const r=revealCardBeforeV25910?.apply(this,arguments);
+  setTimeout(()=>{const el=$('#characterRevealGlobalV205');if(el)el.textContent=`👥 Владельцев: ${formatGlobalPullsV205(r?.card?.globalPulls)}`},0);return r;
+};
+formatGlobalPullsV205=function(n){n=Number(n);return Math.max(1,Number.isFinite(n)?Math.round(n):1).toLocaleString('ru-RU')};
+refreshGlobalPullCountsV205=async function({force=false}={}){
+  const p=ensureCardProfileV205(),now=Date.now();if(!p.collection?.length)return;
+  if(!force&&now-cardOwnerFetchAtV25910<CARD_STATS_CACHE_MS_V205)return;cardOwnerFetchAtV25910=now;
+  const wanted=new Set(p.collection.map(c=>Number(c.characterId)).filter(Boolean)),counts=new Map([...wanted].map(id=>[id,0]));
+  try{
+    const rows=await socialRestV241('profiles?select=id,public_payload&limit=5000');
+    for(const row of rows||[]){const ids=new Set((row?.public_payload?.cardIds||[]).map(Number).filter(id=>wanted.has(id)));for(const id of ids)counts.set(id,(counts.get(id)||0)+1)}
+  }catch(e){console.warn('unique card owners',e)}
+  let changed=false;
+  for(const c of p.collection||[]){const next=Math.max(1,counts.get(Number(c.characterId))||0);if(Number(c.globalPulls)!==next){c.globalPulls=next;changed=true}}
+  if(changed){saveData();const box=$('#profileCollection');if(box&&!box.dataset.ownerRefreshV25910){box.dataset.ownerRefreshV25910='1';try{renderCollectionV16()}finally{delete box.dataset.ownerRefreshV25910}}}
+};
+
+const renderCollectionBeforeV25910=renderCollectionV16;
+renderCollectionV16=function(){
+  const r=renderCollectionBeforeV25910?.apply(this,arguments);
+  document.querySelectorAll('#profileCollection .collection-global-v205').forEach(el=>{
+    const id=Number(el.closest('[data-character-id]')?.dataset.characterId),card=(ensureProfileV16()?.collection||[]).find(c=>Number(c.characterId)===id);
+    el.innerHTML=`👥 владельцев: <b>${formatGlobalPullsV205(card?.globalPulls)}</b>`;
+  });return r;
+};
+window.renderCollectionV16=renderCollectionV16;
+
+const personCardBeforeV25910=socialPersonCardV241;
+socialPersonCardV241=function(p,opts){let html=personCardBeforeV25910?.(p,opts)||'';if(isOnlineV25910(p))html=html.replace(/(<b[^>]*>)/,`$1<i class="presence-dot-v25910" title="В сети"></i>`);return html};
+
+function publicWatchingHtmlV25910(p){
+  const online=isOnlineV25910(p),watching=online?p?.public_payload?.presence?.watching:null;
+  if(watching)return `<button class="public-live-watch-v25910" type="button" ${watching.animeId?`onclick="senimeWriteRouteV259('/watch/${Number(watching.animeId)}/${Number(watching.episode)||1}?season=${Number(watching.season)||1}')"`:''}>${watching.cover?`<img src="${esc(watching.cover)}" alt="">`:''}<span><small><i class="presence-dot-v25910"></i> СМОТРИТ СЕЙЧАС</small><b>${esc(watching.title||'Аниме')}</b><em>${Number(watching.season)>1?`сезон ${Number(watching.season)} · `:''}серия ${Number(watching.episode)||1}</em></span></button>`;
+  if(online)return '<div class="public-presence-empty-v25910 online"><i class="presence-dot-v25910"></i><b>Сейчас в сети</b><span>Плеер не открыт</span></div>';
+  return '<div class="public-presence-empty-v25910"><i class="presence-dot-v25910 offline"></i><b>Не в сети</b><span>Ничего не смотрит прямо сейчас</span></div>';
+}
+function patchPublicPresenceV25910(p){
+  const body=$('#publicProfileBodyV242');if(!body||!p)return;
+  const online=isOnlineV25910(p),nameRow=body.querySelector('.public-profile-name-row-v242');
+  if(nameRow&&!nameRow.querySelector('.public-online-label-v25910'))nameRow.insertAdjacentHTML('beforeend',`<span class="public-online-label-v25910 ${online?'online':'offline'}"><i class="presence-dot-v25910 ${online?'':'offline'}"></i>${online?'в сети':'не в сети'}</span>`);
+  const handle=body.querySelector('.public-handle-v243');if(handle)handle.textContent=socialHandleV241(p);
+  const progress=body.querySelector('.public-progress-widget-v243');if(progress){let slot=progress.querySelector('.public-live-slot-v25910');if(!slot){slot=document.createElement('div');slot.className='public-live-slot-v25910';progress.appendChild(slot)}slot.innerHTML=publicWatchingHtmlV25910(p)}
+  body.querySelector('.public-watching-widget-v243')?.remove();
+  const firstStat=body.querySelector('.public-stats-grid-v243>div:first-child');if(firstStat){const watching=online&&p?.public_payload?.presence?.watching;firstStat.innerHTML=`<b>${watching?1:0}</b><span>смотрит сейчас</span>`}
+}
+
+const openPublicBeforeV25910=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){
+  try{const q=new URLSearchParams();q.set('id',`eq.${id}`);q.set('limit','1');const fresh=(await socialFetchProfilesV242(q.toString()))?.[0];if(fresh)socialStateV241.profiles.set(id,fresh)}catch{}
+  const r=await openPublicBeforeV25910?.apply(this,arguments);patchPublicPresenceV25910(socialStateV241.profiles.get(id));return r;
+};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+const openWatchBeforeV25910=openWatchPlayerV15;
+openWatchPlayerV15=function(){const r=openWatchBeforeV25910?.apply(this,arguments);setTimeout(()=>socialSyncPublicProfileV242?.(),250);return r};
+const closeWatchBeforeV25910=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){const r=closeWatchBeforeV25910?.apply(this,arguments);setTimeout(()=>socialSyncPublicProfileV242?.(),120);return r};
+window.openWatchPlayerV15=openWatchPlayerV15;window.closeWatchPlayerV15=closeWatchPlayerV15;
+
+async function heartbeatV25910(){if(document.visibilityState!=='visible'||!socialSignedV241())return;await socialSyncPublicProfileV242()}
+setInterval(heartbeatV25910,PRESENCE_HEARTBEAT_V25910);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')heartbeatV25910()});
+window.addEventListener('focus',heartbeatV25910);
+setTimeout(async()=>{renderOwnHandleV25910();if(socialSignedV241()){await ensureOwnHandleV25910();await heartbeatV25910();refreshGlobalPullCountsV205?.({force:true})}},900);
+
+window.SENIME_BUILD=SENIME_V25910;
+document.documentElement.dataset.senimeBuild=SENIME_V25910;
+console.info('Senime V25.9.10 identity, live profile and unique card owners active');
