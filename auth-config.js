@@ -9,12 +9,12 @@ window.ANIME_AUTH_CONFIG = {
   /* Public URL of your existing Cloudflare Worker. Not a secret.
      Paste it here before the public domain launch, e.g.
      backendUrl: "https://senime-api.<account>.workers.dev" */
-  backendUrl: "",
+  backendUrl: "https://rmyanimelist-api.eriklatinov.workers.dev",
 
   /* Production Cloudflare Turnstile sitekey for senime.fun.
      This sitekey is public by design; the matching secret stays only in Supabase. */
   turnstileSiteKey: "0x4AAAAAAENQ2GQR2QLqBJY7",
   turnstileMode: "production",
 
-  securityVersion: "25.9.4"
+  securityVersion: "25.9.5"
 };

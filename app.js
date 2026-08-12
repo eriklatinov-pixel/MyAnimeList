@@ -11484,14 +11484,14 @@ document.documentElement.dataset.senimeBuild=SENIME_V2592;
 console.info('Senime V25.9.3 production Turnstile + hero opening stability ready');
 
 /* ==========================================================================
-   SENIME V25.9.4 · ACCOUNT SWITCH ISOLATION GUARD
+   SENIME V25.9.5 · WORKER URL + ACCOUNT SWITCH ISOLATION GUARD
    A shared browser localStorage cache must never become another user's cloud
    state. While a different account is hydrating, show a neutral local state
    and block background cloud pushes until the target user's payload is loaded.
    Also keep legacy short passwords usable for sign-in (the 10-char rule stays
    on registration/password reset) and always use the production auth return URL.
    ========================================================================== */
-const SENIME_V2594='25.9.4';
+const SENIME_V2594='25.9.5';
 const ACCOUNT_CACHE_PREFIX_V2594='senimeAccountCacheV2594:';
 let accountHydratingV2594=false;
 let accountHydrationInternalPushV2594=false;
@@ -11546,7 +11546,7 @@ window.accountWriteSessionV23=accountWriteSessionV23;
 const accountPushCloudBeforeV2594=accountPushCloudV23;
 accountPushCloudV23=async function(opts={}){
   if(!accountHydrationInternalPushV2594&&(accountHydratingV2594||accountOwnerMismatchV2594())){
-    console.warn('Senime V25.9.4: blocked cloud push while account ownership is unresolved');
+    console.warn('Senime V25.9.5: blocked cloud push while account ownership is unresolved');
     return false;
   }
   const ok=await accountPushCloudBeforeV2594(opts);
@@ -11645,4 +11645,4 @@ try{
 
 window.SENIME_BUILD=SENIME_V2594;
 document.documentElement.dataset.senimeBuild=SENIME_V2594;
-console.info('Senime V25.9.4 account switch isolation guard ready');
+console.info('Senime V25.9.5 Worker URL + account switch isolation guard ready');
