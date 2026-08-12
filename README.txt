@@ -1,3 +1,18 @@
+Senime V25.9.7 — Kodik Episode Sync + Cleaner Embed
+
+- Исправлена гонка запросов Kodik: медленный ответ предыдущей серии больше не может подменить выбранную серию.
+- Для Kodik используется точная ссылка `/seria/...` из `seasons[season].episodes[episode]`, а не общий serial/season fallback.
+- Дублирующая верхняя панель серий и озвучек Kodik скрыта; выбор остаётся в Media Deck Senime.
+
+Senime V25.9.4 — Account Switch Isolation Guard
+
+- Fix: switching accounts can no longer display/push the previous account's local anime library.
+- Cloud writes are blocked until the target account has finished loading.
+- Login accepts legacy short passwords; 10+ remains required for registration/reset.
+- Auth emails always return to https://senime.fun/.
+- Includes V25.9.3 production Turnstile + home opening stability fix.
+- Manual recovery helper: window.senimeRepairMixedLibraryV2594() clears only library/watch progress while preserving profile economy/cards/cosmetics.
+
 Senime V25.4 — Profile + Collection reliability
 
 Senime V25.3 — Calm Action System
