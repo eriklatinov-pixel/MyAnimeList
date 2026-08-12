@@ -3288,6 +3288,30 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
   .community-tabs-v247{display:flex!important;overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none;scroll-snap-type:x proximity}.community-tabs-v247::-webkit-scrollbar{display:none}.community-tabs-v247 button{flex:0 0 auto;min-height:44px;scroll-snap-align:start;white-space:nowrap}
 }
 
+/* Senime V25.9.16 · settings are for viewers, not backend maintenance */
+#settingsModal .settings-shell{width:min(900px,100%)}
+#settingsModal .settings-layout{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#settingsModal .settings-group:last-child{grid-column:1/-1}
+.settings-account-shortcuts-v25916{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.settings-account-shortcuts-v25916 button{min-height:44px!important;padding:9px!important;font-size:10px!important}
+.setting-toggle-featured-v25916{margin:-2px -4px 6px!important;padding:12px 10px!important;border:1px solid rgba(136,112,255,.27)!important;border-radius:13px!important;background:linear-gradient(135deg,rgba(132,103,255,.12),rgba(235,89,158,.05))!important}
+.setting-toggle-featured-v25916 span b{color:#e8e2ff}
+.settings-group:has(#settingLowPowerV25916:checked) .setting-toggle:not(.setting-toggle-featured-v25916){opacity:.45}
+.low-power-v25916 .hero-anime-video,.low-power-v25916 .hero-anime-video-bg{display:none!important}
+
+@media(max-width:700px){
+  #settingsModal{padding:0!important;align-items:end!important;place-items:end stretch!important}
+  #settingsModal .settings-shell{width:100%;max-height:100dvh;border-radius:20px 20px 0 0!important;border-left:0;border-right:0;border-bottom:0}
+  #settingsModal .settings-head{padding:17px 16px 14px!important}
+  #settingsModal .settings-head h2{font-size:23px!important}
+  #settingsModal .settings-head p{font-size:10px!important;max-width:260px}
+  #settingsModal .settings-layout{grid-template-columns:1fr!important;padding:10px!important;gap:9px!important}
+  #settingsModal .settings-group:last-child{grid-column:auto}
+  #settingsModal .settings-group{padding:14px!important;border-radius:16px!important}
+  #settingsModal .settings-footer{padding:10px!important;padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+  .settings-account-shortcuts-v25916{grid-template-columns:1fr}
+}
+
 /* ==========================================================================
    SENIME V25.9.10 · handles, live presence and mobile-safe profile slot
    ========================================================================== */

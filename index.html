@@ -22,7 +22,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.9.15">
+  <link rel="stylesheet" href="style.css?v=25.9.16">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -867,14 +867,21 @@
 
   <input id="settingSiteName" type="hidden" value="Senime">
   <input id="settingSiteTagline" type="hidden" value="Твоя аниме-библиотека, профиль и сообщество в одном месте.">
+  <input id="settingWidth" type="hidden" value="1480">
+  <span id="widthValue" hidden></span>
+  <select id="settingColumns" hidden><option value="auto">Авто</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+  <input id="settingDescriptor" type="checkbox" hidden checked>
+  <input id="settingEmoji" type="checkbox" hidden checked>
+  <select id="settingMotion" hidden><option value="normal">Обычно</option><option value="soft">Спокойно</option><option value="playful">Поживее</option></select>
+  <select id="settingButtonFx" hidden><option value="ripple">Волна</option><option value="glow">Вспышка</option><option value="press">Нажатие</option><option value="none">Без эффекта</option></select>
 
   <div id="settingsModal" class="settings-modal hidden" role="dialog" aria-modal="true">
     <div class="settings-shell">
       <div class="settings-head">
         <div>
-          <div class="settings-kicker">PERSONALIZE</div>
-          <h2>⚙️ Настройки интерфейса</h2>
-          <p>Все настройки сохраняются только в этом браузере.</p>
+          <div class="settings-kicker">НАСТРОЙКИ</div>
+          <h2>⚙️ Настройки Senime</h2>
+          <p>Только полезное. Интерфейс меняется только для тебя.</p>
         </div>
         <button id="settingsClose" class="settings-close" type="button">✕</button>
       </div>
@@ -904,13 +911,8 @@
         <section class="settings-group">
           <h3>🖼️ Карточки</h3>
           <label class="setting-range"><span><b>Размер обложек</b><small id="posterValue"></small></span><input id="settingPoster" type="range" min="72" max="150" step="2"></label>
-          <label class="setting-range"><span><b>Ширина сайта</b><small id="widthValue"></small></span><input id="settingWidth" type="range" min="1000" max="1800" step="20"></label>
-          <label class="setting-row"><span><b>Колонки</b><small>Сколько карточек в ряд</small></span>
-            <select id="settingColumns"><option value="auto">Авто</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
-          </label>
           <label class="setting-toggle"><span><b>Показывать прогресс</b><small>Например 7 / 12</small></span><input id="settingProgress" type="checkbox"><i></i></label>
-          <label class="setting-toggle"><span><b>Показывать характеристику</b><small>«мрачное», «эмоциональное»…</small></span><input id="settingDescriptor" type="checkbox"><i></i></label>
-          <label class="setting-toggle"><span><b>Показывать быстрые кнопки</b><small>Переместить / Изменить / Далее</small></span><input id="settingActions" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Быстрые действия</b><small>Переместить, изменить или добавить в «Далее»</small></span><input id="settingActions" type="checkbox"><i></i></label>
         </section>
 
         <section class="settings-group">
@@ -918,14 +920,16 @@
           <label class="setting-toggle"><span><b>Русское описание</b><small>Показывать RU по умолчанию, если оно найдено</small></span><input id="settingPreferRu" type="checkbox"><i></i></label>
           <label class="setting-toggle"><span><b>Опенинги и эндинги</b><small>Компактный блок музыки внизу страницы</small></span><input id="settingThemes" type="checkbox"><i></i></label>
           <label class="setting-toggle"><span><b>Отзывы зрителей</b><small>Показывать до трёх коротких отзывов MAL</small></span><input id="settingReviews" type="checkbox"><i></i></label>
-          <div class="settings-note">Аудио не запускается само: у OP/ED будут быстрые ссылки на YouTube/Spotify. Так стабильнее и браузер ничего не блокирует.</div>
         </section>
 
         <section class="settings-group settings-branding-group">
-          <h3>🪪 Название, приветствие и футер</h3>
-          <label class="setting-field"><span><b>Твой ник</b><small>Используется в приветствиях и будущем профиле</small></span><input id="settingNickname" type="text" maxlength="28" placeholder="Например: SeNite"></label>
-          <label class="setting-toggle"><span><b>Живой аниме-фон на главной</b><small>Автоматически берёт OP/ED-видео из AnimeThemes. YouTube не нужен</small></span><input id="settingHeroTrailer" type="checkbox"><i></i></label>
-          <label class="setting-toggle"><span><b>Показывать футер</b><small>Большой нижний блок как у аниме-сервисов</small></span><input id="settingFooter" type="checkbox"><i></i></label>
+          <h3>🏠 Главная и аккаунт</h3>
+          <label class="setting-toggle"><span><b>Видео-фон на главной</b><small>Без звука; выключи для экономии трафика</small></span><input id="settingHeroTrailer" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Показывать футер</b><small>Нижний блок с разделами сайта</small></span><input id="settingFooter" type="checkbox"><i></i></label>
+          <div class="settings-account-shortcuts-v25916">
+            <button type="button" class="secondary" onclick="closeSettings(false);openProfileV16()">👤 Профиль и @handle</button>
+            <button type="button" class="secondary" onclick="closeSettings(false);openAccountV23()">☁ Аккаунт и синхронизация</button>
+          </div>
         </section>
 
         <section class="settings-group settings-mascot-group release-hidden-v257">
@@ -956,24 +960,12 @@
           <div class="settings-note">При загрузке PNG сайт автоматически обрезает пустые прозрачные края. Поэтому персонаж занимает реальный размер, а настройки положения работают точнее.</div>
         </section>
 
-        <section class="settings-group settings-server-group founder-only-v257">
-          <h3>🌐 Сервер проекта</h3>
-          <label class="setting-field"><span><b>Backend URL</b><small>Скрытый сервер для AniList/Jikan и API-ключей. Для локального режима можно оставить пустым.</small></span><input id="settingBackendUrl" type="url" autocomplete="off" placeholder="https://myanimelist-api....workers.dev"></label>
-          <div class="settings-server-actions"><button id="settingBackendTest" class="secondary" type="button">↻ Проверить сервер</button><span id="settingBackendStatus">Не настроен</span></div>
-          <div class="settings-note">На публичном сайте Backend прячет ключи SubDL/Kodik и проксирует каталог, чтобы браузер не упирался в CORS/сбои прямых API-запросов.</div>
-        </section>
-
         <section class="settings-group">
-          <h3>✨ Эффекты</h3>
-          <label class="setting-toggle"><span><b>Анимации</b><small>Плавные наведения, появление карточек и окна</small></span><input id="settingAnimations" type="checkbox"><i></i></label>
-          <label class="setting-row"><span><b>Интенсивность</b><small>Насколько интерфейс «живой»</small></span><select id="settingMotion"><option value="soft">Спокойно</option><option value="normal">Обычно</option><option value="playful">Поживее</option></select></label>
-          <label class="setting-row"><span><b>Эффект кнопок</b><small>Анимация при нажатии</small></span><select id="settingButtonFx"><option value="ripple">Волна</option><option value="glow">Вспышка</option><option value="press">Нажатие</option><option value="none">Без эффекта</option></select></label>
-          <label class="setting-toggle"><span><b>Glass-эффект</b><small>Размытие панелей и окон</small></span><input id="settingGlass" type="checkbox"><i></i></label>
+          <h3>⚡ Производительность</h3>
+          <label class="setting-toggle setting-toggle-featured-v25916"><span><b>Экономия батареи и трафика</b><small>Отключает видео-фон, размытие и лишние анимации</small></span><input id="settingLowPowerV25916" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Анимации интерфейса</b><small>Можно выключить, если телефон тормозит</small></span><input id="settingAnimations" type="checkbox"><i></i></label>
+          <label class="setting-toggle"><span><b>Размытие интерфейса</b><small>Красивее, но немного тяжелее для слабых устройств</small></span><input id="settingGlass" type="checkbox"><i></i></label>
           <label class="setting-toggle"><span><b>Фоновое свечение</b><small>Мягкие цветные пятна</small></span><input id="settingGlow" type="checkbox"><i></i></label>
-          <label class="setting-toggle"><span><b>Показывать эмодзи</b><small>Эмодзи перед названием тайтла</small></span><input id="settingEmoji" type="checkbox"><i></i></label>
-          <div class="settings-preview">
-            <div class="preview-cover"></div><div><strong>🎌 Пример карточки</strong><small>12 эпизодов · атмосферное</small><div class="preview-bar"><i></i></div></div>
-          </div>
         </section>
       </div>
 
@@ -1092,7 +1084,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-  <script src="auth-config.js?v=25.9.15"></script>
-  <script src="app.js?v=25.9.15"></script>
+  <script src="auth-config.js?v=25.9.16"></script>
+  <script src="app.js?v=25.9.16"></script>
 </body>
 </html>

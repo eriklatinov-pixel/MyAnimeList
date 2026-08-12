@@ -338,4 +338,11 @@ Major sections now have clean URLs without duplicating application logic:
 - Public profile, profile tabs and community tabs are compact and scroll-safe on phones.
 - Production Supabase accounts and Cloudflare Turnstile remain enabled.
 
+=== V25.9.16 CLEAN SETTINGS ===
+- Removed developer-only Backend URL and obsolete local nickname controls from normal settings.
+- Settings now point to the real profile/@handle and cloud account screens.
+- Removed redundant card layout and micro-animation controls; responsive layout stays automatic.
+- Added a phone-friendly battery/data saver for video backgrounds, blur and animations.
+- Rebuilt the settings window as a compact mobile bottom sheet.
+
 Cloudflare Pages uses _redirects. GitHub Pages uses 404.html fallback while the project is still tested at the old GitHub URL.

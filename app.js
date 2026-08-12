@@ -12295,3 +12295,54 @@ syncMobileNavV25915();
 window.SENIME_BUILD=SENIME_V25915;
 document.documentElement.dataset.senimeBuild=SENIME_V25915;
 console.info('Senime V25.9.15 public preview, stable presence, single-view UI and mobile navigation active');
+
+/* ==========================================================================
+   SENIME V25.9.16 · CLEAN SETTINGS + MOBILE POWER SAVER
+   ========================================================================== */
+const SENIME_V25916='25.9.16';
+const LOW_POWER_KEY_V25916='lowPowerV25916';
+Object.assign(DEFAULT_SETTINGS,{[LOW_POWER_KEY_V25916]:false});
+
+function syncLowPowerFormV25916(){
+  const on=!!$('#settingLowPowerV25916')?.checked;
+  ['settingAnimations','settingGlass','settingGlow'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=on});
+}
+
+const setSettingsFormBeforeV25916=setSettingsForm;
+setSettingsForm=function(s=uiSettings){
+  setSettingsFormBeforeV25916?.apply(this,arguments);
+  const toggle=$('#settingLowPowerV25916');if(toggle)toggle.checked=!!s?.[LOW_POWER_KEY_V25916];
+  syncLowPowerFormV25916();
+};
+
+const readSettingsFormBeforeV25916=readSettingsForm;
+readSettingsForm=function(){
+  const s=readSettingsFormBeforeV25916?.apply(this,arguments)||{...uiSettings};
+  s[LOW_POWER_KEY_V25916]=!!$('#settingLowPowerV25916')?.checked;
+  return s;
+};
+
+const scheduleHeroBeforeV25916=scheduleHeroTrailerV13;
+scheduleHeroTrailerV13=function(){
+  if(uiSettings?.[LOW_POWER_KEY_V25916]){clearTimeout(heroTrailerTimerV13);clearHeroTrailerV13?.();return}
+  return scheduleHeroBeforeV25916?.apply(this,arguments);
+};
+
+const applySettingsBeforeV25916=applySettings;
+applySettings=function(s=uiSettings){
+  const r=applySettingsBeforeV25916?.apply(this,arguments),on=!!s?.[LOW_POWER_KEY_V25916],body=document.body;
+  body.classList.toggle('low-power-v25916',on);
+  if(on){
+    body.classList.add('no-animations','no-glass','no-glow');
+    clearTimeout(heroTrailerTimerV13);clearHeroTrailerV13?.();
+  }
+  return r;
+};
+Object.assign(window,{setSettingsForm,readSettingsForm,applySettings,scheduleHeroTrailerV13});
+
+$('#settingLowPowerV25916')?.addEventListener('input',()=>{syncLowPowerFormV25916();previewSettings()});
+applySettings(uiSettings);syncLowPowerFormV25916();
+
+window.SENIME_BUILD=SENIME_V25916;
+document.documentElement.dataset.senimeBuild=SENIME_V25916;
+console.info('Senime V25.9.16 clean settings and mobile power saver active');
