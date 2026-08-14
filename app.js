@@ -766,18 +766,18 @@ const DEFAULT_DATA = {
         "note": ""
       },
       {
-        "anilist_id": null,
-        "mal_id": null,
+        "anilist_id": 171627,
+        "mal_id": 57555,
         "title": "Chainsaw Man – The Movie: Reze Arc",
         "aliases": [
           "Chainsaw Man – The Movie: Reze Arc"
         ],
         "emoji": "💣",
         "descriptor": "боевое",
-        "episodes": null,
+        "episodes": 1,
         "episodes_text": "1 фильм",
         "format": "MOVIE",
-        "year": null,
+        "year": 2025,
         "cover": null,
         "note": ""
       }
@@ -12871,3 +12871,79 @@ const repairedDailyV25919=reconcileDailyWatchV25919();
 window.SENIME_BUILD=SENIME_V25919;
 document.documentElement.dataset.senimeBuild=SENIME_V25919;
 console.info(`Senime V25.9.19 verified daily watch quests active${repairedDailyV25919?' · today reconciled':''}`);
+
+/* ==========================================================================
+   SENIME V25.9.20 · VALID ANIME COMMENT CONTEXT
+   ========================================================================== */
+const SENIME_V25920='25.9.20';
+const REZE_IDENTITY_V25920={anilistId:171627,malId:57555,title:'Chainsaw Man – The Movie: Reze Arc',year:2025};
+
+function isRezeTitleV25920(entry){
+  const text=[entry?.title,...(entry?.aliases||[]),...(entry?.franchise_parts||[]).flatMap(part=>[part?.title,part?.title_romaji,part?.title_native])].filter(Boolean).map(normalize).join(' ');
+  return /(?:\breze\b|резе)/.test(text)&&/(?:chainsaw|бензопил)/.test(text);
+}
+function positiveAniListIdV25920(value){const id=Number(value);return Number.isInteger(id)&&id>0?id:0}
+function repairKnownCommentIdentityV25920(entry){
+  if(!entry||!isRezeTitleV25920(entry)||entry.commentAniListIdV25920===REZE_IDENTITY_V25920.anilistId)return false;
+  /* Keep the old playback key intact: verified ledger/resume rows may still be
+     stored under the former fallback key. Only the cloud identity is repaired. */
+  entry.commentAniListIdV25920=REZE_IDENTITY_V25920.anilistId;return true;
+}
+function animeCommentIdV25920(entry){
+  if(!entry)return 0;if(isRezeTitleV25920(entry))return REZE_IDENTITY_V25920.anilistId;
+  return positiveAniListIdV25920(entry.commentAniListIdV25920)||positiveAniListIdV25920(entry.anilist_id);
+}
+
+/* Shikimori media use a negative client-only ID so catalog cards remain
+   distinct. That sentinel must never be persisted or sent as an AniList ID. */
+const applyResolvedBeforeV25920=applyResolved;
+applyResolved=function(entry,media){
+  if(!entry)return applyResolvedBeforeV25920?.apply(this,arguments);
+  const incoming=positiveAniListIdV25920(media?.id),existing=Number(entry.anilist_id)||0;
+  if(incoming&&existing<0)entry.commentAniListIdV25920=incoming;
+  const safeMedia=media&&Number(media.id)<0?{...media,id:null}:media;
+  return applyResolvedBeforeV25920(entry,safeMedia);
+};
+
+animeCommentContextV247=function(){
+  const entry=watchStateV15?.entry;if(!entry)return null;repairKnownCommentIdentityV25920(entry);
+  const id=animeCommentIdV25920(entry);if(!id)return null;
+  const scope=['episode','season','title'].includes(watchCommentScopeV151)?watchCommentScopeV151:'episode',season=scope==='title'?0:Math.max(1,(Number(watchStateV15.season)||0)+1),episode=scope==='episode'?Math.max(1,Number(watchStateV15.episode)||1):0;
+  const title=isRezeTitleV25920(entry)?REZE_IDENTITY_V25920.title:entry.title||'';
+  return {id,title,scope,season,episode,key:`${id}:${scope}:${season}:${episode}`};
+};
+
+async function prepareAnimeCommentContextV25920(){
+  const entry=watchStateV15?.entry;if(!entry)return null;let changed=repairKnownCommentIdentityV25920(entry),ctx=animeCommentContextV247();
+  if(!ctx){
+    try{await resolveEntryV3(entry,{needDetail:false})}catch(error){console.warn('V25.9.20 comment identity resolve',error)}
+    const resolved=positiveAniListIdV25920(entry.anilist_id)||positiveAniListIdV25920(entry.commentAniListIdV25920);if(resolved&&entry.commentAniListIdV25920!==resolved){entry.commentAniListIdV25920=resolved;changed=true}ctx=animeCommentContextV247();
+  }
+  if(changed){saveData();scheduleAccountCloudSyncV23?.(900)}
+  return ctx;
+}
+
+sendAnimeCommentV247=async function(){
+  if(!senimeSignedV247()){openAccountV23();return}
+  const input=$('#watchCommentText'),body=String(input?.value||'').trim();if(!body)return;const button=$('#watchCommentSend');if(button)button.disabled=true;
+  try{
+    const context=await prepareAnimeCommentContextV25920();if(!context)throw new Error('Не найден корректный AniList ID тайтла. Открой карточку тайтла и повтори отправку.');
+    await senimeRpcV247('senime_add_anime_comment',{a_id:context.id,a_title:context.title,a_scope:context.scope,a_season:context.season,a_episode:context.episode,comment_body:body,reply_to:animeCommentV247.replyTo?.id||null});
+    input.value='';animeCommentV247.replyTo=null;await loadAnimeCommentsV247(true);
+  }catch(error){
+    const message=String(error?.message||error);profileToastV16('Комментарий не отправлен',/invalid context/i.test(message)?'Сервер отклонил контекст тайтла. Обнови страницу: исправление ID уже включено в эту сборку.':message);
+  }finally{if(button)button.disabled=false}
+};
+window.sendAnimeCommentV247=sendAnimeCommentV247;
+
+const openWatchPlayerBeforeV25920=openWatchPlayerV15;
+openWatchPlayerV15=function(){
+  const out=openWatchPlayerBeforeV25920?.apply(this,arguments);setTimeout(async()=>{const ctx=await prepareAnimeCommentContextV25920();if(ctx){animeCommentV247.key='';await loadAnimeCommentsV247(true)}},0);return out;
+};
+window.openWatchPlayerV15=openWatchPlayerV15;
+
+for(const entries of Object.values(latestData.sections||{}))for(const entry of entries||[])repairKnownCommentIdentityV25920(entry);
+saveData();
+window.SENIME_BUILD=SENIME_V25920;
+document.documentElement.dataset.senimeBuild=SENIME_V25920;
+console.info('Senime V25.9.20 valid cloud-comment context and Reze identity repair active');

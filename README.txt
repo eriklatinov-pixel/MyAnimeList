@@ -1,3 +1,12 @@
+Senime V25.9.20 — Comment Context + Reze Identity Repair
+
+- Reze Arc now has its canonical AniList ID 171627 and MyAnimeList ID 57555 in the built-in catalog.
+- Shikimori's negative client-only catalog IDs are no longer written into new AniList ID fields or sent to the cloud as AniList IDs.
+- Existing Reze entries receive the canonical cloud-comment identity on startup without rewriting old playback keys or losing verified progress.
+- Comment context accepts only a positive AniList ID and resolves missing metadata before submission for episode, season and whole-title scopes.
+- Successful cloud comments still feed daily comment quests exactly once through the existing post-success receipt.
+- Cache bust and public security version are 25.9.20.
+
 Senime V25.9.19 — Verified Daily Quest Repair
 
 - Daily episode quests now derive progress from unique episode-ledger rows verified on the user's local calendar day.
