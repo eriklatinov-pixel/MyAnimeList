@@ -12346,3 +12346,334 @@ applySettings(uiSettings);syncLowPowerFormV25916();
 window.SENIME_BUILD=SENIME_V25916;
 document.documentElement.dataset.senimeBuild=SENIME_V25916;
 console.info('Senime V25.9.16 clean settings and mobile power saver active');
+
+/* ==========================================================================
+   SENIME V25.9.17 · SEASON-SAFE REWARDS + COMPLETE WATCH ACCOUNTING
+   ========================================================================== */
+const SENIME_V25917='25.9.17';
+const WATCH_SYNC_TAB_V25917=crypto.randomUUID?.()||`tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let applyingStorageV25917=false;
+
+function allLibraryEntriesV25917(){
+  const out=[];
+  for(const [section,rows] of Object.entries(latestData?.sections||{}))for(const entry of rows||[])out.push({section,entry});
+  return out;
+}
+function findEntryByWatchKeyV25917(key){
+  return allLibraryEntriesV25917().find(x=>String(entryKeyV16(x.entry))===String(key))||null;
+}
+function seasonPartV25917(entry,seasonIndex){
+  const parts=watchPartsV15(entry||{}),index=Math.max(0,Math.min(Number(seasonIndex)||0,Math.max(0,parts.length-1)));
+  return {parts,index,part:parts[index]||entry||{}};
+}
+function seasonStableKeyV25917(entry,seasonIndex){
+  const {index,part}=seasonPartV25917(entry,seasonIndex);
+  if(Number(part?.anilist_id)>0)return `part:al:${Number(part.anilist_id)}`;
+  if(Number(part?.mal_id)>0)return `part:mal:${Number(part.mal_id)}`;
+  return `${entryKeyV16(entry)}:season:${index+1}`;
+}
+function seasonLabelV25917(entry,seasonIndex){
+  const {index,part}=seasonPartV25917(entry,seasonIndex),format=String(part?.format||entry?.format||'').toUpperCase();
+  if(format==='MOVIE')return part?.title||entry?.title||'Фильм';
+  return part?.title||`Сезон ${index+1}`;
+}
+function ensureSeasonStatsV25917(){
+  latestData.watch_v25917||={version:1,seasons:{},legacyPending:{},dailyLikeLedger:{},migrations:{}};
+  const w=latestData.watch_v25917;w.version=1;w.seasons||={};w.legacyPending||={};w.dailyLikeLedger||={};w.migrations||={};return w;
+}
+function seasonRecordV25917(entry,seasonIndex,create=true){
+  if(!entry)return null;
+  const w=ensureSeasonStatsV25917(),{index,part}=seasonPartV25917(entry,seasonIndex),key=seasonStableKeyV25917(entry,index);
+  if(!w.seasons[key]&&create)w.seasons[key]={key,entryKey:entryKeyV16(entry),title:entry.title||'Аниме',season:index+1,partTitle:seasonLabelV25917(entry,index),anilistId:Number(part?.anilist_id)||0,malId:Number(part?.mal_id)||0,totalEpisodes:Math.max(1,Number(part?.episodes)||1),startedAt:null,lastAt:null,finishedAt:null,rewardedAt:null,rewardTickets:0,legacy:false};
+  const x=w.seasons[key]||null;
+  if(x){x.entryKey=entryKeyV16(entry);x.title=entry.title||x.title;x.season=index+1;x.partTitle=seasonLabelV25917(entry,index);x.anilistId=Number(part?.anilist_id)||x.anilistId||0;x.malId=Number(part?.mal_id)||x.malId||0;x.totalEpisodes=Math.max(1,Number(part?.episodes)||x.totalEpisodes||1)}
+  return x;
+}
+function seasonRowsV25917(entry,seasonIndex,{verifiedOnly=false}={}){
+  const key=String(entryKeyV16(entry)),season=Number(seasonIndex)+1,p=ensureProfileV16();
+  return Object.values(p.episodeLedger||{}).filter(r=>String(r?.entryKey)===key&&Number(r?.season)===season&&(!verifiedOnly||r?.verified));
+}
+function seasonWatchSecondsV25917(entry,seasonIndex){
+  return seasonRowsV25917(entry,seasonIndex).reduce((sum,r)=>sum+Math.max(0,Number(watchedSecondsV16(r)||0)),0);
+}
+function seasonTicketRewardV25917(entry,seasonIndex){
+  const {part}=seasonPartV25917(entry,seasonIndex),format=String(part?.format||entry?.format||'').toUpperCase(),eps=Math.max(0,Number(part?.episodes)||0);
+  if(format==='MOVIE')return 1;if(!eps||eps<=13)return 2;if(eps<=26)return 3;if(eps<=50)return 4;if(eps<=100)return 5;return 6;
+}
+function touchSeasonV25917(entry,seasonIndex,at=Date.now()){
+  const x=seasonRecordV25917(entry,seasonIndex,true);if(!x)return null;
+  if(!x.startedAt)x.startedAt=at;x.lastAt=Math.max(Number(x.lastAt)||0,at);return x;
+}
+function backfillSeasonStatsV25917(){
+  const p=ensureProfileV16(),w=ensureSeasonStatsV25917();let changed=false;
+  for(const {entry} of allLibraryEntriesV25917()){
+    const parts=watchPartsV15(entry||{});
+    for(let s=0;s<parts.length;s++){
+      const rows=seasonRowsV25917(entry,s),legacyAt=Number(p.seasonRewards?.[`${entryKeyV16(entry)}:s${s+1}`]||0);
+      if(!rows.length&&!legacyAt)continue;
+      const existed=!!w.seasons[seasonStableKeyV25917(entry,s)],x=seasonRecordV25917(entry,s,true);if(!existed)changed=true;
+      const dates=rows.flatMap(r=>[Number(r.firstAt||0),Number(r.verifiedAt||0),Number(r.lastAt||0)]).filter(Boolean).sort((a,b)=>a-b);
+      if(!x.startedAt&&dates.length){x.startedAt=dates[0];changed=true}
+      if(seasonCompleteV16(entry,s)&&!x.finishedAt){x.finishedAt=legacyAt||Math.max(0,...rows.map(r=>Number(r.verifiedAt||r.lastAt||0)))||Date.now();changed=true}
+      if(x.finishedAt&&!x.rewardedAt){
+        const titleWasRewarded=!!p.titleRewards?.[String(entryKeyV16(entry))];x.rewardedAt=x.finishedAt;
+        if(titleWasRewarded){x.rewardTickets=0;x.legacy=true}
+        else{x.rewardTickets=seasonTicketRewardV25917(entry,s);x.legacy=false;addAnimeTicketV205(entry,x.rewardTickets,{silent:true,reason:`${seasonLabelV25917(entry,s)} · компенсация за verified-сезон`})}
+        changed=true;
+      }
+    }
+  }
+  return changed;
+}
+
+/* Pending V25 rewards are paid once during migration. They can no longer be
+   overwritten by a later completion because all new rewards are immediate. */
+function migrateLegacyPendingV25917(){
+  const old=ensureWatchStatsV25?.(),x=old?.pending,w=ensureSeasonStatsV25917();if(!x||x.claimed)return false;
+  const id=String(x.createdAt||`${x.entryKey}:${x.rewardTickets}`);if(w.legacyPending[id]){x.claimed=true;x.claimedAt=Number(w.legacyPending[id]?.at)||Date.now();saveData();return false}
+  const ref=findEntryByWatchKeyV25917(x.entryKey)||findEntryRefV25?.(x.entryKey);if(!ref?.entry)return false;
+  const n=Math.max(1,Number(x.rewardTickets)||1);addAnimeTicketV205(ref.entry,n,{reason:`${ref.entry.title} · сохранённая verified-награда`});
+  x.claimed=true;x.claimedAt=Date.now();x.migratedV25917=true;w.legacyPending[id]={at:x.claimedAt,entryKey:x.entryKey,tickets:n};saveData();return true;
+}
+
+/* Merge monotonic watch facts between tabs. Mutable balances still follow the
+   latest writer, while verified rows, unique intervals and reward receipts can
+   never disappear because another tab had an older in-memory snapshot. */
+function mergeEpisodeRecordV25917(base,extra){
+  const out={...(base||{}),...(extra||{})};out.duration=Math.max(Number(base?.duration)||0,Number(extra?.duration)||0);
+  out.intervals=[];for(const pair of [...(base?.intervals||[]),...(extra?.intervals||[])])out.intervals=mergeIntervalV16(out.intervals,pair?.[0],pair?.[1]);
+  out.verified=!!(base?.verified||extra?.verified);out.xpAwarded=!!(base?.xpAwarded||extra?.xpAwarded);
+  const starts=[Number(base?.firstAt||0),Number(extra?.firstAt||0)].filter(Boolean);out.firstAt=starts.length?Math.min(...starts):null;
+  const verified=[Number(base?.verifiedAt||0),Number(extra?.verifiedAt||0)].filter(Boolean);out.verifiedAt=verified.length?Math.min(...verified):null;
+  out.lastAt=Math.max(Number(base?.lastAt)||0,Number(extra?.lastAt)||0)||Date.now();return out;
+}
+function mergeProgressFactsV25917(base,extra){
+  if(!base||!extra)return base;
+  base.profile_v16||={};const bp=base.profile_v16,ep=extra.profile_v16||{};bp.episodeLedger||={};
+  for(const [key,row] of Object.entries(ep.episodeLedger||{}))bp.episodeLedger[key]=mergeEpisodeRecordV25917(bp.episodeLedger[key],row);
+  for(const field of ['seasonRewards','titleRewards','ratingRewards','achievements','themedTicketClaimed']){bp[field]||={};Object.assign(bp[field],ep[field]||{})}
+  base.watch_v25917||={version:1,seasons:{},legacyPending:{},dailyLikeLedger:{},migrations:{}};const bw=base.watch_v25917,ew=extra.watch_v25917||{};
+  for(const field of ['legacyPending','dailyLikeLedger','migrations']){bw[field]||={};Object.assign(bw[field],ew[field]||{})}
+  bw.seasons||={};for(const [key,row] of Object.entries(ew.seasons||{})){const old=bw.seasons[key]||{},first=(a,b)=>{const values=[Number(a)||0,Number(b)||0].filter(Boolean);return values.length?Math.min(...values):null},rewardTickets=Math.max(Number(old.rewardTickets)||0,Number(row.rewardTickets)||0);bw.seasons[key]={...old,...row,startedAt:first(old.startedAt,row.startedAt),lastAt:Math.max(Number(old.lastAt)||0,Number(row.lastAt)||0)||null,finishedAt:first(old.finishedAt,row.finishedAt),rewardedAt:first(old.rewardedAt,row.rewardedAt),rewardTickets,legacy:rewardTickets>0?false:!!(old.legacy||row.legacy)}}
+  return base;
+}
+function storedDataV25917(){try{const x=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');return x?.sections?x:null}catch{return null}}
+function rebindWatchingEntryV25917(oldKey){
+  if(!watchStateV15?.entry)return;const found=findEntryByWatchKeyV25917(oldKey);if(found){watchStateV15.entry=found.entry;watchStateV15.section=found.section;watchStateV15.index=(latestData.sections?.[found.section]||[]).indexOf(found.entry)}
+}
+function adoptStoredDataV25917(remote){
+  if(!remote?.sections)return false;const oldKey=watchStateV15?.entry?entryKeyV16(watchStateV15.entry):'';
+  const next=mergeProgressFactsV25917(clone(remote),latestData);latestData=next;rebindWatchingEntryV25917(oldKey);return true;
+}
+const saveDataBeforeV25917=saveData;
+saveData=function(){
+  if(!applyingStorageV25917&&!accountApplyingRemoteV23&&!accountHydratingV2594){const stored=storedDataV25917();if(stored)mergeProgressFactsV25917(latestData,stored);latestData._tabSyncV25917={tab:WATCH_SYNC_TAB_V25917,at:Date.now()}}
+  return saveDataBeforeV25917();
+};
+window.addEventListener('storage',e=>{
+  if(e.key!==STORAGE_KEY||!e.newValue)return;let remote=null;try{remote=JSON.parse(e.newValue)}catch{return}
+  applyingStorageV25917=true;try{if(adoptStoredDataV25917(remote)){renderProfileChromeV16?.();if(!$('#profileModal')?.classList.contains('hidden'))renderProfileV16?.()}}finally{applyingStorageV25917=false}
+});
+
+/* Native video: currentTime remains authoritative even when the tab is hidden.
+   Wall-clock validation still rejects forward seeks while accepting throttled
+   background timeupdate events. */
+trackVideoV16=function(force=false){
+  const v=$('#watchVideo');if(!v||!watchStateV15?.entry||!Number.isFinite(v.currentTime))return;
+  const cur=Number(v.currentTime||0),rec=currentEpisodeRecordV16(),now=Date.now();if(!rec)return;
+  if(!rec.firstAt)rec.firstAt=now;if(v.duration&&Number.isFinite(v.duration))rec.duration=Math.max(rec.duration||0,Number(v.duration));rec.lastAt=now;touchSeasonV25917(watchStateV15.entry,watchStateV15.season,rec.firstAt||now);
+  if(!watchTrackV16.seeking&&!v.paused&&watchTrackV16.last!=null){const delta=cur-watchTrackV16.last,elapsed=Math.max(.25,(now-Number(watchTrackV16.lastWallV25917||now))/1000),rate=Math.max(.25,Number(v.playbackRate)||1),maxJump=Math.max(6,elapsed*rate*1.35+3);if(delta>0&&delta<=maxJump)rec.intervals=mergeIntervalV16(rec.intervals,watchTrackV16.last,cur)}
+  watchTrackV16.last=cur;watchTrackV16.lastWallV25917=now;
+  if(force||now-watchTrackV16.lastSave>9000){watchTrackV16.lastSave=now;saveData()}
+};
+document.addEventListener('visibilitychange',()=>{const v=$('#watchVideo');if(v&&!v.paused&&Number.isFinite(v.currentTime)){watchTrackV16.last=Number(v.currentTime||0);watchTrackV16.lastWallV25917=Date.now()}});
+$('#watchVideo')?.addEventListener('play',()=>{if(watchStateV15?.entry){touchSeasonV25917(watchStateV15.entry,watchStateV15.season);watchTrackV16.lastWallV25917=Date.now();saveData()}});
+
+/* Kodik exposes real time/duration through its own postMessage API. Polling the
+   documented player hook lets us apply the same unique-interval and seek guard
+   as the native video instead of guessing from iframe focus time. */
+let kodikTrackV25917={key:'',last:null,lastWall:0,duration:0,lastSave:0};
+function resetKodikTrackV25917(){kodikTrackV25917={key:'',last:null,lastWall:0,duration:0,lastSave:0}}
+function activeKodikFrameV25917(){const f=$('#watchEmbed'),src=String(f?.src||'');return f&&!f.classList.contains('hidden')&&watchResolverV19?.active==='kodik'&&/^https:\/\/[^/]*kodik/i.test(src)?f:null}
+function trackKodikTimeV25917(current){
+  const entry=watchStateV15?.entry,frame=activeKodikFrameV25917();current=Number(current);if(!entry||!frame||!Number.isFinite(current)||current<0)return;
+  const key=episodeKeyV16(entry,watchStateV15.season,watchStateV15.episode),now=Date.now(),rec=currentEpisodeRecordV16();if(!rec)return;
+  if(kodikTrackV25917.key!==key){resetKodikTrackV25917();kodikTrackV25917.key=key}
+  if(!rec.firstAt)rec.firstAt=now;rec.lastAt=now;if(kodikTrackV25917.duration>0)rec.duration=Math.max(Number(rec.duration)||0,kodikTrackV25917.duration);touchSeasonV25917(entry,watchStateV15.season,rec.firstAt);
+  if(kodikTrackV25917.last!=null){const delta=current-kodikTrackV25917.last,elapsed=Math.max(.25,(now-Number(kodikTrackV25917.lastWall||now))/1000),maxJump=Math.max(6,elapsed*2.8+3);if(delta>0&&delta<=maxJump)rec.intervals=mergeIntervalV16(rec.intervals,kodikTrackV25917.last,current)}
+  kodikTrackV25917.last=current;kodikTrackV25917.lastWall=now;
+  if(now-kodikTrackV25917.lastSave>9000){kodikTrackV25917.lastSave=now;saveData()}
+  if(!rec.verified&&coverageV16(rec)>=.82)verifyEpisodeV16();
+}
+window.addEventListener('message',event=>{
+  const frame=activeKodikFrameV25917();if(!frame||event.source!==frame.contentWindow)return;
+  let data=event.data;try{if(typeof data==='string')data=JSON.parse(data)}catch{return}if(!data||typeof data!=='object')return;
+  const key=String(data.key||''),value=Number(data.value);
+  if(key==='kodik_player_duration_update'&&Number.isFinite(value)&&value>0){kodikTrackV25917.duration=value;const rec=currentEpisodeRecordV16();if(rec)rec.duration=Math.max(Number(rec.duration)||0,value);saveData();return}
+  if(key==='kodik_player_video_started'){if(watchStateV15?.entry){touchSeasonV25917(watchStateV15.entry,watchStateV15.season);saveData()}return}
+  if((key==='kodik_player_time_update'||key==='kodik_player_time')&&Number.isFinite(value)){trackKodikTimeV25917(value);return}
+  if(key==='kodik_player_video_ended'){const rec=currentEpisodeRecordV16();if(rec){saveData();verifyEpisodeV16()}}
+});
+setInterval(()=>{const frame=activeKodikFrameV25917();if(frame)try{frame.contentWindow.postMessage({key:'kodik_player_api',value:{method:'get_time'}},'*')}catch{}},2000);
+const showKodikBeforeV25917=showKodikV19;
+showKodikV19=function(){resetKodikTrackV25917();const ok=showKodikBeforeV25917?.apply(this,arguments);if(ok&&watchStateV15?.entry){const source=chosenKodikSourceV19?.();kodikTrackV25917.duration=Math.max(0,Number(source?.durationHintV25917)||0);const note=$('#watchSourceNote');if(note)note.textContent+=' · verified-учёт времени включён'}return ok};
+
+/* Movie resolver: Kodik uses type "anime" for films and "anime-serial" for TV.
+   Strict MAL/type/year/title filtering prevents Reze Arc from opening episode 1
+   of the Chainsaw Man television series. */
+function isMoviePartV25917(entry,part){const format=String(part?.format||entry?.format||'').toUpperCase(),title=normalize(`${part?.title||''} ${entry?.title||''}`);return format==='MOVIE'||/\b(movie|film|gekijouban)\b|фильм/.test(title)}
+function movieCandidateScoreV25917(row,entry,part){
+  if(String(row?.type||'').toLowerCase()!=='anime')return -9999;let score=0;
+  const mal=Number(part?.mal_id||entry?.mal_id||0),rowMal=Number(row?.shikimori_id||0);if(mal){if(rowMal!==mal)return -9999;score+=300}
+  const year=Number(part?.year||entry?.year||0),rowYear=Number(row?.year||row?.material_data?.year||0);if(year&&rowYear)score+=year===rowYear?35:-Math.min(80,Math.abs(year-rowYear)*20);
+  const wanted=normalize(part?.title||entry?.title||''),names=[row?.title,row?.title_orig,row?.other_title,row?.material_data?.anime_title,row?.material_data?.title_en].filter(Boolean).map(normalize);
+  if(names.some(x=>x===wanted))score+=100;else{const tokens=wanted.split(' ').filter(x=>x.length>2&&!['the','movie','film','arc'].includes(x)),best=Math.max(0,...names.map(x=>tokens.filter(t=>x.includes(t)).length));score+=tokens.length?Math.round(best/tokens.length*80):0}
+  return score;
+}
+const ensureKodikSerialBeforeV25917=ensureKodikEpisodeV19;
+ensureKodikEpisodeV19=async function(opts={}){
+  const entry=watchStateV15?.entry,part=currentPartV19?.();if(!entry||!isMoviePartV25917(entry,part))return ensureKodikSerialBeforeV25917(opts);
+  const cfg=providerConfigV19(),backend=backendBaseV20();if(!backend&&!cfg.kodikToken){watchResolverV19.lastKodikError='нет API token';return false}
+  if(backend&&!cfg.kodikToken){try{const h=await backendHealthV20();if(!h?.services?.kodik){watchResolverV19.lastKodikError='ещё не подключён';return false}}catch{watchResolverV19.lastKodikError='backend недоступен';return false}}
+  const cached=currentKodikSourcesV19().filter(x=>x.movieVerifiedV25917===true);if(!opts.force&&cached.length){watchResolverV19.kodikCandidates=cached;return true}
+  const epNo=Math.max(1,Number(watchStateV15.episode)||1),seasonNo=Math.max(0,Number(watchStateV15.season)||0),requestKey=resolverKeyV19(),requestSeq=++kodikRequestSeqV19;
+  setResolverStatusV19('Kodik','ищу точную версию фильма…','loading');clearKodikCurrentV19();let rows=[];
+  try{
+    const mal=Number(part?.mal_id||entry?.mal_id||0),common={types:'anime',with_material_data:'true',with_seasons:'true',with_episodes:'true',with_episodes_data:'true',limit:100};
+    if(mal)rows=(await kodikSearchRawV19({shikimori_id:mal,...common}))?.results||[];
+    if(!rows.length)rows=(await kodikSearchRawV19({title:part?.title||entry.title,...common}))?.results||[];
+  }catch(error){if(requestSeq!==kodikRequestSeqV19||requestKey!==resolverKeyV19())return false;watchResolverV19.lastKodikError=String(error?.message||error);setResolverStatusV19('Kodik',watchResolverV19.lastKodikError,'error');return false}
+  if(requestSeq!==kodikRequestSeqV19||requestKey!==resolverKeyV19()||entry!==watchStateV15.entry||epNo!==Number(watchStateV15.episode)||seasonNo!==Number(watchStateV15.season))return false;
+  const ranked=rows.map(row=>({row,score:movieCandidateScoreV25917(row,entry,part)})).filter(x=>x.score>=60).sort((a,b)=>b.score-a.score),best=ranked[0]?.score??-9999,streams=[];
+  for(const {row,score} of ranked.filter(x=>x.score>=best-25)){
+    const url=absKodikLinkV19(row?.link||kodikEpisodeLinkV19(row,1));if(!url)continue;const tr=row.translation||{},kind=String(tr.type||'voice').toLowerCase(),name=String(tr.title||'Перевод').trim()||'Перевод',label=kind==='subtitles'?`CC ${name}`:`🎙 ${name}`;
+    streams.push({url,type:'embed',provider:'kodik',dub:`kodik:${row.id||streams.length}`,dubLabel:label,translation:name,translationType:kind,quality:row.quality||'в плеере',label,materialId:row.id||'',year:Number(row.year||row.material_data?.year)||null,resolvedEpisode:epNo,resolvedSeason:seasonNo+1,resolverKey:requestKey,movieVerifiedV25917:true,shikimoriId:Number(row.shikimori_id)||0,durationHintV25917:Math.max(0,Number(row.material_data?.duration)||0)*60,matchScoreV25917:score})
+  }
+  const uniq=[],seen=new Set();for(const stream of streams){const key=`${stream.url}|${stream.translation}`;if(!seen.has(key)){seen.add(key);uniq.push(stream)}}
+  if(!uniq.length){watchResolverV19.lastKodikError='точная версия фильма не найдена';setResolverStatusV19('Kodik',watchResolverV19.lastKodikError,'error');return false}
+  const manifestEpisode=ensureEpisodeManifestV151();manifestEpisode.streams=(manifestEpisode.streams||[]).filter(x=>String(x.provider||'').toLowerCase()!=='kodik');manifestEpisode.streams.push(...uniq);manifestEpisode.providerMeta=manifestEpisode.providerMeta||{};manifestEpisode.providerMeta.kodik={count:uniq.length,at:Date.now(),movieVerifiedV25917:true};
+  saveWatchManifestV15(entry,watchStateV15.manifest);watchResolverV19.kodikCandidates=uniq;watchResolverV19.lastKodikError='';return true;
+};
+
+/* One-time cleanup of intervals produced by the former 25-minute TV match for
+   the 100-minute Reze film. Earned economy is never subtracted; only the false
+   playback proof is removed so the real film must be watched. */
+function migrateRezePlaybackV25917(){
+  const w=ensureSeasonStatsV25917();if(w.migrations.rezePlayback)return false;const p=ensureProfileV16();let cleaned=0;
+  for(const rec of Object.values(p.episodeLedger||{})){
+    const title=normalize(rec?.title||'');if(!/reze|резе/.test(title)||Number(rec?.season)!==1||Number(rec?.episode)!==1)continue;
+    const duration=Number(rec.duration)||0;if(duration>=900&&duration<=2400){rec.duration=0;rec.intervals=[];rec.verified=false;rec.verifiedAt=null;rec.firstAt=null;rec.lastAt=Date.now();cleaned++}
+  }
+  try{const manifests=JSON.parse(localStorage.getItem(WATCH_MANIFEST_KEY_V15)||'{}')||{};let changed=false;for(const [key,m] of Object.entries(manifests)){if(!/reze|резе/.test(normalize(key)))continue;for(const season of m?.seasons||[])for(const episode of season?.episodes||[]){const before=(episode.streams||[]).length;episode.streams=(episode.streams||[]).filter(x=>String(x.provider||'').toLowerCase()!=='kodik'||x.movieVerifiedV25917===true);if(episode.streams.length!==before)changed=true}}if(changed)localStorage.setItem(WATCH_MANIFEST_KEY_V15,JSON.stringify(manifests))}catch{}
+  w.migrations.rezePlayback={at:Date.now(),cleaned};return cleaned>0;
+}
+
+/* Seasonal rewards wrap the final verifier. Old whole-title code may still
+   create a recap, but its claim is marked as already paid by this immutable
+   season receipt. */
+const verifyEpisodeBeforeV25917=verifyEpisodeV16;
+verifyEpisodeV16=function(){
+  const initial=watchStateV15?.entry;if(!initial)return verifyEpisodeBeforeV25917();migrateLegacyPendingV25917();
+  const stored=storedDataV25917();if(stored)adoptStoredDataV25917(stored);const entry=watchStateV15?.entry||initial,season=Math.max(0,Number(watchStateV15.season)||0),wasComplete=seasonCompleteV16(entry,season),pendingBefore=ensureWatchStatsV25?.().pending;
+  const ok=verifyEpisodeBeforeV25917(),isComplete=seasonCompleteV16(entry,season),record=seasonRecordV25917(entry,season,true);
+  if(ok&&!wasComplete&&isComplete&&!record.rewardedAt){
+    const now=Date.now(),tickets=seasonTicketRewardV25917(entry,season);record.finishedAt=now;record.lastAt=now;record.rewardedAt=now;record.rewardTickets=tickets;record.legacy=false;
+    addAnimeTicketV205(entry,tickets,{reason:`${seasonLabelV25917(entry,season)} · verified-сезон`});profileActivityV16('✓','Сезон подтверждён',`${seasonLabelV25917(entry,season)} · 🎟️ ×${tickets}`);
+    const pending=ensureWatchStatsV25?.().pending;if(pending&&pending!==pendingBefore&&String(pending.entryKey)===String(entryKeyV16(entry))){pending.claimed=true;pending.claimedAt=now;pending.rewardTickets=tickets;pending.rewardMode='season-v25917';pending.seasonKey=record.key;pending.seasonLabel=record.partTitle}
+    const title=watchTitleStatsV25?.(entry,true);if(title&&titleCompleteVerifiedV16(entry))title.finishedAt=now;
+    saveData();profileToastV16(`🎟️ ${entry.title} Ticket ×${tickets}`,`${record.partTitle} · награда за сезон уже начислена`);renderProfileChromeV16?.();if(!$('#profileModal')?.classList.contains('hidden'))renderProfileV16?.();
+  }
+  return ok;
+};
+window.verifyEpisodeV16=verifyEpisodeV16;
+
+/* A season starts on the first real native play/Kodik time event. Merely opening
+   a player or switching an episode does not create a false start date. */
+const loadWatchEpisodeBeforeV25917=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){resetKodikTrackV25917();return loadWatchEpisodeBeforeV25917(opts)};
+window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+function currentVerifiedTitlesV25917(){
+  const seen=new Set();for(const {entry} of allLibraryEntriesV25917()){const key=String(entryKeyV16(entry));if(!seen.has(key)&&titleCompleteVerifiedV16(entry))seen.add(key)}return seen.size;
+}
+verifiedTitleCountV25=function(){return currentVerifiedTitlesV25917()};
+isTitleVerifiedV25=function(entry){return !!entry&&titleCompleteVerifiedV16(entry)};
+function watchHoursLabelV25917(seconds){const hours=Math.max(0,Number(seconds)||0)/3600;return hours.toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1})}
+function seasonDateV25917(value){return value?new Date(Number(value)).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'}):'—'}
+function seasonRecordRowsV25917(record,{verifiedOnly=false}={}){const p=ensureProfileV16();return Object.values(p.episodeLedger||{}).filter(r=>String(r?.entryKey)===String(record?.entryKey)&&Number(r?.season)===Number(record?.season)&&(!verifiedOnly||r?.verified))}
+function renderSeasonHistoryV25917(){
+  const host=$('#profileBlockStats');if(!host)return;let box=$('#profileSeasonHistoryV25917');if(!box){box=document.createElement('div');box.id='profileSeasonHistoryV25917';box.className='profile-season-history-v25917';host.appendChild(box)}
+  backfillSeasonStatsV25917();const records=Object.values(ensureSeasonStatsV25917().seasons||{}).filter(x=>x.startedAt||x.finishedAt).sort((a,b)=>Number(b.startedAt||b.finishedAt||0)-Number(a.startedAt||a.finishedAt||0));
+  box.innerHTML=`<div class="profile-season-head-v25917"><div><span>ИСТОРИЯ ПО СЕЗОНАМ</span><h3>Когда начал и закончил</h3></div><small>${records.length} ${records.length===1?'сезон':'сезонов / частей'}</small></div>${records.length?`<div class="profile-season-list-v25917">${records.map(x=>{const allRows=seasonRecordRowsV25917(x),verified=allRows.filter(r=>r?.verified).length,total=Math.max(1,Number(x.totalEpisodes)||1),seconds=allRows.reduce((sum,r)=>sum+Math.max(0,Number(watchedSecondsV16(r)||0)),0),reward=Number(x.rewardTickets)||0;return `<article class="${x.finishedAt?'finished':''}"><div class="profile-season-title-v25917"><i>${x.finishedAt?'✓':'▶'}</i><span><b>${esc(x.title||'Аниме')}</b><small>${esc(x.partTitle||`Сезон ${x.season}`)}</small></span>${reward?`<em>🎟️ ×${reward}</em>`:x.legacy?'<em class="legacy">старая награда</em>':''}</div><div class="profile-season-meta-v25917"><span>Начал <b>${seasonDateV25917(x.startedAt)}</b></span><span>Закончил <b>${x.finishedAt?seasonDateV25917(x.finishedAt):'в процессе'}</b></span><span>Verified <b>${verified}/${total}</b></span><span>Время <b>${watchHoursLabelV25917(seconds)} ч</b></span></div></article>`}).join('')}</div>`:'<div class="profile-season-empty-v25917">История появится после первого настоящего запуска серии или фильма.</div>'}`;
+}
+const renderOverviewBeforeV25917=renderOverviewV16;
+renderOverviewV16=function(){
+  renderOverviewBeforeV25917?.apply(this,arguments);const box=$('#profileOverviewStats');if(!box)return;
+  const p=ensureProfileV16(),seconds=Object.values(p.episodeLedger||{}).reduce((n,r)=>n+Math.max(0,Number(watchedSecondsV16(r)||0)),0);
+  box.innerHTML=[['📚',manualCompletedCountV25(),'просмотрено'],['✓',currentVerifiedTitlesV25917(),'verified тайтлов сейчас'],['▶',verifiedEpisodeCountSafeV25(),'verified серий'],['⌛',watchHoursLabelV25917(seconds),'часов учтено'],['⭐',profileRatingCountV16?.()||0,'оценок'],['🃏',(p.collection||[]).length,'карточек']].map((x,i)=>`<article class="${i===1?'verified-overview-v25':''}"><b>${x[0]} ${x[1]}</b><span>${x[2]}</span></article>`).join('');renderSeasonHistoryV25917();
+};
+const renderProfileChromeBeforeV25917=renderProfileChromeV16;
+renderProfileChromeV16=function(){const result=renderProfileChromeBeforeV25917?.apply(this,arguments);const el=$('#profileClosedTitles');if(el)el.textContent=currentVerifiedTitlesV25917();return result};
+Object.assign(window,{renderOverviewV16,renderProfileChromeV16});
+const publicPayloadBeforeV25917=socialBuildPublicPayloadV242;
+function totalUniqueWatchSecondsV25917(){
+  const p=ensureProfileV16();let seconds=0;
+  for(const rec of Object.values(p.episodeLedger||{})){
+    const watched=Math.max(0,Number(watchedSecondsV16(rec)||0)),duration=Math.max(0,Number(rec?.duration)||0);
+    seconds+=duration?Math.min(duration,watched):watched;
+  }
+  return seconds;
+}
+socialBuildPublicPayloadV242=function(){const out=publicPayloadBeforeV25917?.apply(this,arguments)||{};out.watchSeconds=Math.round(totalUniqueWatchSecondsV25917());out.verifiedTitles=currentVerifiedTitlesV25917();out.senimeVersion=SENIME_V25917;return out};
+leaderboardValueV247=function(metric,value){
+  const n=Math.max(0,Number(value)||0);
+  if(metric==='hours')return `${n.toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1})} ч`;
+  if(metric==='level')return `LVL ${Math.round(n)}`;
+  if(metric==='collection')return `${Math.round(n)} карт`;
+  if(metric==='episodes')return `${Math.round(n)} серий`;
+  return `${Math.round(n)} тайтлов`;
+};
+
+/* Daily quests: cloud comments count only after a successful insert. A like is
+   counted only on unlike -> like and only once per target per local day. */
+const dailyRecordBeforeV25917=dailyRecordV166;
+let dailyAuthorizedV25917=false,dailySuppressV25917=false;
+dailyRecordV166=function(kind,n=1){if(dailySuppressV25917)return;if((kind==='comments'||kind==='likes')&&!dailyAuthorizedV25917&&accountSignedInV236?.())return;return dailyRecordBeforeV25917(kind,n)};
+function dailyAuthorizedRecordV25917(kind,n=1){dailyAuthorizedV25917=true;try{return dailyRecordV166(kind,n)}finally{dailyAuthorizedV25917=false}}
+function dailyLikeDateV25917(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function recordDailyLikeOnceV25917(target){const w=ensureSeasonStatsV25917(),key=`${dailyLikeDateV25917()}:${target}`;if(w.dailyLikeLedger[key])return false;w.dailyLikeLedger[key]=Date.now();const cutoff=Date.now()-45*86400000;for(const [k,at] of Object.entries(w.dailyLikeLedger))if(Number(at)<cutoff)delete w.dailyLikeLedger[k];dailyAuthorizedRecordV25917('likes',1);saveData();return true}
+const accountRestBeforeV25917=accountRestV23;
+accountRestV23=async function(path,opts={}){const result=await accountRestBeforeV25917(path,opts);if(String(path).includes('rpc/senime_add_profile_comment')&&!opts?.body?.reply_to&&String(opts?.body?.comment_body||'').trim().length>=10)dailyAuthorizedRecordV25917('comments',1);return result};
+const senimeRpcBeforeV25917=senimeRpcV247;
+senimeRpcV247=async function(name,body={},auth=true){const result=await senimeRpcBeforeV25917(name,body,auth);if(name==='senime_add_anime_comment'&&!body?.reply_to&&String(body?.comment_body||'').trim().length>=10)dailyAuthorizedRecordV25917('comments',1);return result};
+const toggleProfileCloudBeforeV25917=toggleProfileCommentLikeCloudV247;
+toggleProfileCommentLikeCloudV247=async function(id,source='public'){const before=!!profileLikeStateV247(id).mine;await toggleProfileCloudBeforeV25917(id,source);const after=!!profileLikeStateV247(id).mine;if(!before&&after)recordDailyLikeOnceV25917(`profile:${Number(id)}`)};
+const toggleAnimeCloudBeforeV25917=toggleAnimeCommentLikeV247;
+toggleAnimeCommentLikeV247=async function(id){const before=!!animeLikeV247(id).mine;await toggleAnimeCloudBeforeV25917(id);const after=!!animeLikeV247(id).mine;if(!before&&after)recordDailyLikeOnceV25917(`anime:${Number(id)}`)};
+const toggleProfileLocalBeforeV25917=toggleProfileCommentLikeV164;
+toggleProfileCommentLikeV164=function(rootId,replyId=''){const before=!!profileCommentTargetV164(rootId,replyId)?.likedByMe;dailySuppressV25917=true;try{toggleProfileLocalBeforeV25917(rootId,replyId)}finally{dailySuppressV25917=false}const after=!!profileCommentTargetV164(rootId,replyId)?.likedByMe;if(!before&&after)recordDailyLikeOnceV25917(`local-profile:${rootId}:${replyId||0}`)};
+const toggleWatchLocalBeforeV25917=toggleWatchCommentLikeV164;
+toggleWatchCommentLikeV164=function(rootId,replyId=''){const before=!!watchCommentTargetV164(rootId,replyId)?.likedByMe;dailySuppressV25917=true;try{toggleWatchLocalBeforeV25917(rootId,replyId)}finally{dailySuppressV25917=false}const after=!!watchCommentTargetV164(rootId,replyId)?.likedByMe,key=watchStateV15?.entry?entryKeyV16(watchStateV15.entry):'anime';if(!before&&after)recordDailyLikeOnceV25917(`local-watch:${key}:${rootId}:${replyId||0}`)};
+Object.assign(window,{toggleProfileCommentLikeCloudV247,toggleAnimeCommentLikeV247,toggleProfileCommentLikeV164,toggleWatchCommentLikeV164});
+
+/* "Выбито" is the number of distinct public owners. Failed refreshes keep the
+   last known value and unknown values stay "—" instead of becoming a fake 1. */
+formatGlobalPullsV205=function(n){if(n===null||n===undefined||n==='')return '—';n=Number(n);return Number.isFinite(n)&&n>=0?Math.round(n).toLocaleString('ru-RU'):'—'};
+refreshGlobalPullCountsV205=async function({force=false}={}){
+  const p=ensureCardProfileV205(),now=Date.now();if(!p.collection?.length)return;if(!force&&now-cardOwnerFetchAtV25910<CARD_STATS_CACHE_MS_V205)return;cardOwnerFetchAtV25910=now;
+  const wanted=new Set(p.collection.map(c=>Number(c.characterId)).filter(Boolean)),counts=new Map([...wanted].map(id=>[id,0]));let rows;
+  try{rows=await socialRestV241('profiles?select=id,public_payload&limit=5000');if(!Array.isArray(rows))throw new Error('owners response is not an array')}catch(error){console.warn('unique card owners',error);return}
+  for(const row of rows){const ids=new Set((row?.public_payload?.cardIds||[]).map(Number).filter(id=>wanted.has(id)));for(const id of ids)counts.set(id,(counts.get(id)||0)+1)}
+  let changed=false;for(const card of p.collection||[]){const next=Math.max(1,counts.get(Number(card.characterId))||0);if(Number(card.globalPulls)!==next){card.globalPulls=next;changed=true}}
+  if(changed){saveData();const box=$('#profileCollection');if(box&&!box.dataset.ownerRefreshV25917){box.dataset.ownerRefreshV25917='1';try{renderCollectionV16()}finally{delete box.dataset.ownerRefreshV25917}}}
+};
+
+/* Custom embeds do not all expose playback telemetry. Keep that limitation
+   visible instead of silently pretending they can earn verified progress. */
+const showWatchEmbedBeforeV25917=showWatchEmbedV17;
+showWatchEmbedV17=function(src){const result=showWatchEmbedBeforeV25917?.apply(this,arguments);if(!/\/\/[^/]*kodik/i.test(String(src||''))){const note=$('#watchSourceNote');if(note)note.textContent+=' · этот embed не передаёт verified-статистику'}return result};
+
+migrateRezePlaybackV25917();backfillSeasonStatsV25917();migrateLegacyPendingV25917();saveData();
+window.SENIME_BUILD=SENIME_V25917;
+document.documentElement.dataset.senimeBuild=SENIME_V25917;
+console.info('Senime V25.9.17 season-safe tickets, per-season history, Kodik tracking and accounting fixes active');

@@ -2631,6 +2631,21 @@ body.sidebar-collapsed.senime-v25 .app-footer{margin-left:84px}
 .senime-v25 .profile-overview-stats article b{font-size:18px!important}.senime-v25 .profile-overview-stats article span{font-size:9px!important}
 .senime-v25 .profile-comment-composer,.senime-v25 .profile-comment-card{border-radius:13px;background:#101118;border-color:var(--v251-line)}
 
+/* V25.9.17 · per-season watch history */
+.profile-season-history-v25917{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.profile-season-head-v25917{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:9px}
+.profile-season-head-v25917 span{display:block;font-size:9px;font-weight:900;letter-spacing:.14em;color:var(--accent)}
+.profile-season-head-v25917 h3{margin:3px 0 0;font-size:17px}.profile-season-head-v25917>small{color:var(--muted);font-size:10px}
+.profile-season-list-v25917{display:grid;gap:7px}.profile-season-list-v25917 article{padding:12px;border:1px solid var(--line);border-radius:13px;background:#101118}
+.profile-season-list-v25917 article.finished{border-color:rgba(114,229,173,.16);background:linear-gradient(110deg,rgba(114,229,173,.035),#101118 48%)}
+.profile-season-title-v25917{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:9px;align-items:center}.profile-season-title-v25917>i{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.045);font-style:normal;color:#a797ff;font-weight:900}
+.profile-season-list-v25917 article.finished .profile-season-title-v25917>i{color:#91e6b9;background:rgba(114,229,173,.07)}
+.profile-season-title-v25917 span{min-width:0}.profile-season-title-v25917 b,.profile-season-title-v25917 small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profile-season-title-v25917 b{font-size:12px}.profile-season-title-v25917 small{font-size:9px;color:var(--muted);margin-top:2px}
+.profile-season-title-v25917 em{font-style:normal;font-size:10px;font-weight:900;color:#c3b8ff;padding:5px 7px;border-radius:8px;background:rgba(155,129,255,.07)}.profile-season-title-v25917 em.legacy{color:var(--muted);font-size:8px}
+.profile-season-meta-v25917{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:9px}.profile-season-meta-v25917 span{padding:7px 8px;border-radius:9px;background:rgba(0,0,0,.17);font-size:8px;color:var(--muted)}.profile-season-meta-v25917 b{display:block;color:var(--text);font-size:9px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-season-empty-v25917{padding:18px;text-align:center;color:var(--muted);font-size:10px;border:1px dashed var(--line);border-radius:12px}
+@media(max-width:640px){.profile-season-meta-v25917{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-season-title-v25917{grid-template-columns:26px minmax(0,1fr)}.profile-season-title-v25917 em{grid-column:2;justify-self:start}}
+
 /* Collection: responsive, no horizontal wall of cards. */
 .senime-v25 #profileTabCollection{min-width:0;overflow:hidden}
 .senime-v25 .profile-ticket-actions button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important}

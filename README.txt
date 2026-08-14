@@ -345,4 +345,16 @@ Major sections now have clean URLs without duplicating application logic:
 - Added a phone-friendly battery/data saver for video backgrounds, blur and animations.
 - Rebuilt the settings window as a compact mobile bottom sheet.
 
+=== V25.9.17 SEASON-SAFE WATCH ACCOUNTING ===
+- Themed tickets are awarded immediately after every verified season/part, with an immutable per-season receipt.
+- A later season can make a title incomplete again without removing earlier season dates or tickets.
+- Previously completed standalone seasons that never received a themed reward are compensated once; already rewarded full titles are not paid twice.
+- Profile statistics show each season's start, finish, verified episodes, watch time and ticket reward.
+- Fractional watch hours are visible from 0.1 h in the profile and leaderboard; both include all uniquely tracked intervals, even before an episode is complete.
+- Native background playback and Kodik iframe current-time/duration events use the same seek-resistant interval tracker.
+- Reze Arc now uses strict Kodik movie matching (MAL/type/year/title), and the former wrong TV-episode interval is migrated out.
+- Cross-tab watch facts merge instead of overwriting verified rows or season reward receipts.
+- Cloud comments/likes advance dailies only after success; re-like farming is blocked per target/day.
+- Card "выбито" keeps the last real distinct-owner count when refresh fails and no longer invents a value of 1.
+
 Cloudflare Pages uses _redirects. GitHub Pages uses 404.html fallback while the project is still tested at the old GitHub URL.
