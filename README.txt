@@ -1,3 +1,13 @@
+Senime V25.9.18 — Kodik Resume + Reliable Episode Completion
+
+- Kodik progress now persists every few seconds and can be resumed with Senime's own «Продолжить» button.
+- Kodik play, pause, seek, duration, time and ended events are handled separately; genuine end events tolerate only a small final telemetry loss.
+- A Kodik episode end now opens the same next-episode countdown as the native player, and a prominent next-episode button is always visible when a next episode exists.
+- Episode checkmarks come from each episode's verified ledger row instead of the old contiguous progress number; partially watched rows show a small amber marker and an accounted-percent tooltip.
+- Fully eligible legacy rows are repaired on startup; a near-end 80% row is accepted only with matching wall-clock evidence to recover a small dropped sample.
+- Resume state and unique watch time are synchronized to the account; public profiles show watch hours with one decimal from 0.1 h.
+- Cache bust and public security version are 25.9.18.
+
 Senime V25.9.11 — Cross-tab Live Watching Fix
 
 - Вкладка публичного профиля больше не затирает «Смотрит сейчас», пока видео реально играет в соседней вкладке.

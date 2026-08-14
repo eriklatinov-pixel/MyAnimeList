@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta name="senime-build" content="25.9">
+  <meta name="senime-build" content="25.9.18">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
@@ -22,7 +22,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.9.17">
+  <link rel="stylesheet" href="style.css?v=25.9.18">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -413,6 +413,14 @@
             <button id="watchSkipSegment" class="watch-skip-segment hidden" type="button">Пропустить опенинг →</button>
             <button id="watchMiniClose" class="watch-mini-close hidden" type="button" title="Вернуть плеер на место">↙</button>
             <iframe id="watchEmbed" class="watch-embed hidden" title="Внешний видеоплеер" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
+            <div id="watchResumeOverlayV25918" class="watch-resume-overlay-v25918 hidden" aria-live="polite">
+              <div>
+                <small>ПРОДОЛЖИТЬ ПРОСМОТР</small>
+                <b id="watchResumeTextV25918">Остановились на 0:00</b>
+              </div>
+              <button id="watchResumeNowV25918" type="button">▶ Продолжить</button>
+              <button id="watchRestartNowV25918" class="secondary" type="button">С начала</button>
+            </div>
             <div id="watchEmpty" class="watch-empty">
               <div class="watch-empty-icon">▶</div>
               <h3 id="watchEmptyTitle">Ищу серию…</h3>
@@ -432,6 +440,11 @@
             </div>
             <span id="watchProviderState" class="watch-provider-state watch-provider-internal-v22" aria-hidden="true">Авто</span>
             <button id="watchSourcesBtn" class="secondary watch-sources-btn founder-only-v257" type="button">⚙ Медиа</button>
+          </div>
+
+          <div id="watchEpisodeCtaV25918" class="watch-episode-cta-v25918 hidden">
+            <div><small>ДАЛЬШЕ</small><b id="watchNextHintV25918">Следующая серия готова</b></div>
+            <button id="watchNextProminentV25918" type="button">Следующая серия →</button>
           </div>
 
           <div class="watch-quickbar">
@@ -1084,7 +1097,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-  <script src="auth-config.js?v=25.9.17"></script>
-  <script src="app.js?v=25.9.17"></script>
+  <script src="auth-config.js?v=25.9.18"></script>
+  <script src="app.js?v=25.9.18"></script>
 </body>
 </html>

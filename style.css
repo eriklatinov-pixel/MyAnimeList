@@ -3248,6 +3248,35 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
   }
 }
 
+/* ===== V25.9.18 · reliable Kodik resume / episode navigation ===== */
+.watch-resume-overlay-v25918{
+  position:absolute;left:18px;right:18px;bottom:18px;z-index:42;display:flex;align-items:center;gap:9px;
+  padding:12px;border:1px solid color-mix(in srgb,var(--accent2) 38%,var(--line));border-radius:15px;
+  background:linear-gradient(135deg,rgba(13,15,23,.96),rgba(20,17,34,.96));
+  box-shadow:0 18px 55px rgba(0,0,0,.48);backdrop-filter:blur(14px)
+}
+.watch-resume-overlay-v25918.hidden{display:none}
+.watch-resume-overlay-v25918>div{min-width:0;margin-right:auto;display:grid;gap:3px}
+.watch-resume-overlay-v25918 small{font-size:8px;font-weight:950;letter-spacing:.15em;color:var(--accent2)}
+.watch-resume-overlay-v25918 b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.watch-resume-overlay-v25918 button{padding:9px 13px;white-space:nowrap}
+.watch-episode-cta-v25918{display:flex;align-items:center;gap:12px;margin-top:10px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--accent2) 26%,var(--line));border-radius:14px;background:linear-gradient(100deg,color-mix(in srgb,var(--accent2) 9%,var(--panel2)),var(--panel2))}
+.watch-episode-cta-v25918.hidden{display:none}
+.watch-episode-cta-v25918>div{display:grid;gap:2px;margin-right:auto;min-width:0}
+.watch-episode-cta-v25918 small{font-size:8px;font-weight:950;letter-spacing:.16em;color:var(--accent2)}
+.watch-episode-cta-v25918 b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.watch-episode-cta-v25918 button{padding:9px 14px;white-space:nowrap}
+.watch-episode-grid button.watched.active::after{content:'✓';position:absolute;right:4px;top:2px;font-size:8px;color:#b8ffd0;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+.watch-episode-grid button.watch-partial-v25918:not(.watched)::before{content:'';position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:#f0bd67;box-shadow:0 0 0 2px rgba(240,189,103,.12)}
+.public-watch-hours-v25918{display:flex;align-items:center;gap:11px;margin-top:12px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--accent2) 24%,var(--line));border-radius:14px;background:linear-gradient(110deg,color-mix(in srgb,var(--accent2) 9%,#0d1017),#0d1017)}
+.public-watch-hours-v25918>i{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:color-mix(in srgb,var(--accent2) 15%,var(--panel));font-style:normal}
+.public-watch-hours-v25918>span{display:grid;gap:2px}.public-watch-hours-v25918 b{font-size:18px}.public-watch-hours-v25918 small{font-size:8px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+@media(max-width:650px){
+  .watch-resume-overlay-v25918{left:8px;right:8px;bottom:8px;display:grid;grid-template-columns:1fr 1fr;padding:9px}
+  .watch-resume-overlay-v25918>div{grid-column:1/-1}.watch-resume-overlay-v25918 button{width:100%;padding:8px}
+  .watch-episode-cta-v25918{align-items:stretch}.watch-episode-cta-v25918>div{display:none}.watch-episode-cta-v25918 button{width:100%}
+}
+
 /* ==========================================================================
    SENIME V25.9.15 · STABLE ONLINE UI + SINGLE-VIEW MOBILE NAV
    ========================================================================== */

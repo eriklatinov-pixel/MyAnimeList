@@ -12677,3 +12677,149 @@ migrateRezePlaybackV25917();backfillSeasonStatsV25917();migrateLegacyPendingV259
 window.SENIME_BUILD=SENIME_V25917;
 document.documentElement.dataset.senimeBuild=SENIME_V25917;
 console.info('Senime V25.9.17 season-safe tickets, per-season history, Kodik tracking and accounting fixes active');
+
+/* ==========================================================================
+   SENIME V25.9.18 · KODIK COMPLETION, RESUME, NEXT + PUBLIC WATCH HOURS
+   ========================================================================== */
+const SENIME_V25918='25.9.18';
+let kodikResumePromptV25918={key:'',dismissed:false};
+let publicWatchSyncAtV25918=0;
+
+function watchEpisodeKeyNowV25918(){return watchStateV15?.entry?episodeKeyV16(watchStateV15.entry,watchStateV15.season,watchStateV15.episode):''}
+function maxLedgerPositionV25918(rec){return Math.max(0,Number(rec?.kodikMaxPositionV25918)||0,...(rec?.intervals||[]).map(x=>Number(x?.[1])||0))}
+function formatResumeTimeV25918(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`}
+function resumeCandidateV25918(){
+  if(!watchStateV15?.entry)return null;const key=watchResumeKeyV15(),saved=resumeStoreV15()?.[key]||{},rec=ledgerEpisodeV16(watchStateV15.entry,watchStateV15.season,watchStateV15.episode,false);
+  if(rec?.verified)return null;const t=Math.max(Number(saved.t)||0,maxLedgerPositionV25918(rec)),d=Math.max(Number(saved.d)||0,Number(rec?.duration)||0,Number(kodikTrackV25917?.duration)||0);
+  if(t<15||(d>0&&t>=d-3))return null;return {key,t,d};
+}
+function nextWatchTargetV25918(){
+  const entry=watchStateV15?.entry;if(!entry)return null;const parts=watchPartsV15(entry),season=Math.max(0,Number(watchStateV15.season)||0),episode=Math.max(1,Number(watchStateV15.episode)||1),eps=Math.max(1,Number(parts[season]?.episodes)||1);
+  if(episode<eps)return {season,episode:episode+1,part:parts[season]};
+  if(season<parts.length-1)return {season:season+1,episode:1,part:parts[season+1]};
+  return null;
+}
+function syncWatchEpisodeActionsV25918(){
+  const key=watchEpisodeKeyNowV25918();if(kodikResumePromptV25918.key!==key)kodikResumePromptV25918={key,dismissed:false};
+  const overlay=$('#watchResumeOverlayV25918'),candidate=resumeCandidateV25918(),isKodik=!!activeKodikFrameV25917?.();
+  if(overlay){const show=!!candidate&&isKodik&&!kodikResumePromptV25918.dismissed;overlay.classList.toggle('hidden',!show);if(show){const label=$('#watchResumeTextV25918');if(label)label.textContent=`Остановились на ${formatResumeTimeV25918(candidate.t)}${candidate.d?` из ${formatResumeTimeV25918(candidate.d)}`:''}`}}
+  const next=nextWatchTargetV25918(),cta=$('#watchEpisodeCtaV25918'),prominent=$('#watchNextProminentV25918'),small=$('#watchNextEpisode');
+  if(cta)cta.classList.toggle('hidden',!next);if(small){small.disabled=!next;small.title=next?'Следующая серия':'Это последняя серия'}
+  if(next){const label=next.season===Number(watchStateV15.season)?`Серия ${next.episode}`:`${next.part?.title||`Сезон ${next.season+1}`} · серия ${next.episode}`;if(prominent)prominent.textContent=`${label} →`;const hint=$('#watchNextHintV25918');if(hint)hint.textContent=`${label} готова`}
+}
+
+function writeKodikResumeV25918(current,duration,{force=false,completed=false}={}){
+  if(!watchStateV15?.entry||!Number.isFinite(Number(current)))return;const now=Date.now();if(!force&&now-Number(kodikTrackV25917.lastResumeSaveV25918||0)<7000)return;kodikTrackV25917.lastResumeSaveV25918=now;
+  const currentKey=watchEpisodeKeyNowV25918(),trackedKey=String(kodikTrackV25917.key||''),key=trackedKey&&trackedKey!==currentKey&&kodikTrackV25917.resumeKeyV25918?kodikTrackV25917.resumeKeyV25918:watchResumeKeyV15(),all=resumeStoreV15();if(completed)delete all[key];else all[key]={t:Math.max(0,Number(current)||0),d:Math.max(0,Number(duration)||0),at:now,provider:'kodik'};
+  try{localStorage.setItem(WATCH_RESUME_KEY_V15,JSON.stringify(all))}catch{}scheduleAccountCloudSyncV23?.(3200);
+}
+function postKodikCommandV25918(method,extra={}){const frame=activeKodikFrameV25917?.();if(!frame)return false;try{frame.contentWindow.postMessage({key:'kodik_player_api',value:{method,...extra}},'*');return true}catch{return false}}
+function requestKodikTimeV25918(){return postKodikCommandV25918('get_time')}
+function seekKodikV25918(seconds){
+  const t=Math.max(0,Number(seconds)||0);kodikTrackV25917.seekingUntilV25918=Date.now()+1400;kodikTrackV25917.last=null;kodikTrackV25917.lastWall=Date.now();
+  postKodikCommandV25918('seek',{seconds:t});setTimeout(()=>postKodikCommandV25918('play'),120);setTimeout(requestKodikTimeV25918,300);return true;
+}
+function dismissKodikResumeV25918(){kodikResumePromptV25918={key:watchEpisodeKeyNowV25918(),dismissed:true};$('#watchResumeOverlayV25918')?.classList.add('hidden')}
+function continueKodikV25918(){const x=resumeCandidateV25918();if(!x)return;dismissKodikResumeV25918();seekKodikV25918(x.t);profileToastV16?.('Продолжаем просмотр',`С ${formatResumeTimeV25918(x.t)}`)}
+function restartKodikV25918(){dismissKodikResumeV25918();const all=resumeStoreV15(),key=watchResumeKeyV15();delete all[key];try{localStorage.setItem(WATCH_RESUME_KEY_V15,JSON.stringify(all))}catch{}scheduleAccountCloudSyncV23?.(900);seekKodikV25918(0)}
+$('#watchResumeNowV25918')?.addEventListener('click',continueKodikV25918);
+$('#watchRestartNowV25918')?.addEventListener('click',restartKodikV25918);
+$('#watchNextProminentV25918')?.addEventListener('click',()=>watchNextEpisodeV15());
+
+function schedulePublicWatchSyncV25918(force=false){const now=Date.now();if(!force&&now-publicWatchSyncAtV25918<30000)return;publicWatchSyncAtV25918=now;schedulePublicSyncV244?.(force?350:1400)}
+
+/* Kodik may lose a few iframe samples around buffering or the final frame. A
+   genuine provider-ended event can cover only that small telemetry loss: at
+   least 78% unique time and a position at the real end are still required. */
+const coverageBeforeV25918=coverageV16;
+coverageV16=function(rec){
+  const raw=coverageBeforeV25918(rec),duration=Math.max(0,Number(rec?.duration)||0),last=maxLedgerPositionV25918(rec),trustedEnd=!!rec?.kodikEndedAtV25918&&duration>=90&&last>=Math.max(duration*.96,duration-45);
+  return trustedEnd&&raw>=.78?Math.max(.82,raw):raw;
+};
+
+const mergeEpisodeRecordBeforeV25918=mergeEpisodeRecordV25917;
+mergeEpisodeRecordV25917=function(base,extra){
+  const out=mergeEpisodeRecordBeforeV25918(base,extra);out.kodikMaxPositionV25918=Math.max(Number(base?.kodikMaxPositionV25918)||0,Number(extra?.kodikMaxPositionV25918)||0);
+  out.kodikEndedAtV25918=Math.max(Number(base?.kodikEndedAtV25918)||0,Number(extra?.kodikEndedAtV25918)||0)||null;if(base?.providerV25918==='kodik'||extra?.providerV25918==='kodik')out.providerV25918='kodik';return out;
+};
+
+trackKodikTimeV25917=function(current){
+  const entry=watchStateV15?.entry,frame=activeKodikFrameV25917?.();current=Number(current);if(!entry||!frame||!Number.isFinite(current)||current<0)return;
+  const key=episodeKeyV16(entry,watchStateV15.season,watchStateV15.episode),now=Date.now(),rec=currentEpisodeRecordV16();if(!rec)return;
+  if(kodikTrackV25917.key!==key){const knownDuration=Math.max(0,Number(kodikTrackV25917.duration)||0),playing=kodikTrackV25917.playingV25918;resetKodikTrackV25917();kodikTrackV25917.key=key;kodikTrackV25917.duration=knownDuration;kodikTrackV25917.playingV25918=playing;kodikTrackV25917.resumeKeyV25918=watchResumeKeyV15()}
+  if(!rec.firstAt)rec.firstAt=now;rec.lastAt=now;rec.providerV25918='kodik';rec.kodikMaxPositionV25918=Math.max(Number(rec.kodikMaxPositionV25918)||0,current);
+  if(kodikTrackV25917.duration>0)rec.duration=Math.max(Number(rec.duration)||0,Number(kodikTrackV25917.duration)||0);touchSeasonV25917(entry,watchStateV15.season,rec.firstAt);
+  const seeking=now<Number(kodikTrackV25917.seekingUntilV25918||0),canAdvance=kodikTrackV25917.playingV25918!==false||kodikTrackV25917.pausePendingV25918===true;
+  if(kodikTrackV25917.last!=null&&!seeking&&canAdvance){const delta=current-kodikTrackV25917.last,elapsed=Math.max(.25,(now-Number(kodikTrackV25917.lastWall||now))/1000),maxJump=Math.max(7,elapsed*2.6+4);if(delta>0&&delta<=maxJump)rec.intervals=mergeIntervalV16(rec.intervals,kodikTrackV25917.last,current)}
+  kodikTrackV25917.last=current;kodikTrackV25917.lastWall=now;writeKodikResumeV25918(current,Math.max(Number(rec.duration)||0,Number(kodikTrackV25917.duration)||0));
+  if(now-Number(kodikTrackV25917.lastSave||0)>8000){kodikTrackV25917.lastSave=now;saveData();schedulePublicWatchSyncV25918()}
+  if(!rec.verified&&coverageV16(rec)>=.82){const ok=verifyEpisodeV16();if(ok){writeKodikResumeV25918(current,rec.duration,{force:true,completed:true});renderWatchShellV15()}}
+};
+
+function finishKodikEpisodeV25918(){
+  const entry=watchStateV15?.entry,rec=currentEpisodeRecordV16();if(!entry||!rec)return false;const now=Date.now(),duration=Math.max(Number(rec.duration)||0,Number(kodikTrackV25917.duration)||0),last=Math.max(Number(kodikTrackV25917.last)||0,maxLedgerPositionV25918(rec));
+  if(duration>0&&last<duration&&duration-last<=45)trackKodikTimeV25917(duration);rec.duration=Math.max(Number(rec.duration)||0,duration);rec.kodikMaxPositionV25918=Math.max(Number(rec.kodikMaxPositionV25918)||0,last,duration&&duration-last<=45?duration:0);rec.kodikEndedAtV25918=now;rec.lastAt=now;kodikTrackV25917.playingV25918=false;
+  const ok=verifyEpisodeV16();writeKodikResumeV25918(last,duration,{force:true,completed:ok});saveData();schedulePublicWatchSyncV25918(true);renderWatchShellV15();syncWatchEpisodeActionsV25918();
+  if($('#watchAutoNext')?.checked)setTimeout(()=>showAutoNextOverlayV201?.(),120);return ok;
+}
+
+window.addEventListener('message',event=>{
+  const frame=activeKodikFrameV25917?.();if(!frame||event.source!==frame.contentWindow)return;let data=event.data;try{if(typeof data==='string')data=JSON.parse(data)}catch{return}if(!data||typeof data!=='object')return;
+  const key=String(data.key||''),value=Number(data.value);
+  if(key==='kodik_player_duration_update'&&Number.isFinite(value)&&value>0){kodikTrackV25917.duration=value;const rec=currentEpisodeRecordV16();if(rec){rec.duration=Math.max(Number(rec.duration)||0,value);const saved=resumeStoreV15()?.[watchResumeKeyV15()]||{},position=Math.max(Number(kodikTrackV25917.last)||0,Number(saved.t)||0,maxLedgerPositionV25918(rec));writeKodikResumeV25918(position,value,{force:true});if(!rec.verified&&coverageV16(rec)>=.82)verifyEpisodeV16()}return}
+  if(key==='kodik_player_video_started'||key==='kodik_player_play'){kodikTrackV25917.playingV25918=true;kodikTrackV25917.pausePendingV25918=false;kodikTrackV25917.lastWall=Date.now();requestKodikTimeV25918();return}
+  if(key==='kodik_player_pause'){kodikTrackV25917.pausePendingV25918=true;requestKodikTimeV25918();setTimeout(()=>{kodikTrackV25917.playingV25918=false;kodikTrackV25917.pausePendingV25918=false;writeKodikResumeV25918(Number(kodikTrackV25917.last)||0,Number(kodikTrackV25917.duration)||0,{force:true});saveData();schedulePublicWatchSyncV25918(true)},450);return}
+  if(key==='kodik_player_seek'){kodikTrackV25917.seekingUntilV25918=Date.now()+1400;kodikTrackV25917.last=null;setTimeout(requestKodikTimeV25918,220);return}
+  if(key==='kodik_player_video_ended'){const stamp=watchEpisodeKeyNowV25918();if(kodikTrackV25917.endedKeyV25918===stamp)return;kodikTrackV25917.endedKeyV25918=stamp;finishKodikEpisodeV25918()}
+});
+
+function flushKodikProgressV25918(){if(!watchStateV15?.entry||!activeKodikFrameV25917?.())return;const trackedKey=String(kodikTrackV25917.key||''),currentKey=watchEpisodeKeyNowV25918(),rec=trackedKey?ensureProfileV16().episodeLedger?.[trackedKey]:currentEpisodeRecordV16(),same=!trackedKey||trackedKey===currentKey,last=Math.max(0,Number(kodikTrackV25917.last)||0,same?maxLedgerPositionV25918(rec):0);writeKodikResumeV25918(last,Math.max(Number(rec?.duration)||0,Number(kodikTrackV25917.duration)||0),{force:true,completed:!!rec?.verified});saveData();schedulePublicWatchSyncV25918(true)}
+
+const showKodikBeforeV25918=showKodikV19;
+showKodikV19=function(){flushKodikProgressV25918();const out=showKodikBeforeV25918?.apply(this,arguments);setTimeout(syncWatchEpisodeActionsV25918,80);setTimeout(syncWatchEpisodeActionsV25918,500);return out};
+const loadWatchEpisodeBeforeV25918=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){flushKodikProgressV25918();$('#watchResumeOverlayV25918')?.classList.add('hidden');const out=await loadWatchEpisodeBeforeV25918(opts);syncWatchEpisodeActionsV25918();setTimeout(syncWatchEpisodeActionsV25918,350);return out};
+const closeWatchPlayerBeforeV25918=closeWatchPlayerV15;
+closeWatchPlayerV15=function(){flushKodikProgressV25918();return closeWatchPlayerBeforeV25918?.apply(this,arguments)};
+
+/* A checkmark belongs to the episode's immutable ledger row, not to the old
+   contiguous progress number. Partial rows get a small amber dot and tooltip. */
+const renderWatchShellBeforeV25918=renderWatchShellV15;
+renderWatchShellV15=function(){
+  const out=renderWatchShellBeforeV25918?.apply(this,arguments),entry=watchStateV15?.entry,buttons=[...document.querySelectorAll('#watchEpisodeGrid>button')];
+  if(entry)buttons.forEach((button,index)=>{const rec=ledgerEpisodeV16(entry,watchStateV15.season,index+1,false),watched=Math.max(0,Number(watchedSecondsV16(rec)||0)),raw=coverageBeforeV25918(rec);button.classList.toggle('watched',!!rec?.verified);button.classList.toggle('watch-partial-v25918',!rec?.verified&&watched>0);button.title=rec?.verified?'✓ Серия подтверждена':watched?`Учтено ${Math.round(raw*100)}% · продолжи просмотр для галочки`:''});
+  syncWatchEpisodeActionsV25918();return out;
+};
+Object.assign(window,{loadWatchEpisodeV15,closeWatchPlayerV15,renderWatchShellV15,showKodikV19,continueKodikV25918,restartKodikV25918});
+
+/* Recover rows left unverified by an older late-duration event. The normal
+   82% proof is accepted directly; a legacy 80% row also needs a real near-end
+   position and enough wall-clock span, covering only a small dropped sample. */
+function repairEligibleWatchLedgerV25918(){
+  const rows=Object.values(ensureProfileV16().episodeLedger||{}).filter(rec=>{if(rec?.verified||Number(rec?.duration)<90)return false;const duration=Number(rec.duration),watched=watchedSecondsV16(rec),raw=coverageBeforeV25918(rec),strict=raw>=.82&&watched>=Math.min(duration*.82,480),nearEnd=maxLedgerPositionV25918(rec)>=Math.max(duration*.97,duration-30),first=Number(rec.firstAt)||0,lastAt=Number(rec.lastAt)||0,wallSpan=first&&lastAt?Math.max(0,lastAt-first):0;return strict||(raw>=.80&&nearEnd&&wallSpan>=Math.min(duration*.75,600)*1000)});if(!rows.length)return 0;
+  const snap={section:watchStateV15.section,index:watchStateV15.index,key:watchStateV15.entry?entryKeyV16(watchStateV15.entry):'',season:watchStateV15.season,episode:watchStateV15.episode},done=[];
+  for(const rec of rows){const ref=findEntryByWatchKeyV25917(rec.entryKey);if(!ref?.entry)continue;if(coverageBeforeV25918(rec)<.82){rec.kodikEndedAtV25918=Number(rec.lastAt)||Date.now();rec.kodikMaxPositionV25918=maxLedgerPositionV25918(rec);rec.legacyNearEndEvidenceV25918=true}watchStateV15.entry=ref.entry;watchStateV15.section=ref.section;watchStateV15.index=(latestData.sections?.[ref.section]||[]).indexOf(ref.entry);watchStateV15.season=Math.max(0,Number(rec.season)-1);watchStateV15.episode=Math.max(1,Number(rec.episode)||1);if(verifyEpisodeV16())done.push(rec)}
+  const restored=snap.key?findEntryByWatchKeyV25917(snap.key):null;watchStateV15.entry=restored?.entry||null;watchStateV15.section=restored?.section||snap.section;watchStateV15.index=restored?(latestData.sections?.[restored.section]||[]).indexOf(restored.entry):snap.index;watchStateV15.season=snap.season;watchStateV15.episode=snap.episode;
+  if(done.length){saveData();renderAll?.();if(watchStateV15.entry)renderWatchShellV15()}return done.length;
+}
+
+const accountPullCloudBeforeV25918=accountPullCloudV23;
+accountPullCloudV23=async function(){const ok=await accountPullCloudBeforeV25918?.apply(this,arguments);if(ok){migrateRezePlaybackV25917();backfillSeasonStatsV25917();migrateLegacyPendingV25917();repairEligibleWatchLedgerV25918();saveData()}return ok};
+window.accountPullCloudV23=accountPullCloudV23;
+
+function patchPublicWatchHoursV25918(profile,id){
+  const body=$('#publicProfileBodyV242'),progress=body?.querySelector('.public-progress-widget-v243');if(!progress)return;const own=String(id)===String(socialMeV241?.()),pp=own&&socialSignedV241?.()?socialBuildPublicPayloadV242():profile?.public_payload||{},label=`${watchHoursLabelV25917(Number(pp.watchSeconds)||0)} ч`;
+  let row=progress.querySelector('.public-watch-hours-v25918');if(!row){row=document.createElement('div');row.className='public-watch-hours-v25918';row.innerHTML='<i>⌛</i><span><b></b><small>уникального просмотра учтено</small></span>';const live=progress.querySelector('.public-live-slot-v25910');progress.insertBefore(row,live||null)}row.querySelector('b').textContent=label;
+}
+const openPublicBeforeV25918=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){if(String(id)===String(socialMeV241?.())&&socialSignedV241?.())try{await socialSyncPublicProfileV242?.()}catch{}const out=await openPublicBeforeV25918?.apply(this,arguments);patchPublicWatchHoursV25918(socialStateV241?.profiles?.get(id),id);return out};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+$('#watchVideo')?.addEventListener('timeupdate',()=>schedulePublicWatchSyncV25918());
+$('#watchVideo')?.addEventListener('pause',()=>schedulePublicWatchSyncV25918(true));
+$('#watchVideo')?.addEventListener('ended',()=>schedulePublicWatchSyncV25918(true));
+
+const repairedRowsV25918=repairEligibleWatchLedgerV25918();
+window.SENIME_BUILD=SENIME_V25918;
+document.documentElement.dataset.senimeBuild=SENIME_V25918;
+console.info(`Senime V25.9.18 Kodik completion/resume/next and public watch hours active${repairedRowsV25918?` · repaired ${repairedRowsV25918} eligible row(s)`:''}`);

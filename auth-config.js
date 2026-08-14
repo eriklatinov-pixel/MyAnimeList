@@ -16,5 +16,5 @@ window.ANIME_AUTH_CONFIG = {
   turnstileSiteKey: "0x4AAAAAAENQ2GQR2QLqBJY7",
   turnstileMode: "production",
 
-  securityVersion: "25.9.17"
+  securityVersion: "25.9.18"
 };
