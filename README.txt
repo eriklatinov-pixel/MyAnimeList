@@ -1,3 +1,14 @@
+Senime V25.9.21 — Profile Sharing + Compare + Public Collection
+
+- Added a profile action hub with four working actions: download profile card, share profile, compare with a friend and show collection.
+- Profile cards are generated locally as 1200×1500 PNG files with avatar, favorites, level, verified viewing, hours and card count; every published character card can also be downloaded as its own 1080×1440 PNG.
+- Profile and collection sharing uses the device share sheet when available and otherwise copies a permanent /u/{id} link.
+- Public profile comparison includes level, verified episodes/titles, viewing hours to one decimal, cards, achievements and an accurate full-library match percentage.
+- Every non-hidden card can now appear in a searchable public collection (up to 500 published cards); hidden cards and private folders never leave the owner profile.
+- Public collections have direct /u/{id}?view=collection links, rarity/anime filters and owner counts.
+- Roadmap: add an opt-in Card Arena alongside Together—fair character-card matches where rarity alone does not decide the winner and owned cards are never lost.
+- Cache bust and public security version are 25.9.21.
+
 Senime V25.9.20 — Comment Context + Reze Identity Repair
 
 - Reze Arc now has its canonical AniList ID 171627 and MyAnimeList ID 57555 in the built-in catalog.
