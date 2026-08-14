@@ -12823,3 +12823,51 @@ const repairedRowsV25918=repairEligibleWatchLedgerV25918();
 window.SENIME_BUILD=SENIME_V25918;
 document.documentElement.dataset.senimeBuild=SENIME_V25918;
 console.info(`Senime V25.9.18 Kodik completion/resume/next and public watch hours active${repairedRowsV25918?` · repaired ${repairedRowsV25918} eligible row(s)`:''}`);
+
+/* ==========================================================================
+   SENIME V25.9.19 · VERIFIED DAILY WATCH QUESTS
+   ========================================================================== */
+const SENIME_V25919='25.9.19';
+let dailyWatchReconcilingV25919=false;
+
+function verifiedAtV25919(rec){const raw=rec?.verifiedAt;if(typeof raw==='number')return Number.isFinite(raw)?raw:0;const parsed=Date.parse(raw||'');return Number.isFinite(parsed)?parsed:0}
+function todayVerifiedRowsV25919(date=localDayKeyV166()){
+  const rows=[];for(const [key,rec] of Object.entries(ensureProfileV16().episodeLedger||{})){const at=verifiedAtV25919(rec);if(rec?.verified&&at&&localDayKeyV166(new Date(at))===date)rows.push({key,rec,at})}return rows;
+}
+function reconcileDailyWatchV25919({save=true}={}){
+  if(dailyWatchReconcilingV25919)return false;dailyWatchReconcilingV25919=true;let changed=false;
+  try{
+    const daily=ensureDailyV166(),date=String(daily.date||localDayKeyV166()),rows=todayVerifiedRowsV25919(date);daily.watchLedgerV25919||={};
+    if(Number(daily.watchLedgerVersionV25919)!==1){const old=Math.max(0,Math.floor(Number(daily.counters?.watch)||0)),known=new Set(rows.map(x=>x.key));for(let i=known.size;i<old;i++)daily.watchLedgerV25919[`legacy:${date}:${i+1}`]={date,at:Number(daily.createdAt)||Date.now(),legacy:true};daily.watchLedgerVersionV25919=1;changed=true}
+    for(const [key,receipt] of Object.entries(daily.watchLedgerV25919)){if(receipt?.date&&receipt.date!==date){delete daily.watchLedgerV25919[key];changed=true}}
+    for(const {key,rec,at} of rows)if(!daily.watchLedgerV25919[key]){daily.watchLedgerV25919[key]={date,at,entryKey:String(rec.entryKey||''),season:Number(rec.season)||1,episode:Number(rec.episode)||1};changed=true}
+    const count=Object.keys(daily.watchLedgerV25919).length;daily.counters||={watch:0,comments:0,shares:0,likes:0};if(Number(daily.counters.watch)!==count){daily.counters.watch=count;changed=true}
+    if(changed){evaluateDailyV166();if(save)saveData()}
+    return changed;
+  }finally{dailyWatchReconcilingV25919=false}
+}
+
+/* Direct "watch +1" calls are no longer authoritative: only a unique verified
+   ledger row from today may advance both episode quests. */
+const dailyRecordBeforeV25919=dailyRecordV166;
+dailyRecordV166=function(kind,n=1){if(kind!=='watch')return dailyRecordBeforeV25919(kind,n);const changed=reconcileDailyWatchV25919();if(!$('#profileModal')?.classList.contains('hidden'))renderQuestsV164?.();return changed};
+window.dailyRecordV166=dailyRecordV166;
+
+const verifyEpisodeBeforeV25919=verifyEpisodeV16;
+verifyEpisodeV16=function(){const out=verifyEpisodeBeforeV25919?.apply(this,arguments);reconcileDailyWatchV25919();if(!$('#profileModal')?.classList.contains('hidden'))renderQuestsV164?.();return out};
+window.verifyEpisodeV16=verifyEpisodeV16;
+
+const renderQuestsBeforeV25919=renderQuestsV164;
+renderQuestsV164=function(){reconcileDailyWatchV25919();return renderQuestsBeforeV25919?.apply(this,arguments)};
+window.renderQuestsV164=renderQuestsV164;
+
+const accountPullCloudBeforeV25919=accountPullCloudV23;
+accountPullCloudV23=async function(){const ok=await accountPullCloudBeforeV25919?.apply(this,arguments);if(ok)reconcileDailyWatchV25919();return ok};
+window.accountPullCloudV23=accountPullCloudV23;
+
+window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY)setTimeout(()=>{if(reconcileDailyWatchV25919()&&!$('#profileModal')?.classList.contains('hidden'))renderQuestsV164?.()},0)});
+
+const repairedDailyV25919=reconcileDailyWatchV25919();
+window.SENIME_BUILD=SENIME_V25919;
+document.documentElement.dataset.senimeBuild=SENIME_V25919;
+console.info(`Senime V25.9.19 verified daily watch quests active${repairedDailyV25919?' · today reconciled':''}`);

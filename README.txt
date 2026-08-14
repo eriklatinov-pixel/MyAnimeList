@@ -1,3 +1,12 @@
+Senime V25.9.19 — Verified Daily Quest Repair
+
+- Daily episode quests now derive progress from unique episode-ledger rows verified on the user's local calendar day.
+- The later V20.5 verifier replacement can no longer bypass the daily quest system.
+- Episodes already verified today are reconciled automatically after startup, cloud hydration and cross-tab updates.
+- One episode key can count only once; replaying or re-verifying it cannot farm daily progress.
+- Legacy daily progress is preserved during the ledger migration, and quest rewards remain one-time through the existing completed receipt.
+- Cache bust and public security version are 25.9.19.
+
 Senime V25.9.18 — Kodik Resume + Reliable Episode Completion
 
 - Kodik progress now persists every few seconds and can be resumed with Senime's own «Продолжить» button.
