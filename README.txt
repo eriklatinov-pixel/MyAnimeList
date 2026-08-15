@@ -1,3 +1,12 @@
+Senime V25.9.22 — Moscow Dailies, Watch Streak + Compact Profile History
+
+- Daily quests now use one shared Moscow calendar: they reset exactly at 00:00 MSK and show a live seconds countdown to the reset.
+- A verified episode extends the new 🔥 daily viewing streak once per Moscow day. Missing a full day resets the current streak; the personal best stays saved.
+- Public live presence now shows the elapsed time for the currently playing episode next to “СМОТРИТ СЕЙЧАС”.
+- The huge season-history block is compact on the profile; its full, start/finish/time/verified history opens in a modal.
+- Downloaded profile PNGs prioritise titles being watched and completed instead of only favourites. Avatar images are never sent through a third-party proxy.
+- Cache bust and public security version are 25.9.22.
+
 Senime V25.9.21 — Profile Sharing + Compare + Public Collection
 
 - Added a profile action hub with four working actions: download profile card, share profile, compare with a friend and show collection.

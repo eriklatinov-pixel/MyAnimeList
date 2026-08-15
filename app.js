@@ -13036,7 +13036,12 @@ async function growthBitmapV25921(src){
 }
 function growthDrawImageV25921(ctx,image,x,y,w,h,r=22){if(!image)return false;const iw=image.width||image.naturalWidth,ih=image.height||image.naturalHeight;if(!iw||!ih)return false;const scale=Math.max(w/iw,h/ih),sw=w/scale,sh=h/scale,sx=(iw-sw)/2,sy=(ih-sh)/2;ctx.save();growthRoundRectV25921(ctx,x,y,w,h,r);ctx.clip();ctx.drawImage(image,sx,sy,sw,sh,x,y,w,h);ctx.restore();return true}
 async function renderProfileCardV25921(id){
-  const profile=growthProfileCachedV25921(id)||await growthProfileFetchV25921(id);if(!profile)throw new Error('Профиль не найден');const pp=profile.public_payload||{},favorites=(pp.favorites||[]).slice(0,3),accent=growthAccentV25921(profile,'accent','#8b5cf6'),accent2=growthAccentV25921(profile,'accent2','#ec4899');
+  const profile=growthProfileCachedV25921(id)||await growthProfileFetchV25921(id);if(!profile)throw new Error('Профиль не найден');const pp=profile.public_payload||{},accent=growthAccentV25921(profile,'accent','#8b5cf6'),accent2=growthAccentV25921(profile,'accent2','#ec4899');
+  /* A share card is a viewing card first: currently watched titles lead it,
+     then completed/favorite titles fill the remaining slots. */
+  const completed=growthIsOwnV25921(profile.id)?((latestData.sections?.completed||[]).map(entry=>({title:entry.title,cover:entry.cover||'',emoji:entry.emoji||'🎌'}))):[];
+  const candidates=[...(pp.watching||[]),...completed,...(pp.favorites||[])],seen=new Set(),favorites=[];
+  for(const item of candidates){const key=normalize(String(item?.title||''));if(!key||seen.has(key))continue;seen.add(key);favorites.push(item);if(favorites.length===3)break}
   const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1500;const ctx=canvas.getContext('2d');
   const background=ctx.createLinearGradient(0,0,1200,1500);background.addColorStop(0,'#171224');background.addColorStop(.5,'#0d0f17');background.addColorStop(1,'#08090e');ctx.fillStyle=background;ctx.fillRect(0,0,1200,1500);
   const glow=ctx.createRadialGradient(180,120,20,180,120,620);glow.addColorStop(0,`${accent}77`);glow.addColorStop(1,'transparent');ctx.fillStyle=glow;ctx.fillRect(0,0,1200,900);const glow2=ctx.createRadialGradient(1080,1360,10,1080,1360,520);glow2.addColorStop(0,`${accent2}55`);glow2.addColorStop(1,'transparent');ctx.fillStyle=glow2;ctx.fillRect(500,820,700,680);
@@ -13046,8 +13051,8 @@ async function renderProfileCardV25921(id){
   if(pp.cardTitle){ctx.fillStyle=`${accent}33`;growthRoundRectV25921(ctx,382,346,Math.min(650,ctx.measureText(pp.cardTitle).width+80),48,24);ctx.fill();ctx.fillStyle='#eee9ff';ctx.font='800 21px Arial, sans-serif';ctx.fillText(`◆ ${growthEllipsisV25921(ctx,pp.cardTitle,560)}`,404,378)}
   const stats=[['LVL',Math.max(1,Number(pp.level)||1)],['VERIFIED СЕРИЙ',Math.max(0,Number(pp.verifiedEpisodes)||0)],['ЧАСОВ',growthHoursV25921(profile).toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1})],['КАРТОЧЕК',growthCollectionCountV25921(profile)]];
   stats.forEach(([label,value],index)=>{const x=72+index*271;ctx.fillStyle='rgba(255,255,255,.055)';growthRoundRectV25921(ctx,x,465,247,145,25);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.10)';ctx.stroke();ctx.fillStyle=index===0?accent:'#ffffff';ctx.font='900 43px Arial, sans-serif';ctx.fillText(String(value),x+22,526);ctx.fillStyle='#858a9e';ctx.font='800 16px Arial, sans-serif';ctx.fillText(label,x+22,570)});
-  ctx.fillStyle='#f4f4f8';ctx.font='900 31px Arial, sans-serif';ctx.fillText('ЛЮБИМЫЕ АНИМЕ',72,690);ctx.fillStyle='#81869a';ctx.font='600 18px Arial, sans-serif';ctx.fillText(`${Math.max(0,Number(pp.verifiedTitles)||0)} verified тайтлов · ${Math.max(0,Number(pp.completed)||0)} отмечено просмотренными`,72,723);
-  const bitmaps=await Promise.all(favorites.map(item=>growthBitmapV25921(item.cover)));for(let index=0;index<3;index++){const item=favorites[index],x=72+index*362,y=770,w=338,h=470;ctx.fillStyle='rgba(255,255,255,.05)';growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();if(item){if(!growthDrawImageV25921(ctx,bitmaps[index],x,y,w,h,28)){ctx.fillStyle=`${index%2?accent2:accent}55`;growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();ctx.fillStyle='#fff';ctx.font='900 80px Arial, sans-serif';ctx.textAlign='center';ctx.fillText(item.emoji||'🎌',x+w/2,y+240);ctx.textAlign='left'}const fade=ctx.createLinearGradient(0,y+260,0,y+h);fade.addColorStop(0,'transparent');fade.addColorStop(1,'rgba(4,5,9,.96)');ctx.fillStyle=fade;growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();ctx.fillStyle='#fff';ctx.font='900 23px Arial, sans-serif';ctx.fillText(growthEllipsisV25921(ctx,item.title||'',w-38),x+19,y+h-30)}else{ctx.fillStyle='#464a5c';ctx.font='700 20px Arial, sans-serif';ctx.textAlign='center';ctx.fillText('место для любимого',x+w/2,y+240);ctx.textAlign='left'}}
+  ctx.fillStyle='#f4f4f8';ctx.font='900 31px Arial, sans-serif';ctx.fillText('СМОТРЮ И ПОСМОТРЕЛ',72,690);ctx.fillStyle='#81869a';ctx.font='600 18px Arial, sans-serif';ctx.fillText(`${Math.max(0,Number(pp.verifiedTitles)||0)} verified тайтлов · ${Math.max(0,Number(pp.completed)||0)} отмечено просмотренными`,72,723);
+  const bitmaps=await Promise.all(favorites.map(item=>growthBitmapV25921(item.cover)));for(let index=0;index<3;index++){const item=favorites[index],x=72+index*362,y=770,w=338,h=470;ctx.fillStyle='rgba(255,255,255,.05)';growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();if(item){if(!growthDrawImageV25921(ctx,bitmaps[index],x,y,w,h,28)){ctx.fillStyle=`${index%2?accent2:accent}55`;growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();ctx.fillStyle='#fff';ctx.font='900 80px Arial, sans-serif';ctx.textAlign='center';ctx.fillText(item.emoji||'🎌',x+w/2,y+240);ctx.textAlign='left'}const fade=ctx.createLinearGradient(0,y+260,0,y+h);fade.addColorStop(0,'transparent');fade.addColorStop(1,'rgba(4,5,9,.96)');ctx.fillStyle=fade;growthRoundRectV25921(ctx,x,y,w,h,28);ctx.fill();ctx.fillStyle='#fff';ctx.font='900 23px Arial, sans-serif';ctx.fillText(growthEllipsisV25921(ctx,item.title||'',w-38),x+19,y+h-30)}else{ctx.fillStyle='#464a5c';ctx.font='700 20px Arial, sans-serif';ctx.textAlign='center';ctx.fillText('смотри аниме',x+w/2,y+240);ctx.textAlign='left'}}
   ctx.fillStyle='#f0eef8';ctx.font='800 23px Arial, sans-serif';ctx.fillText(`${growthCollectionCountV25921(profile)} карточек в коллекции`,72,1340);ctx.fillStyle='#858a9e';ctx.font='600 19px Arial, sans-serif';ctx.fillText('Смотри · собирай · оценивай · общайся',72,1380);ctx.textAlign='right';ctx.fillStyle=accent;ctx.font='900 22px Arial, sans-serif';ctx.fillText(growthProfileUrlV25921(id).replace(/^https?:\/\//,''),1128,1380);ctx.textAlign='left';
   return {canvas,profile};
 }
@@ -13121,3 +13126,82 @@ ensureProfileGrowthUiV25921();ensureOwnGrowthButtonV25921();setTimeout(()=>{ensu
 window.SENIME_BUILD=SENIME_V25921;
 document.documentElement.dataset.senimeBuild=SENIME_V25921;
 console.info('Senime V25.9.21 profile cards, sharing, comparison and public collections active');
+
+/* ==========================================================================
+   SENIME V25.9.22 · MOSCOW DAILIES, WATCH STREAK & COMPACT PROFILE HISTORY
+   ========================================================================== */
+const SENIME_V25922='25.9.22';
+const MOSCOW_OFFSET_MS_V25922=3*60*60*1000;
+const DAY_MS_V25922=24*60*60*1000;
+
+function moscowDayKeyV25922(value=new Date()){
+  const shifted=new Date(Number(value)+MOSCOW_OFFSET_MS_V25922);
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth()+1).padStart(2,'0')}-${String(shifted.getUTCDate()).padStart(2,'0')}`;
+}
+function moscowDayIndexV25922(key){const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));return match?Math.floor(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3]))/DAY_MS_V25922):NaN}
+function moscowUntilResetV25922(now=Date.now()){const shifted=now+MOSCOW_OFFSET_MS_V25922;return Math.max(0,(Math.floor(shifted/DAY_MS_V25922)+1)*DAY_MS_V25922-shifted)}
+function moscowCountdownV25922(){const ms=moscowUntilResetV25922(),hours=Math.floor(ms/3600000),minutes=Math.floor(ms%3600000/60000),seconds=Math.floor(ms%60000/1000);return `новые через ${hours} ч ${String(minutes).padStart(2,'0')} мин ${String(seconds).padStart(2,'0')} с · 00:00 МСК`}
+
+const publicPayloadBeforeV25922=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){const out=publicPayloadBeforeV25922?.apply(this,arguments)||{};out.senimeVersion=SENIME_V25922;return out};
+
+/* The daily key is intentionally global: verification, likes, rewards and the
+   UI must agree on the same Moscow calendar date, not on device time. */
+localDayKeyV166=function(date=new Date()){return moscowDayKeyV25922(date)};
+dailyLikeDateV25917=function(){return moscowDayKeyV25922()};
+dailyResetTextV166=function(){return moscowCountdownV25922()};
+updateDailyResetV166=function(){
+  const profile=ensureProfileV16(),before=String(profile.daily_v166?.date||''),daily=ensureDailyV166(),after=String(daily.date||'');
+  const label=$('#profileDailyReset');if(label)label.textContent=moscowCountdownV25922();
+  if(before&&before!==after){reconcileDailyWatchV25919?.();if(!$('#profileModal')?.classList.contains('hidden'))renderQuestsV164?.()}
+};
+if(dailyResetTimerV166)clearInterval(dailyResetTimerV166);
+dailyResetTimerV166=setInterval(updateDailyResetV166,1000);
+
+function ensureWatchStreakV25922(){const profile=ensureProfileV16();profile.watchStreakV25922||={count:0,best:0,lastDay:''};const streak=profile.watchStreakV25922;streak.count=Math.max(0,Math.floor(Number(streak.count)||0));streak.best=Math.max(streak.count,Math.floor(Number(streak.best)||0));streak.lastDay=String(streak.lastDay||'');return streak}
+function currentWatchStreakV25922(){const streak=ensureWatchStreakV25922(),today=moscowDayKeyV25922(),last=moscowDayIndexV25922(streak.lastDay),now=moscowDayIndexV25922(today);if(Number.isFinite(last)&&last<now-1&&streak.count){streak.count=0;saveData()}return streak}
+function recordWatchStreakV25922(){
+  const profile=ensureProfileV16(),today=moscowDayKeyV25922();
+  const watchedToday=Object.values(profile.episodeLedger||{}).some(row=>row?.verified&&moscowDayKeyV25922(new Date(verifiedAtV25919(row)))===today);
+  if(!watchedToday)return false;const streak=currentWatchStreakV25922();if(streak.lastDay===today)return false;
+  const previous=moscowDayIndexV25922(streak.lastDay),current=moscowDayIndexV25922(today);streak.count=previous===current-1?Math.max(1,streak.count+1):1;streak.best=Math.max(streak.best,streak.count);streak.lastDay=today;saveData();return true;
+}
+function streakTextV25922(){const streak=currentWatchStreakV25922();return `${streak.count} ${streak.count===1?'день':'дней'}`}
+const verifyEpisodeBeforeV25922=verifyEpisodeV16;
+verifyEpisodeV16=function(){const before=verifiedEpisodeCountV16?.()||0,out=verifyEpisodeBeforeV25922?.apply(this,arguments),after=verifiedEpisodeCountV16?.()||0;if(after>before&&recordWatchStreakV25922())profileToastV16?.(`🔥 Серия ${streakTextV25922()}`,'Посмотри verified-серию завтра, чтобы продолжить огонёк.');return out};
+window.verifyEpisodeV16=verifyEpisodeV16;
+const renderQuestsBeforeV25922=renderQuestsV164;
+renderQuestsV164=function(){const out=renderQuestsBeforeV25922?.apply(this,arguments),box=$('#profileQuests');if(!box)return out;const summary=box.querySelector('.daily-quest-summary');if(summary){summary.querySelector('.daily-streak-v25922')?.remove();const streak=currentWatchStreakV25922(),item=document.createElement('div');item.className='daily-streak-v25922';item.innerHTML=`<span>🔥 Огонёк</span><b>${streakTextV25922()}</b><small>${streak.lastDay===moscowDayKeyV25922()?'сегодня продлён':'посмотри verified-серию до 00:00 МСК'}</small>`;summary.appendChild(item)}updateDailyResetV166();return out};
+window.renderQuestsV164=renderQuestsV164;
+recordWatchStreakV25922();
+
+/* Presence carries session time, not a fake total: it starts when this exact
+   episode begins playing and is shown next to the live "Смотрит сейчас" label. */
+function liveWatchKeyV25922(){const entry=watchStateV15?.entry;return entry?`${entryKeyV16(entry)}:${Number(watchStateV15.season)||0}:${Number(watchStateV15.episode)||1}`:''}
+function beginLiveWatchSessionV25922(){const key=liveWatchKeyV25922();if(!key)return 0;if(watchStateV15.liveSessionKeyV25922!==key){watchStateV15.liveSessionKeyV25922=key;watchStateV15.liveStartedAtV25922=Date.now()}return Number(watchStateV15.liveStartedAtV25922)||Date.now()}
+function liveWatchDurationV25922(start){const seconds=Math.max(0,Math.floor((Date.now()-Number(start||Date.now()))/1000)),hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60);return hours?`${hours} ч ${String(minutes).padStart(2,'0')} мин`:`${Math.max(1,minutes)} мин`}
+const directWatchingBeforeV25922=directWatchingV25911;
+directWatchingV25911=function(){const watching=directWatchingBeforeV25922?.apply(this,arguments);return watching?{...watching,startedAt:beginLiveWatchSessionV25922()}:watching};
+const nativePlayV25922=$('#watchVideo');nativePlayV25922?.addEventListener('play',beginLiveWatchSessionV25922);
+window.addEventListener('message',event=>{let data=event.data;try{if(typeof data==='string')data=JSON.parse(data)}catch{return}if(['kodik_player_video_started','kodik_player_play'].includes(String(data?.key||'')))beginLiveWatchSessionV25922()});
+const publicWatchingBeforeV25922=publicWatchingHtmlV25910;
+publicWatchingHtmlV25910=function(profile){const html=publicWatchingBeforeV25922?.apply(this,arguments)||'',watching=isOnlineV25910(profile)?profile?.public_payload?.presence?.watching:null;if(!watching||!html)return html;const elapsed=liveWatchDurationV25922(watching.startedAt);return html.replace('СМОТРИТ СЕЙЧАС','СМОТРИТ СЕЙЧАС · '+esc(elapsed))};
+window.publicWatchingHtmlV25910=publicWatchingHtmlV25910;
+
+/* Do not silently route private avatars through a third-party proxy. The
+   original loader works for data URLs and every host exposing CORS; blocked
+   remote hosts keep a visual fallback rather than breaking the PNG export. */
+
+function seasonRecordsV25922(){backfillSeasonStatsV25917();return Object.values(ensureSeasonStatsV25917().seasons||{}).filter(row=>row.startedAt||row.finishedAt).sort((a,b)=>Number(b.startedAt||b.finishedAt||0)-Number(a.startedAt||a.finishedAt||0))}
+function seasonHistoryCardV25922(row){const rows=seasonRecordRowsV25917(row),verified=rows.filter(item=>item?.verified).length,total=Math.max(1,Number(row.totalEpisodes)||1),seconds=rows.reduce((sum,item)=>sum+Math.max(0,Number(watchedSecondsV16(item)||0)),0),reward=Number(row.rewardTickets)||0;return `<article class="season-history-row-v25922 ${row.finishedAt?'finished':''}"><div><i>${row.finishedAt?'✓':'▶'}</i><span><b>${esc(row.title||'Аниме')}</b><small>${esc(row.partTitle||`Сезон ${row.season}`)}</small></span>${reward?`<em>🎟️ ×${reward}</em>`:''}</div><p><span>Начал <b>${seasonDateV25917(row.startedAt)}</b></span><span>Закончил <b>${row.finishedAt?seasonDateV25917(row.finishedAt):'в процессе'}</b></span><span>Verified <b>${verified}/${total}</b></span><span>Время <b>${watchHoursLabelV25917(seconds)} ч</b></span></p></article>`}
+function ensureCompactSeasonHistoryUiV25922(){if($('#profileSeasonHistoryModalV25922'))return;document.body.insertAdjacentHTML('beforeend','<div id="profileSeasonHistoryModalV25922" class="season-history-modal-v25922 hidden"><section><button type="button" class="season-history-close-v25922" onclick="closeSeasonHistoryV25922()">✕</button><div id="profileSeasonHistoryModalBodyV25922"></div></section></div>');$('#profileSeasonHistoryModalV25922')?.addEventListener('click',event=>{if(event.target===event.currentTarget)closeSeasonHistoryV25922()})}
+function openSeasonHistoryV25922(){ensureCompactSeasonHistoryUiV25922();const records=seasonRecordsV25922(),body=$('#profileSeasonHistoryModalBodyV25922');body.innerHTML=`<span class="profile-growth-kicker-v25921">SEASON HISTORY</span><h3>История сезонов</h3><p>Когда ты начал, закончил и сколько времени реально посмотрел.</p><div class="season-history-list-v25922">${records.map(seasonHistoryCardV25922).join('')||'<div class="profile-season-empty-v25917">История появится после первого настоящего запуска серии или фильма.</div>'}</div>`;$('#profileSeasonHistoryModalV25922').classList.remove('hidden')}
+function closeSeasonHistoryV25922(){$('#profileSeasonHistoryModalV25922')?.classList.add('hidden')}
+const renderSeasonHistoryBeforeV25922=renderSeasonHistoryV25917;
+renderSeasonHistoryV25917=function(){const host=$('#profileBlockStats');if(!host)return;let box=$('#profileSeasonHistoryV25917');if(!box){box=document.createElement('div');box.id='profileSeasonHistoryV25917';box.className='profile-season-history-v25917 compact-v25922';host.appendChild(box)}const records=seasonRecordsV25922(),finished=records.filter(row=>row.finishedAt).length,last=records[0];box.innerHTML=`<div class="season-history-compact-v25922"><div><span>ИСТОРИЯ ПО СЕЗОНАМ</span><b>${records.length?`${records.length} частей · ${finished} завершено`:'Пока нет просмотренных частей'}</b><small>${last?`${esc(last.title||'Аниме')} · ${esc(last.partTitle||`Сезон ${last.season}`)}`:'Начни смотреть серию — она появится здесь.'}</small></div><button type="button" onclick="openSeasonHistoryV25922()">Открыть историю →</button></div>`};
+window.renderSeasonHistoryV25917=renderSeasonHistoryV25917;
+Object.assign(window,{openSeasonHistoryV25922,closeSeasonHistoryV25922});
+
+window.SENIME_BUILD=SENIME_V25922;
+document.documentElement.dataset.senimeBuild=SENIME_V25922;
+console.info('Senime V25.9.22 Moscow dailies, streak, live time and compact season history active');
