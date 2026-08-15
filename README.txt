@@ -1,3 +1,11 @@
+Senime V25.9.23 — Public Streaks + Friend Invites
+
+- 🔥 viewing streak is now visible on every public profile and has its own leaderboard.
+- Added the “Invite friends” profile tab: permanent referral link/code, automatic ?ref= code prefill, single-use code entry, live invite stats and milestone cosmetics.
+- Server rules protect referrals: self-invites are blocked, codes work only once within 7 days of signup, the newcomer gets 10 Premium days + 150 XP, and the inviter receives 5 Premium days + 250 XP only after the newcomer reaches LVL 10.
+- Referral cosmetic milestones are 1, 2, 5 and 10 qualified invitations. No tickets or leaderboard boosts are granted through the referral milestones.
+- Requires the referral SQL patch applied in Supabase before publishing this ZIP.
+
 Senime V25.9.22 — Moscow Dailies, Watch Streak + Compact Profile History
 
 - Daily quests now use one shared Moscow calendar: they reset exactly at 00:00 MSK and show a live seconds countdown to the reset.

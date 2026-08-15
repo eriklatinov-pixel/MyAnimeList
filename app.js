@@ -13205,3 +13205,80 @@ Object.assign(window,{openSeasonHistoryV25922,closeSeasonHistoryV25922});
 window.SENIME_BUILD=SENIME_V25922;
 document.documentElement.dataset.senimeBuild=SENIME_V25922;
 console.info('Senime V25.9.22 Moscow dailies, streak, live time and compact season history active');
+
+/* ==========================================================================
+   SENIME V25.9.23 · PUBLIC STREAKS & SAFE REFERRALS
+   ========================================================================== */
+const SENIME_V25923='25.9.23';
+const REFERRAL_MILESTONES_V25923=[
+  {at:1,icon:'◌',title:'Первый круг',desc:'Рамка «Первый круг» для аватара',kind:'frame'},
+  {at:2,icon:'◆',title:'Собрал команду',desc:'Титул «Собрал команду»',kind:'title'},
+  {at:5,icon:'✦',title:'Сенпай',desc:'Анимированная рамка «Сенпай»',kind:'frame-plus'},
+  {at:10,icon:'♛',title:'Амбассадор Senime',desc:'Эксклюзивный титул и рамка',kind:'ambassador'}
+];
+
+function publicStreakV25923(profile){const raw=profile?.public_payload?.watchStreak||profile?.public_payload?.watchStreakV25922||{};return Math.max(0,Math.floor(Number(raw.count)||0))}
+const publicPayloadBeforeV25923=socialBuildPublicPayloadV242;
+socialBuildPublicPayloadV242=function(){const out=publicPayloadBeforeV25923?.apply(this,arguments)||{},streak=currentWatchStreakV25922?.()||{count:0,best:0,lastDay:''};out.watchStreak={count:Math.max(0,Number(streak.count)||0),best:Math.max(0,Number(streak.best)||0),lastDay:String(streak.lastDay||'')};out.senimeVersion=SENIME_V25923;return out};
+
+const verifyEpisodeBeforeV25923=verifyEpisodeV16;
+verifyEpisodeV16=function(){const out=verifyEpisodeBeforeV25923?.apply(this,arguments);setTimeout(()=>socialSyncPublicProfileV242?.().catch?.(()=>{}),80);setTimeout(()=>senimeCompleteReferralLevel10V25923?.(),180);return out};
+window.verifyEpisodeV16=verifyEpisodeV16;
+
+function patchPublicStreakV25923(profile){
+  const body=$('#publicProfileBodyV242');if(!body||!profile)return;const kpi=body.querySelector('.public-kpis-v243, .public-profile-kpis-v242');if(!kpi)return;
+  let box=kpi.querySelector('.public-streak-kpi-v25923');if(!box){box=document.createElement('div');box.className='public-streak-kpi-v25923';kpi.appendChild(box)}
+  const count=publicStreakV25923(profile);box.innerHTML=`<b>🔥 ${count}</b><span>огонёк</span>`;box.title=count?`Серия дней подряд: ${count}`:'Пока нет серии дней подряд';
+}
+const openPublicBeforeV25923=socialOpenPublicProfileV242;
+socialOpenPublicProfileV242=async function(id){const out=await openPublicBeforeV25923?.apply(this,arguments);patchPublicStreakV25923(socialStateV241?.profiles?.get(String(id)));return out};
+window.socialOpenPublicProfileV242=socialOpenPublicProfileV242;
+
+function referralProfileFrameV25923(){const p=ensureProfileV16();return String(p.referralFrameV25923||'')}
+const renderProfileChromeBeforeV25923=renderProfileChromeV16;
+renderProfileChromeV16=function(){const out=renderProfileChromeBeforeV25923?.apply(this,arguments);const root=$('#profileAvatar');if(root)root.classList.toggle('referral-frame-v25923',!!referralProfileFrameV25923());return out};
+window.renderProfileChromeV16=renderProfileChromeV16;
+function referralApplyMilestoneV25923(kind){
+  const p=ensureProfileV16(),status=window.__senimeReferralStatusV25923||{},count=Number(status.reached_level_10)||0;
+  const need=kind==='first'?1:kind==='team'?2:kind==='senpai'?5:10;if(count<need){profileToastV16?.('Рубеж ещё не достигнут',`Нужно приглашений, дошедших до LVL 10: ${need}`);return}
+  if(kind==='team'){p.profilePrefs ||= {};p.profilePrefs.title='Собрал команду';profileToastV16?.('◆ Титул активирован','Собрал команду')}else if(kind==='ambassador'){p.profilePrefs ||= {};p.profilePrefs.title='Амбассадор Senime';p.referralFrameV25923='ambassador'}else{p.referralFrameV25923=kind;profileToastV16?.('◌ Рамка активирована',kind==='senpai'?'Сенпай':'Первый круг')}
+  saveData();renderProfileChromeV16?.();renderInviteV25923();
+}
+
+async function referralStatusV25923(){return await senimeRpcV247('senime_referral_status',{})}
+function referralUrlV25923(code){const base=String(window.ANIME_AUTH_CONFIG?.siteUrl||location.origin).replace(/\/$/,'');return `${base}/?ref=${encodeURIComponent(code)}`}
+async function copyReferralV25923(){const code=window.__senimeReferralStatusV25923?.code;if(!code)return;const value=referralUrlV25923(code);try{await navigator.clipboard.writeText(value);profileToastV16?.('Ссылка скопирована','Отправь её другу — код подставится автоматически.')}catch{window.prompt('Скопируй ссылку',value)}}
+async function shareReferralV25923(){const code=window.__senimeReferralStatusV25923?.code;if(!code)return;const url=referralUrlV25923(code),text='Залетай в Senime по моей ссылке — тебе 10 дней Premium и 150 XP на старте 🎌';try{if(navigator.share){await navigator.share({title:'Senime',text,url});return}await navigator.clipboard.writeText(`${text}\n${url}`);profileToastV16?.('Приглашение скопировано','Можно отправлять другу.')}catch{}}
+async function claimReferralV25923(){const input=$('#referralCodeInputV25923'),code=String(input?.value||'').trim().toUpperCase();if(!code)return;const button=$('#referralClaimV25923');if(button)button.disabled=true;try{const result=await senimeRpcV247('senime_claim_referral',{input_code:code});await claimAdminGrantsV246?.({toast:true});profileToastV16?.('🎉 Код активирован',result?.message||'10 дней Premium и 150 XP уже выданы.');await renderInviteV25923()}catch(error){profileToastV16?.('Код не активирован',String(error?.message||error))}finally{if(button)button.disabled=false}}
+async function senimeCompleteReferralLevel10V25923(){if(!senimeSignedV247?.())return;try{const r=await senimeRpcV247('senime_complete_referral_level_10',{});if(r?.ok)profileToastV16?.('🎉 Пригласивший получил награду','Ты достиг LVL 10: ему выданы 5 дней Premium и 250 XP.')}catch{}}
+
+function inviteMilestonesHtmlV25923(status){const count=Number(status.reached_level_10)||0;return `<section class="referral-milestones-v25923"><header><span>РУБЕЖИ</span><b>${count} / 10 дошли до LVL 10</b></header><div>${REFERRAL_MILESTONES_V25923.map(item=>{const unlocked=count>=item.at,action=item.kind==='title'?'team':item.kind==='frame-plus'?'senpai':item.kind==='ambassador'?'ambassador':'first';return `<article class="${unlocked?'unlocked':''}"><i>${item.icon}</i><span><b>${item.at} приглашени${item.at===1?'е':'й'}</b><small>${item.title} · ${item.desc}</small></span>${unlocked?`<button type="button" onclick="referralApplyMilestoneV25923('${action}')">${item.kind==='title'?'Надеть титул':'Надеть'}</button>`:'<em>🔒</em>'}</article>`}).join('')}</div></section>`}
+async function renderInviteV25923(){
+  const box=$('#profileInviteV25923');if(!box)return;if(!senimeSignedV247?.()){box.innerHTML='<div class="referral-empty-v25923"><b>Войди в аккаунт</b><span>Тогда появятся твой код, награды и счётчик приглашений.</span><button type="button" onclick="openAccountV23()">Войти</button></div>';return}
+  box.innerHTML='<div class="referral-loading-v25923">Готовлю твою реферальную ссылку…</div>';
+  try{await socialSyncPublicProfileV242?.();await senimeCompleteReferralLevel10V25923();const status=await referralStatusV25923();window.__senimeReferralStatusV25923=status||{};const code=String(status?.code||'');const url=referralUrlV25923(code),prefill=new URLSearchParams(location.search).get('ref')||'';
+    box.innerHTML=`<section class="referral-hero-v25923"><span>ПРИГЛАСИ ДРУЗЕЙ</span><h3>Собери свою аниме-команду</h3><p>Друг получает <b>10 дней Premium + 150 XP</b> сразу. Когда он дойдёт до LVL 10, тебе придут <b>5 дней Premium + 250 XP</b>.</p><div class="referral-code-v25923"><div><small>ТВОЙ КОД</small><b>${esc(code)}</b></div><button type="button" onclick="copyReferralV25923()">⧉ Скопировать ссылку</button><button class="secondary" type="button" onclick="shareReferralV25923()">↗ Отправить</button></div><small class="referral-url-v25923">${esc(url)}</small></section><div class="referral-stats-v25923"><article><b>${Number(status?.invited_total)||0}</b><span>ввели твой код</span></article><article><b>${Number(status?.reached_level_10)||0}</b><span>дошли до LVL 10</span></article><article><b>${Number(status?.rewards_paid)||0}</b><span>наград тебе выдано</span></article></div><section class="referral-claim-v25923"><div><span>ТЕБЯ ПРИГЛАСИЛИ?</span><b>Введи код друга</b><small>Один раз, только в первые 7 дней после регистрации.</small></div><div><input id="referralCodeInputV25923" maxlength="8" value="${attrV247(prefill)}" placeholder="XXXXXXXX" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"><button id="referralClaimV25923" type="button" onclick="claimReferralV25923()">Активировать</button></div></section>${inviteMilestonesHtmlV25923(status)}`;
+  }catch(error){box.innerHTML=`<div class="referral-empty-v25923"><b>Не удалось загрузить приглашения</b><span>${esc(error?.message||String(error))}</span><button type="button" onclick="renderInviteV25923()">Повторить</button></div>`}
+}
+
+function ensureInviteTabV25923(){const nav=$('#profileTabs');if(!nav||$('#profileInviteV25923'))return;const tab=document.createElement('button');tab.type='button';tab.dataset.profileTab='invite';tab.textContent='🎟 Пригласить друзей';nav.insertBefore(tab,nav.querySelector('[data-profile-tab="activity"]')||null);const pane=document.createElement('section');pane.id='profileTabInvite';pane.className='profile-tab-pane';pane.innerHTML='<div id="profileInviteV25923"></div>';$('#profileTabActivity')?.before(pane)}
+const setProfileTabBeforeV25923=setProfileTabV16;
+setProfileTabV16=function(tab){ensureInviteTabV25923();const out=setProfileTabBeforeV25923?.apply(this,arguments);if(tab==='invite')renderInviteV25923();return out};
+window.setProfileTabV16=setProfileTabV16;
+
+/* Streak leaderboard is computed from public profile payloads, like global
+   card owner counts. It needs no client-trusted reward data. */
+try{LEADER_METRICS_V247.push(['streak','🔥 Огонёк'])}catch{}
+const loadLeaderboardBeforeV25923=loadLeaderboardV247;
+loadLeaderboardV247=async function(metric='level'){
+  if(metric!=='streak')return loadLeaderboardBeforeV25923?.apply(this,arguments);
+  communityV247.leaderMetric=metric;const box=$('#communityLeaderboardsV247');if(!box)return;box.innerHTML='<div class="community-loading-v247">Собираю огоньки…</div>';
+  try{if(senimeSignedV247?.())socialSyncPublicProfileV242?.().catch?.(()=>{});const rows=await socialRestV241('profiles?select=id,display_name,handle,avatar_url,public_payload&limit=5000'),me=senimeMeV247(),top=(rows||[]).map(p=>({...p,value:publicStreakV25923(p)})).filter(p=>p.value>0).sort((a,b)=>b.value-a.value||String(a.display_name||'').localeCompare(String(b.display_name||''))).slice(0,50),mine=top.findIndex(p=>p.id===me);
+    box.innerHTML=`<div class="leaderboards-page-v247"><header class="community-page-head-v247"><div><span>RANKED</span><h2>Лидерборд огоньков</h2><p>Сколько дней подряд человек смотрел verified-серию.</p></div>${mine>=0?`<div class="my-rank-v247">Твоё место <b>#${mine+1}</b></div>`:''}</header><div class="leader-metrics-v247">${LEADER_METRICS_V247.map(x=>`<button class="${metric===x[0]?'active':''}" onclick="loadLeaderboardV247('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="leader-table-v247">${top.map((r,i)=>`<button class="${r.id===me?'me':''}" onclick="openUserProfileV247('${r.id}')"><em>#${i+1}</em><span class="leader-avatar-v247">${socialAvatarV241(r)}</span><span><b>${esc(r.display_name||r.handle||'Пользователь')}</b><small>${esc(r.handle?'@'+r.handle:'')} · ежедневный просмотр</small></span><strong>🔥 ${r.value} дн.</strong></button>`).join('')||'<div class="community-empty-v247">Пока никто не начал стрик. Подтверди первую серию сегодня.</div>'}</div></div>`;
+  }catch(error){box.innerHTML=`<div class="community-empty-v247">Лидерборд пока недоступен.<br><small>${esc(error?.message||String(error))}</small></div>`}
+};
+window.loadLeaderboardV247=loadLeaderboardV247;
+ensureInviteTabV25923();
+window.SENIME_BUILD=SENIME_V25923;
+document.documentElement.dataset.senimeBuild=SENIME_V25923;
+console.info('Senime V25.9.23 public streaks and safe referrals active');
