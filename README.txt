@@ -1,3 +1,7 @@
+Senime V25.9.24 — Referral Link Landing
+
+- `senime.fun/?ref=XXXXXXXX` now opens a clear invitation screen instead of a silent homepage. The code is saved on the device, opens the account flow for guests, and takes a signed-in user directly to activation.
+
 Senime V25.9.23 — Public Streaks + Friend Invites
 
 - 🔥 viewing streak is now visible on every public profile and has its own leaderboard.

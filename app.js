@@ -13249,7 +13249,7 @@ async function referralStatusV25923(){return await senimeRpcV247('senime_referra
 function referralUrlV25923(code){const base=String(window.ANIME_AUTH_CONFIG?.siteUrl||location.origin).replace(/\/$/,'');return `${base}/?ref=${encodeURIComponent(code)}`}
 async function copyReferralV25923(){const code=window.__senimeReferralStatusV25923?.code;if(!code)return;const value=referralUrlV25923(code);try{await navigator.clipboard.writeText(value);profileToastV16?.('Ссылка скопирована','Отправь её другу — код подставится автоматически.')}catch{window.prompt('Скопируй ссылку',value)}}
 async function shareReferralV25923(){const code=window.__senimeReferralStatusV25923?.code;if(!code)return;const url=referralUrlV25923(code),text='Залетай в Senime по моей ссылке — тебе 10 дней Premium и 150 XP на старте 🎌';try{if(navigator.share){await navigator.share({title:'Senime',text,url});return}await navigator.clipboard.writeText(`${text}\n${url}`);profileToastV16?.('Приглашение скопировано','Можно отправлять другу.')}catch{}}
-async function claimReferralV25923(){const input=$('#referralCodeInputV25923'),code=String(input?.value||'').trim().toUpperCase();if(!code)return;const button=$('#referralClaimV25923');if(button)button.disabled=true;try{const result=await senimeRpcV247('senime_claim_referral',{input_code:code});await claimAdminGrantsV246?.({toast:true});profileToastV16?.('🎉 Код активирован',result?.message||'10 дней Premium и 150 XP уже выданы.');await renderInviteV25923()}catch(error){profileToastV16?.('Код не активирован',String(error?.message||error))}finally{if(button)button.disabled=false}}
+async function claimReferralV25923(){const input=$('#referralCodeInputV25923'),code=String(input?.value||'').trim().toUpperCase();if(!code)return false;const button=$('#referralClaimV25923');if(button)button.disabled=true;try{const result=await senimeRpcV247('senime_claim_referral',{input_code:code});await claimAdminGrantsV246?.({toast:true});profileToastV16?.('🎉 Код активирован',result?.message||'10 дней Premium и 150 XP уже выданы.');await renderInviteV25923();return true}catch(error){profileToastV16?.('Код не активирован',String(error?.message||error));return false}finally{if(button)button.disabled=false}}
 async function senimeCompleteReferralLevel10V25923(){if(!senimeSignedV247?.())return;try{const r=await senimeRpcV247('senime_complete_referral_level_10',{});if(r?.ok)profileToastV16?.('🎉 Пригласивший получил награду','Ты достиг LVL 10: ему выданы 5 дней Premium и 250 XP.')}catch{}}
 
 function inviteMilestonesHtmlV25923(status){const count=Number(status.reached_level_10)||0;return `<section class="referral-milestones-v25923"><header><span>РУБЕЖИ</span><b>${count} / 10 дошли до LVL 10</b></header><div>${REFERRAL_MILESTONES_V25923.map(item=>{const unlocked=count>=item.at,action=item.kind==='title'?'team':item.kind==='frame-plus'?'senpai':item.kind==='ambassador'?'ambassador':'first';return `<article class="${unlocked?'unlocked':''}"><i>${item.icon}</i><span><b>${item.at} приглашени${item.at===1?'е':'й'}</b><small>${item.title} · ${item.desc}</small></span>${unlocked?`<button type="button" onclick="referralApplyMilestoneV25923('${action}')">${item.kind==='title'?'Надеть титул':'Надеть'}</button>`:'<em>🔒</em>'}</article>`}).join('')}</div></section>`}
@@ -13282,3 +13282,33 @@ ensureInviteTabV25923();
 window.SENIME_BUILD=SENIME_V25923;
 document.documentElement.dataset.senimeBuild=SENIME_V25923;
 console.info('Senime V25.9.23 public streaks and safe referrals active');
+
+/* ==========================================================================
+   SENIME V25.9.24 · REFERRAL LINK LANDING
+   A ?ref= link must tell a new visitor what it is for; keeping it only in an
+   invisible input on the profile would make the referral path look broken. */
+const SENIME_V25924='25.9.24';
+const REFERRAL_PENDING_KEY_V25924='senime.pendingReferralCode.v25924';
+function pendingReferralCodeV25924(){
+  const urlCode=String(new URLSearchParams(location.search).get('ref')||'').trim().toUpperCase();
+  if(/^[A-Z0-9]{8}$/.test(urlCode)){try{localStorage.setItem(REFERRAL_PENDING_KEY_V25924,urlCode)}catch{}return urlCode}
+  try{const stored=String(localStorage.getItem(REFERRAL_PENDING_KEY_V25924)||'').trim().toUpperCase();return /^[A-Z0-9]{8}$/.test(stored)?stored:''}catch{return ''}
+}
+function clearPendingReferralV25924(){try{localStorage.removeItem(REFERRAL_PENDING_KEY_V25924)}catch{}const url=new URL(location.href);url.searchParams.delete('ref');history.replaceState(history.state,'',url.pathname+url.search+url.hash)}
+function closeReferralLandingV25924(){$('#referralLandingV25924')?.remove()}
+function openReferralInviteV25924(){closeReferralLandingV25924();if(!senimeSignedV247?.()){openAccountV23?.();return}openProfileV16?.();setProfileTabV16?.('invite')}
+function ensureReferralLandingV25924(){
+  const code=pendingReferralCodeV25924();if(!code||$('#referralLandingV25924'))return;
+  const overlay=document.createElement('div');overlay.id='referralLandingV25924';overlay.className='referral-landing-v25924';overlay.innerHTML=`<section><button type="button" class="referral-landing-close-v25924" onclick="closeReferralLandingV25924()">✕</button><span>ТЕБЯ ПРИГЛАСИЛИ В SENIME</span><div class="referral-landing-fire-v25924">🎌</div><h2>Стартуй с Premium</h2><p>Активируй код <b>${esc(code)}</b> после регистрации и получи <strong>10 дней Premium + 150 XP</strong>.</p><button type="button" onclick="openReferralInviteV25924()">${senimeSignedV247?.()?'Активировать код':'Войти или создать аккаунт'}</button><small>Код сохранён на этом устройстве. Активировать его можно один раз в первые 7 дней.</small></section>`;document.body.appendChild(overlay)
+}
+const renderAccountChromeBeforeV25924=renderAccountChromeV23;
+renderAccountChromeV23=function(){const out=renderAccountChromeBeforeV25924?.apply(this,arguments);if(senimeSignedV247?.()&&pendingReferralCodeV25924()){setTimeout(()=>{closeReferralLandingV25924();openProfileV16?.();setProfileTabV16?.('invite')},180)}return out};
+window.renderAccountChromeV23=renderAccountChromeV23;
+const claimReferralBeforeV25924=claimReferralV25923;
+claimReferralV25923=async function(){const out=await claimReferralBeforeV25924?.apply(this,arguments);if(out!==false)clearPendingReferralV25924();return out};
+window.claimReferralV25923=claimReferralV25923;
+setTimeout(ensureReferralLandingV25924,350);
+Object.assign(window,{closeReferralLandingV25924,openReferralInviteV25924});
+window.SENIME_BUILD=SENIME_V25924;
+document.documentElement.dataset.senimeBuild=SENIME_V25924;
+console.info('Senime V25.9.24 referral links now open an activation landing');
