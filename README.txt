@@ -1,3 +1,7 @@
+Senime V25.9.25 — Referral Frame Visual Fix
+
+- “Первый круг” is now a distinct, animated gold double-frame with a star; it visibly replaces the ordinary avatar border when equipped.
+
 Senime V25.9.24 — Referral Link Landing
 
 - `senime.fun/?ref=XXXXXXXX` now opens a clear invitation screen instead of a silent homepage. The code is saved on the device, opens the account flow for guests, and takes a signed-in user directly to activation.

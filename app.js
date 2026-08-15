@@ -13312,3 +13312,8 @@ Object.assign(window,{closeReferralLandingV25924,openReferralInviteV25924});
 window.SENIME_BUILD=SENIME_V25924;
 document.documentElement.dataset.senimeBuild=SENIME_V25924;
 console.info('Senime V25.9.24 referral links now open an activation landing');
+
+const SENIME_V25925='25.9.25';
+window.SENIME_BUILD=SENIME_V25925;
+document.documentElement.dataset.senimeBuild=SENIME_V25925;
+console.info('Senime V25.9.25 referral frame visual fixed');
