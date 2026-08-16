@@ -13317,3 +13317,104 @@ const SENIME_V25925='25.9.25';
 window.SENIME_BUILD=SENIME_V25925;
 document.documentElement.dataset.senimeBuild=SENIME_V25925;
 console.info('Senime V25.9.25 referral frame visual fixed');
+
+/* ==========================================================================
+   SENIME V25.9.26 · FAST, WORKER-FIRST OP/ED LOOKUP
+   AnimeThemes sometimes has no AniList mapping for a just-released title,
+   even though its MyAnimeList mapping already exists.  The old client asked
+   AniList first and silently gave up on an incomplete season object.  Music
+   lookup now prefers MAL, repairs a missing/stale MAL id through Senime's
+   Worker + Shikimori, runs seasons in a small parallel pool and renders a
+   local cache immediately on later visits.  A visitor never needs direct
+   access to api.animethemes.moe for the normal path.
+   ========================================================================== */
+const SENIME_V25926='25.9.26';
+const THEME_CACHE_KEY_V25926='senime.themeCache.v25926';
+const THEME_CACHE_TTL_V25926=1000*60*60*24*30;
+const THEME_REQUEST_TIMEOUT_V25926=8500;
+
+function themeCacheReadV25926(){
+  try{const raw=JSON.parse(localStorage.getItem(THEME_CACHE_KEY_V25926)||'{}');return raw&&typeof raw==='object'?raw:{}}catch{return {}}
+}
+function themeCacheKeyV25926(entry,media){
+  const ids=[Number(entry?.mal_id||media?.idMal||0),Number(entry?.anilist_id||media?.id||0),...(entry?.franchise_parts||[]).flatMap(p=>[Number(p?.mal_id||0),Number(p?.anilist_id||0)])].filter(Boolean).sort((a,b)=>a-b);
+  return ids.length?`ids:${ids.join(',')}`:`title:${normalize(entry?.title||media?.title?.english||media?.title?.romaji||'anime')}`;
+}
+function themeCacheGetV25926(entry,media){
+  const item=themeCacheReadV25926()[themeCacheKeyV25926(entry,media)];
+  return item&&Array.isArray(item.parts)&&Date.now()-Number(item.at||0)<THEME_CACHE_TTL_V25926?item.parts:null;
+}
+function themeCachePutV25926(entry,media,parts){
+  if(!Array.isArray(parts)||!parts.length)return;
+  try{const all=themeCacheReadV25926(),key=themeCacheKeyV25926(entry,media);all[key]={at:Date.now(),parts};for(const [k,v] of Object.entries(all))if(Date.now()-Number(v?.at||0)>THEME_CACHE_TTL_V25926)delete all[k];localStorage.setItem(THEME_CACHE_KEY_V25926,JSON.stringify(all))}catch{}
+}
+function themeTitleKeyV25926(value){return normalize(String(value||'').replace(/\b(?:season|part|cour|tv)\s*\d+\b/gi,' ').replace(/\b\d+(?:st|nd|rd|th)\s+season\b/gi,' ').replace(/\s+/g,' ').trim())}
+function themeCandidateScoreV25926(candidate,row){
+  const a=themeTitleKeyV25926(candidate?.title||''),names=[row?.name,row?.russian,...(row?.synonyms||[])].filter(Boolean).map(themeTitleKeyV25926),year=Number(candidate?.year||0),ry=Number(String(row?.aired_on||'').slice(0,4)||0);
+  let score=names.some(x=>x===a)?200:names.some(x=>x.includes(a)||a.includes(x))?110:0;
+  if(year&&ry)score+=year===ry?28:-Math.min(24,Math.abs(year-ry)*6);
+  if(String(candidate?.format||candidate?.type||'').toUpperCase().includes('TV')&&String(row?.kind||'').toLowerCase()==='tv')score+=8;
+  return score;
+}
+async function themeRepairIdsV25926(candidate,entry,{force=false}={}){
+  const fixed={...candidate};
+  if(!force&&Number(fixed.mal_id)>0)return fixed;
+  const phrases=[fixed.title,entry?.title,...(entry?.aliases||[])].filter(Boolean).map(x=>String(x).trim()).filter((x,i,a)=>x.length>1&&a.indexOf(x)===i).slice(0,3);
+  for(const phrase of phrases){
+    try{
+      const rows=await shikiGetV203(`/animes?limit=10&censored=true&search=${encodeURIComponent(phrase)}`);
+      const best=(rows||[]).map(row=>({row,score:themeCandidateScoreV25926(fixed,row)})).sort((a,b)=>b.score-a.score)[0];
+      if(best?.row&&best.score>=100){fixed.mal_id=Number(best.row.id)||0;fixed.title=fixed.title||best.row.name||entry?.title||'';if(candidate&&typeof candidate==='object'&&fixed.mal_id){candidate.mal_id=fixed.mal_id;candidate.title||=fixed.title}return fixed}
+    }catch(error){console.warn('V25.9.26 theme id repair',error)}
+  }
+  return fixed;
+}
+async function themeFetchWorkerV25926(site,id){
+  const query=new URLSearchParams();query.set('filter[has]','resources');query.set('filter[site]',site);query.set('filter[external_id]',String(id));query.set('include','animethemes.animethemeentries.videos,animethemes.song.artists,animethemes.group');
+  const backend=backendBaseV20();
+  const url=backend?`${backend}/animethemes/anime?${query.toString()}`:`https://api.animethemes.moe/anime?${query.toString()}`;
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),THEME_REQUEST_TIMEOUT_V25926);
+  try{const response=await fetch(url,{headers:{Accept:'application/json'},cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error(`AnimeThemes ${response.status}`);return await response.json()}finally{clearTimeout(timer)}
+}
+async function themePartFetchV25926(candidate,entry){
+  const c=await themeRepairIdsV25926(candidate,entry);
+  const probes=[["MyAnimeList",Number(c.mal_id||0)],["AniList",Number(c.anilist_id||0)]];
+  for(const [site,id] of probes){
+    if(!id)continue;
+    try{const payload=await themeFetchWorkerV25926(site,id),part=animeThemesPartV202(payload,c);if(part&&(part.openings.length||part.endings.length))return part}catch(error){console.warn('V25.9.26 AnimeThemes',site,id,error)}
+  }
+  // Some old grouped entries carry a wrong MAL number.  Only after the known
+  // identifiers failed do one title-based repair and retry its MAL mapping.
+  const repaired=await themeRepairIdsV25926({...c,mal_id:null},entry,{force:true});
+  if(Number(repaired.mal_id)>0&&Number(repaired.mal_id)!==Number(c.mal_id)){
+    try{const payload=await themeFetchWorkerV25926('MyAnimeList',repaired.mal_id),part=animeThemesPartV202(payload,repaired);if(part&&(part.openings.length||part.endings.length)){if(candidate&&typeof candidate==='object')candidate.mal_id=repaired.mal_id;return part}}catch(error){console.warn('V25.9.26 repaired AnimeThemes',repaired.mal_id,error)}
+  }
+  return null;
+}
+async function themeCollectV25926(entry,media,token){
+  let candidates=(entry?.franchise_parts?.length?entry.franchise_parts:[{mal_id:entry?.mal_id||media?.idMal,anilist_id:entry?.anilist_id||media?.id,title:entry?.title,year:entry?.year,type:entry?.format}]).map(p=>({...p}));
+  if(!candidates.length)candidates=[{title:entry?.title||'',year:entry?.year||null,type:entry?.format||''}];
+  const parts=[],limit=Math.min(candidates.length,20),workers=Math.min(3,limit);let next=0;
+  async function run(){while(next<limit){const index=next++,candidate=candidates[index];if(token!==detailExtrasTokenV6||!openedDetail)return;const status=$('#detailThemesStatus');if(status)status.textContent=`Ищу OP/ED через Senime · ${index+1}/${limit}…`;const found=await themePartFetchV25926(candidate,entry);if(found)parts.push(found)}}
+  await Promise.all(Array.from({length:workers},run));
+  return parts.sort((a,b)=>(Number(a.year)||9999)-(Number(b.year)||9999)||Number(a.mal_id||0)-Number(b.mal_id||0));
+}
+function themeRenderEmptyV25926(entry){
+  const title=entry?.title||'этого тайтла',query=encodeURIComponent(`${title} opening`),op=$('#detailOpenings'),ed=$('#detailEndings'),status=$('#detailThemesStatus');
+  if(op)op.innerHTML=`<div class="theme-empty">Для этого сезона пока нет метаданных OP. <a href="https://www.youtube.com/results?search_query=${query}" target="_blank" rel="noopener noreferrer">Искать ${esc(title)} OP ↗</a></div>`;
+  if(ed)ed.innerHTML='<div class="theme-empty">Эндинги пока не опубликованы в источнике.</div>';
+  if(status)status.textContent='Источник ответил, но для этого сезона пока нет музыкальных метаданных.';
+}
+loadFranchiseThemesV6=async function(entry,media,token){
+  if(uiSettings?.showThemes===false)return;renderThemesLoadingV6();
+  const cached=themeCacheGetV25926(entry,media);
+  if(cached?.length){renderFranchiseThemesV6(entry,cached,Number(entry?.mal_id||media?.idMal||cached[0]?.mal_id||0));const status=$('#detailThemesStatus');if(status)status.innerHTML=`OP/ED из кеша Senime · <b>${flattenFranchiseThemesV6(cached,'openings').length}</b> OP · <b>${flattenFranchiseThemesV6(cached,'endings').length}</b> ED`;}
+  try{
+    const parts=await themeCollectV25926(entry,media,token);if(token!==detailExtrasTokenV6||!openedDetail)return;
+    if(parts.length){themeCachePutV25926(entry,media,parts);const current=Number(entry?.mal_id||media?.idMal||parts[0]?.mal_id||0);renderFranchiseThemesV6(entry,parts,current);const status=$('#detailThemesStatus');if(status)status.innerHTML=`Senime Music · <b>${parts.length}</b> ${parts.length===1?'часть':'частей'} · <b>${flattenFranchiseThemesV6(parts,'openings').length}</b> OP · <b>${flattenFranchiseThemesV6(parts,'endings').length}</b> ED`;return}
+  }catch(error){console.warn('V25.9.26 music lookup',error)}
+  if(!cached?.length)themeRenderEmptyV25926(entry);
+};
+window.SENIME_BUILD=SENIME_V25926;
+document.documentElement.dataset.senimeBuild=SENIME_V25926;
+console.info('Senime V25.9.26 worker-first music lookup active');

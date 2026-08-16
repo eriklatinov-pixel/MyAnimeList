@@ -1,3 +1,11 @@
+Senime V25.9.26 — Fast Worker-First OP/ED Lookup
+
+- OP/ED lookup now uses the Senime Worker first, so visitors do not need direct access to AnimeThemes or a VPN for the normal flow.
+- Missing or stale season MAL IDs are restored from Shikimori by title, then retried through AnimeThemes.
+- Music loads up to three seasons in parallel and successful results are shown instantly from a 30-day local cache on later visits.
+- `Witch Hat Atelier` resolves through its MAL mapping (51553): OP “Kaze no Anthem” and its EDs are returned by the existing Worker.
+- The empty state now distinguishes a genuinely missing source entry from a failed lookup and provides a title-specific OP search link.
+
 Senime V25.9.25 — Referral Frame Visual Fix
 
 - “Первый круг” is now a distinct, animated gold double-frame with a star; it visibly replaces the ordinary avatar border when equipped.
