@@ -3559,3 +3559,27 @@ html[data-senime-route-kind="home"] .sidebar-nav-btn[data-sidebar-route="overvie
     pointer-events:none!important;
   }
 }
+
+/* V25.9.27: routed views use the available canvas instead of leaving wide,
+   clickable black gutters around every page on large displays. */
+@media(min-width:861px){
+  html[data-senime-route-kind="profile"] #profileModal,
+  html[data-senime-route-kind="community"] #communityModalV247,
+  html[data-senime-route-kind="watch"] #watchModal,
+  html[data-senime-route-kind="anime-detail"] #detailModal,
+  html[data-senime-route-kind="public-profile"] #publicProfileModalV242{
+    padding:16px!important;
+  }
+  html[data-senime-route-kind="profile"] .profile-shell,
+  html[data-senime-route-kind="community"] .community-shell-v247,
+  html[data-senime-route-kind="watch"] .watch-shell,
+  html[data-senime-route-kind="anime-detail"] .detail-shell,
+  html[data-senime-route-kind="public-profile"] .public-profile-shell-v242{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+  }
+  html[data-senime-route-kind="watch"] .watch-shell{
+    min-height:calc(100vh - 32px)!important;
+  }
+}

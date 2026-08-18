@@ -13418,3 +13418,170 @@ loadFranchiseThemesV6=async function(entry,media,token){
 window.SENIME_BUILD=SENIME_V25926;
 document.documentElement.dataset.senimeBuild=SENIME_V25926;
 console.info('Senime V25.9.26 worker-first music lookup active');
+
+/* ==========================================================================
+   SENIME V25.9.27 · PLAYER MEMORY + ROUTE SAFETY
+   - a remembered Kodik translation is restored for the next episode when it
+     exists there instead of being replaced by the first available track;
+   - resume is retried while a just-created Kodik iframe finishes booting;
+   - the empty route canvas is no longer a hidden "close player" button;
+   - home OP metadata goes through the configured Senime Worker first, so a
+     browser does not need direct access to api.animethemes.moe.
+   ========================================================================== */
+const SENIME_V25927='25.9.27';
+const WATCH_TRACK_PREF_KEY_V25927='senime.watchTrackPreference.v25927';
+
+function readTrackPrefV25927(){
+  try{const x=JSON.parse(localStorage.getItem(WATCH_TRACK_PREF_KEY_V25927)||'null');return x&&typeof x==='object'?x:null}catch{return null}
+}
+function writeTrackPrefV25927(value){
+  try{localStorage.setItem(WATCH_TRACK_PREF_KEY_V25927,JSON.stringify({...value,at:Date.now()}))}catch{}
+}
+function trackLabelV25927(source){
+  return String(source?.translation||source?.dubLabel||source?.dub||'').replace(/^\s*[🎙🎧🔊]+\s*/u,'').trim();
+}
+function rememberWatchTrackV25927(select){
+  const raw=String(select?.value||'');
+  if(!raw)return;
+  const option=select?.selectedOptions?.[0],label=String(option?.textContent||'').replace(/\s*·\s*(?:Kodik|нативный HLS|русская озвучка)\s*$/i,'').trim();
+  let provider=String(watchResolverV19?.active||audioProviderPrefV211?.()||'aniliberty');
+  let value=raw;
+  if(raw.startsWith('switch:kodik:')){provider='kodik';value=raw.slice('switch:kodik:'.length)}
+  else if(raw==='switch:animevost'){provider='animevost';value='AnimeVost'}
+  else if(raw==='switch:aniliberty'){provider='aniliberty';value=''}
+  else if(provider==='kodik'&&raw.startsWith('kodik:'))provider='kodik';
+  writeTrackPrefV25927({provider,value,label});
+  try{setAudioProviderPrefV211?.(provider)}catch{}
+}
+
+/* This runs before the legacy selector listeners, including their special
+   Kodik options that stop bubbling, so every deliberate user choice is kept. */
+document.addEventListener('change',event=>{
+  const select=event.target?.closest?.('#watchDub');
+  if(select)rememberWatchTrackV25927(select);
+},true);
+
+function sameWatchSpotV25927(snap){
+  return !!snap?.entry&&watchStateV15?.entry===snap.entry
+    &&Number(watchStateV15?.season)===snap.season
+    &&Number(watchStateV15?.episode)===snap.episode;
+}
+function preferredKodikSourceV25927(pref){
+  const rows=currentKodikSourcesV19?.()||[];
+  const wanted=String(pref?.value||''),label=String(pref?.label||'').toLowerCase();
+  return rows.find(x=>String(x?.dub||'')===wanted)
+    || rows.find(x=>label&&trackLabelV25927(x).toLowerCase()===label)
+    || null;
+}
+
+/* The older selector remembered only an in-page value. Kodik rebuilds its
+   options for each episode, so restore the real translation after discovery. */
+const loadWatchEpisodeBeforeV25927=loadWatchEpisodeV15;
+loadWatchEpisodeV15=async function(opts={}){
+  const snap={entry:watchStateV15?.entry||null,season:Number(watchStateV15?.season)||0,episode:Number(watchStateV15?.episode)||1};
+  const out=await loadWatchEpisodeBeforeV25927(opts);
+  const pref=readTrackPrefV25927();
+  if(pref?.provider!=='kodik'||!sameWatchSpotV25927(snap))return out;
+  try{
+    let source=preferredKodikSourceV25927(pref);
+    if(!source){
+      const found=await ensureKodikEpisodeV19?.({force:false});
+      if(!found||!sameWatchSpotV25927(snap))return out;
+      source=preferredKodikSourceV25927(pref);
+    }
+    const active=String(watchResolverV19?.active||''),selected=String($('#watchDub')?.value||'');
+    if(source&&(active!=='kodik'||selected!==String(source.dub||''))){
+      await switchUnifiedTrackV21?.('kodik',`switch:kodik:${String(source.dub||'')}`);
+    }
+  }catch(error){
+    console.warn('V25.9.27 preferred track restore',error);
+  }
+  return out;
+};
+window.loadWatchEpisodeV15=loadWatchEpisodeV15;
+
+function continueKodikReliablyV25927(){
+  const candidate=resumeCandidateV25918?.();
+  if(!candidate)return;
+  dismissKodikResumeV25918?.();
+  const seconds=Math.max(0,Math.floor(Number(candidate.t)||0));
+  const trySeek=()=>{
+    const frame=activeKodikFrameV25917?.();
+    if(!frame)return;
+    /* Kodik may still be creating its internal player when the overlay appears.
+       Repeating the documented command is harmless and prevents the first
+       command from being lost during that short window. */
+    postKodikCommandV25918?.('seek',{seconds});
+    setTimeout(()=>postKodikCommandV25918?.('play'),90);
+    setTimeout(()=>requestKodikTimeV25918?.(),230);
+  };
+  kodikTrackV25917.seekingUntilV25918=Date.now()+2400;
+  kodikTrackV25917.last=null;
+  [0,260,780,1560].forEach(delay=>setTimeout(trySeek,delay));
+  profileToastV16?.('Продолжаем просмотр',`С ${formatResumeTimeV25918(seconds)}`);
+}
+
+function forceKodikEpisodeV25927(snap){
+  if(!sameWatchSpotV25927(snap)||watchResolverV19?.active!=='kodik')return;
+  postKodikCommandV25918?.('change_episode',{episode:Math.max(1,Number(snap.episode)||1)});
+}
+/* The exact /series/ link is still the primary selector. This small API nudge
+   handles the cases where Kodik restores its own previous episode after its
+   iframe becomes ready, so Senime's selected episode remains authoritative. */
+const showKodikBeforeV25927=showKodikV19;
+showKodikV19=function(){
+  const snap={entry:watchStateV15?.entry||null,season:Number(watchStateV15?.season)||0,episode:Number(watchStateV15?.episode)||1};
+  const out=showKodikBeforeV25927?.apply(this,arguments);
+  if(out)[360,940].forEach(delay=>setTimeout(()=>forceKodikEpisodeV25927(snap),delay));
+  return out;
+};
+window.showKodikV19=showKodikV19;
+
+/* The original listener captured the old one-shot function. Intercept here in
+   the capture phase, so the reliable version is the only one that runs. */
+document.addEventListener('click',event=>{
+  if(!event.target?.closest?.('#watchResumeNowV25918'))return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  continueKodikReliablyV25927();
+},true);
+
+/* Outside the route card is visual space, not a close button. The back arrow,
+   Escape and browser Back still close the player deliberately. */
+document.addEventListener('click',event=>{
+  const modal=$('#watchModal');
+  if(!modal||modal.classList.contains('hidden')||event.target!==modal)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+},true);
+
+const fetchAnimeThemesHeroBeforeV25927=fetchAnimeThemesHeroV14;
+fetchAnimeThemesHeroV14=async function(entry){
+  const part=heroPartForEntryV14?.(entry)||entry;
+  let mal=Number(part?.mal_id||entry?.mal_id||0);
+  if(!mal&&entry){try{await resolveEntryV3(entry);mal=Number(entry.mal_id||0)}catch{}}
+  if(!mal)return null;
+  const key=String(mal);
+  if(animeThemesHeroCacheV14?.has(key))return animeThemesHeroCacheV14.get(key);
+  try{
+    const stored=localStorage.getItem(V14_HERO_THEME_CACHE_KEY+key);
+    if(stored){const value=JSON.parse(stored);if(value?.ts>Date.now()-7*86400000&&value?.data?.url){animeThemesHeroCacheV14.set(key,value.data);return value.data}}
+  }catch{}
+  try{
+    const backend=backendBaseV20?.();
+    if(backend){
+      const data=await themeFetchWorkerV25926('MyAnimeList',mal);
+      const picked=chooseAnimeThemesVideoV14(data);
+      animeThemesHeroCacheV14.set(key,picked||null);
+      if(picked)try{localStorage.setItem(V14_HERO_THEME_CACHE_KEY+key,JSON.stringify({ts:Date.now(),data:picked}))}catch{}
+      return picked||null;
+    }
+  }catch(error){
+    console.warn('V25.9.27 hero Worker fallback',error);
+  }
+  return fetchAnimeThemesHeroBeforeV25927(entry);
+};
+
+window.SENIME_BUILD=SENIME_V25927;
+document.documentElement.dataset.senimeBuild=SENIME_V25927;
+console.info('Senime V25.9.27 player memory, safer routes and Worker-first hero active');
