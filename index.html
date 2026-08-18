@@ -22,7 +22,7 @@
   <meta property="og:description" content="Смотри, собирай, оценивай и общайся. Аниме-лист, который подстраивается под тебя.">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2314161d'/%3E%3Cpath d='M18 42V18h8l12 14V18h8v24h-8L26 28v14z' fill='%23ff5c74'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=25.9.25">
+  <link rel="stylesheet" href="style.css?v=25.9.28">
 </head>
 <body>
   <aside id="appTopNav" class="app-sidebar" aria-label="Навигация">
@@ -778,7 +778,7 @@
 
         <section id="profileTabCollection" class="profile-tab-pane">
           <div class="profile-section-head"><div><span>COLLECTION</span><h3>Карточки персонажей</h3></div><div class="profile-ticket-actions"><button id="profileOpenTicket" type="button">🎴 Character <b id="collectionRegularTicketCount">0</b></button><button id="profileOpenWaifuTicket" class="waifu-ticket-btn" type="button">💗 Waifu <b id="collectionWaifuTicketCount">0</b></button></div></div>
-          <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За полный просмотр аниме теперь выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>👥 «владельцев»</b> показывает, у скольких разных пользователей есть эта карточка; повторы одного человека число не накручивают.</div>
+          <div class="profile-collection-note"><b>🎴 Character Ticket</b> — общий билет из знакомых тайтлов. За завершённый сезон выдаётся <b>🎟️ тематический Ticket</b>: например, Another Ticket содержит только персонажей Another. Нажми билет — появится карточка персонажа. Редкость персонажа фиксирована его популярностью, а повтор превращается в Stars. <b>👥 «владельцев»</b> показывает, у скольких разных пользователей есть эта карточка; повторы одного человека число не накручивают.</div>
           <div class="collection-toolbar-v247">
             <div class="collection-search-v247"><span>⌕</span><input id="collectionSearchV247" placeholder="Персонаж или аниме..." autocomplete="off" oninput="collectionToolbarInputV2471(this.value)"></div>
             <select id="collectionRarityV247" title="Редкость" onchange="collectionToolbarSelectV2471('rarity',this.value)">
@@ -1026,7 +1026,7 @@
         </form>
 
         <form id="accountRegisterForm" class="account-form hidden">
-          <label><span>Имя в профиле</span><input id="accountRegisterName" type="text" autocomplete="nickname" maxlength="32" required placeholder="Например: SeNite"></label>
+          <label><span>Ник <small>можно поменять потом</small></span><input id="accountRegisterName" type="text" autocomplete="nickname" maxlength="32" required placeholder="Например: SeNite"></label>
           <label><span>Email</span><input id="accountRegisterEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>
           <label><span>Пароль</span><div class="account-password-field"><input id="accountRegisterPassword" type="password" autocomplete="new-password" minlength="10" required placeholder="Минимум 10 символов"><button type="button" data-password-toggle="accountRegisterPassword" aria-label="Показать пароль">◉</button></div></label>
           <label><span>Повтори пароль</span><div class="account-password-field"><input id="accountRegisterPassword2" type="password" autocomplete="new-password" minlength="10" required placeholder="Ещё раз"><button type="button" data-password-toggle="accountRegisterPassword2" aria-label="Показать пароль">◉</button></div></label>
@@ -1036,7 +1036,7 @@
           </div>
           <button id="accountRegisterSubmit" class="account-primary" type="submit">Создать аккаунт</button>
           <small class="account-policy-note">Пароль обрабатывает Supabase Auth. Senime не сохраняет его в данных сайта.</small>
-          <div class="account-security-note-v248">🛡️ RLS · Turnstile · HTTPS-ready · серверные API secrets</div>
+          <div class="account-security-note-v248">После регистрации покажем, с чего начать.</div>
         </form>
 
         <div class="account-guest-foot">
@@ -1060,7 +1060,7 @@
           <button id="accountOpenProfile" type="button">Открыть профиль</button>
           <button id="accountLogout" class="secondary" type="button">Выйти</button>
         </div>
-        <p class="account-user-note">При первом входе твой текущий локальный список автоматически переносится в аккаунт. Серверная экономика и Premium будут подключены отдельно — их нельзя будет накрутить через DevTools.</p>
+        <p class="account-user-note">Список, прогресс и награды автоматически сохраняются в аккаунте.</p>
       </div>
 
       <div id="accountRecoveryView" class="account-recovery-view hidden">
@@ -1098,6 +1098,6 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
   <script src="auth-config.js?v=25.9.26"></script>
-  <script src="app.js?v=25.9.26"></script>
+  <script src="app.js?v=25.9.28"></script>
 </body>
 </html>

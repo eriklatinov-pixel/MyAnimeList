@@ -6153,7 +6153,7 @@ function ensureAnimeTicketPanelV205(){
 }
 function renderAnimeTicketsV205(){
   const p=ensureCardProfileV205(),panel=ensureAnimeTicketPanelV205();if(!panel)return;const rows=Object.entries(p.animeTickets||{}).filter(([,t])=>Number(t.count)>0).sort((a,b)=>String(a[1].title).localeCompare(String(b[1].title)));
-  panel.classList.toggle('hidden',!rows.length);panel.innerHTML=rows.length?`<div class="anime-ticket-head-v205"><div><span>ТЕМАТИЧЕСКИЕ БИЛЕТЫ</span><b>За полный просмотр аниме</b></div><small>Внутри — только персонажи этого тайтла</small></div><div class="anime-ticket-list-v205">${rows.map(([key,t])=>`<button type="button" onclick="openAnimeTicketV205('${esc(key)}')">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<span><b>${esc(t.title)} Ticket</b><small>×${Number(t.count)||0}</small></span></button>`).join('')}</div>`:'';
+  panel.classList.toggle('hidden',!rows.length);panel.innerHTML=rows.length?`<div class="anime-ticket-head-v205"><div><span>ТЕМАТИЧЕСКИЕ БИЛЕТЫ</span><b>За завершённый сезон</b></div><small>Внутри — только персонажи этого тайтла</small></div><div class="anime-ticket-list-v205">${rows.map(([key,t])=>`<button type="button" onclick="openAnimeTicketV205('${esc(key)}')">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<span><b>${esc(t.title)} Ticket</b><small>×${Number(t.count)||0}</small></span></button>`).join('')}</div>`:'';
 }
 
 async function resolveTicketMediaV205(ticket){
@@ -9204,7 +9204,7 @@ const verifyEpisodeBeforeRewardsV247=verifyEpisodeV16;
 verifyEpisodeV16=function(){const e=watchStateV15?.entry,key=e?entryKeyV16(e):'',p=ensureCardProfileV205(),was=key&&!!p.titleRewards?.[key];const ok=verifyEpisodeBeforeRewardsV247();if(ok&&e&&key&&!was&&p.titleRewards?.[key]){const target=themedTicketRewardCountV247(e);if(target>1){addAnimeTicketV205(e,target-1,{reason:`${e.title} · полный просмотр · комплект ×${target}`});profileToastV16(`🎟️ ${e.title} Ticket ×${target}`,'Награда за полный просмотр');saveData();renderProfileV16()}}schedulePublicSyncV244?.(500);return ok};window.verifyEpisodeV16=verifyEpisodeV16;
 
 /* A themed set stops when all characters are owned, and stays visibly complete. */
-renderAnimeTicketsV205=function(){const p=ensureCardProfileV205(),panel=ensureAnimeTicketPanelV205();if(!panel)return;const rows=Object.entries(p.animeTickets||{}).filter(([,t])=>Number(t.count)>0||t.complete).sort((a,b)=>String(a[1].title).localeCompare(String(b[1].title)));panel.classList.toggle('hidden',!rows.length);panel.innerHTML=rows.length?`<div class="anime-ticket-head-v205"><div><span>ТЕМАТИЧЕСКИЕ БИЛЕТЫ</span><b>За полный просмотр аниме</b></div><small>Повторы не выпадают</small></div><div class="anime-ticket-list-v205">${rows.map(([key,t])=>`<button class="${t.complete?'complete-v247':''}" ${t.complete?'disabled':''} onclick="openAnimeTicketV205('${attrV247(key)}')">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<span><b>${esc(t.title)} Ticket</b><small>${t.complete?`COLLECTION COMPLETE · ${Number(t.totalCharacters)||'100%'} персонажей`:`×${Number(t.count)||0}`}</small></span></button>`).join('')}</div>`:''};
+renderAnimeTicketsV205=function(){const p=ensureCardProfileV205(),panel=ensureAnimeTicketPanelV205();if(!panel)return;const rows=Object.entries(p.animeTickets||{}).filter(([,t])=>Number(t.count)>0||t.complete).sort((a,b)=>String(a[1].title).localeCompare(String(b[1].title)));panel.classList.toggle('hidden',!rows.length);panel.innerHTML=rows.length?`<div class="anime-ticket-head-v205"><div><span>ТЕМАТИЧЕСКИЕ БИЛЕТЫ</span><b>За завершённый сезон</b></div><small>Нажми билет — получишь нового персонажа</small></div><div class="anime-ticket-list-v205">${rows.map(([key,t])=>`<button class="${t.complete?'complete-v247':''}" ${t.complete?'disabled':''} onclick="openAnimeTicketV205('${attrV247(key)}')">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<span><b>${esc(t.title)} Ticket</b><small>${t.complete?`COLLECTION COMPLETE · ${Number(t.totalCharacters)||'100%'} персонажей`:`×${Number(t.count)||0}`}</small></span></button>`).join('')}</div>`:''};
 openAnimeTicketV205=async function(key){const p=ensureCardProfileV205(),ticket=p.animeTickets?.[key];if(!ticket||Number(ticket.count)<1){if(ticket?.complete)profileToastV16('COLLECTION COMPLETE',`${ticket.title} · все персонажи собраны`);else profileToastV16('Этот Ticket закончился');return}let media=null;try{media=await resolveTicketMediaV205(ticket)}catch{}if(!media){profileToastV16('Не удалось открыть Ticket','Ticket сохранён.');return}const edges=media.characters?.edges||[];ticket.totalCharacters=edges.length;const edge=chooseUnownedEdgeV246(edges,media?.popularity),node=edge?.node;if(!node?.id){ticket.complete=true;saveData();renderAnimeTicketsV205();profileToastV16('COLLECTION COMPLETE',`${ticket.title} · все ${edges.length} персонажей собраны`);return}const out=await commitCardPullV205(node,media,{ticketType:'anime',characterRole:edge?.role||'',mediaPopularity:media?.popularity||0});ticket.count--;if(unownedEdgesV246(edges).filter(x=>String(x.node?.id)!==String(node.id)).length<=0)ticket.complete=true;profileActivityV16('🎟️',`${ticket.title} Ticket: ${node.name?.full||'Персонаж'}`,`${out.rarity} · новая карточка`);saveData();renderProfileChromeV16();revealCardV205(node,media,out.rarity,`${ticket.title} Ticket · новая карточка`,'character');renderProfileV16()};window.openAnimeTicketV205=openAnimeTicketV205;
 
 /* Cheaper ticket economy. Premium = shop value, not leaderboard power. */
@@ -13585,3 +13585,123 @@ fetchAnimeThemesHeroV14=async function(entry){
 window.SENIME_BUILD=SENIME_V25927;
 document.documentElement.dataset.senimeBuild=SENIME_V25927;
 console.info('Senime V25.9.27 player memory, safer routes and Worker-first hero active');
+
+/* ==========================================================================
+   SENIME V25.9.28 · CLEAR FIRST STEPS + VISIBLE SEASON REWARDS
+   A reward is a moment, not a hidden number in the collection.
+   ========================================================================== */
+const SENIME_V25928='25.9.28';
+
+function ensureSeasonRewardModalV25928(){
+  let modal=$('#seasonRewardModalV25928');
+  if(modal)return modal;
+  document.body.insertAdjacentHTML('beforeend',`<div id="seasonRewardModalV25928" class="season-reward-modal-v25928 hidden" role="dialog" aria-modal="true" aria-labelledby="seasonRewardTitleV25928">
+    <section class="season-reward-card-v25928">
+      <button id="seasonRewardCloseV25928" class="season-reward-close-v25928" type="button" aria-label="Закрыть">✕</button>
+      <div class="season-reward-cover-v25928"><img id="seasonRewardCoverV25928" alt=""><span id="seasonRewardFallbackV25928">🎟️</span><b>SEASON CLEAR</b></div>
+      <div class="season-reward-copy-v25928">
+        <span>НАГРАДА ЗА ПРОСМОТР</span>
+        <h2 id="seasonRewardTitleV25928">Сезон завершён</h2>
+        <p id="seasonRewardTextV25928"></p>
+        <div class="season-reward-ticket-v25928"><i>🎟️</i><div><strong id="seasonRewardCountV25928">×2</strong><small id="seasonRewardTicketNameV25928">Тематические билеты</small></div></div>
+        <p class="season-reward-explain-v25928">Это ещё не карточки: каждый билет откроет одного нового персонажа именно из этого аниме.</p>
+        <div class="season-reward-actions-v25928"><button id="seasonRewardOpenV25928" type="button">Открыть билет</button><button id="seasonRewardLaterV25928" class="secondary" type="button">Позже</button></div>
+      </div>
+    </section>
+  </div>`);
+  modal=$('#seasonRewardModalV25928');
+  const close=()=>modal.classList.add('hidden');
+  $('#seasonRewardCloseV25928').onclick=close;
+  $('#seasonRewardLaterV25928').onclick=close;
+  modal.addEventListener('click',event=>{if(event.target===modal)close()});
+  $('#seasonRewardOpenV25928').onclick=()=>{
+    const key=String(modal.dataset.ticketKey||'');
+    close();
+    if(!key)return;
+    openProfileV16?.();
+    setProfileTabV16?.('collection');
+    setTimeout(()=>{
+      $('#animeTicketsV205')?.scrollIntoView({behavior:'smooth',block:'center'});
+      openAnimeTicketV205?.(key);
+    },220);
+  };
+  return modal;
+}
+
+function showSeasonRewardV25928(entry,record,tickets){
+  if(!entry||!record||Number(tickets)<1)return;
+  const modal=ensureSeasonRewardModalV25928(),profile=ensureCardProfileV205(),key=String(entryKeyV16(entry)),ticket=profile.animeTickets?.[key];
+  if(!ticket)return;
+  modal.dataset.ticketKey=key;
+  $('#seasonRewardTitleV25928').textContent=`${record.partTitle||`Часть ${Number(record.season)||1}`} завершена`;
+  $('#seasonRewardTextV25928').textContent=`${entry.title} · все серии просмотрены`;
+  $('#seasonRewardCountV25928').textContent=`×${Math.max(1,Number(tickets)||1)}`;
+  $('#seasonRewardTicketNameV25928').textContent=`${entry.title} Ticket`;
+  const image=$('#seasonRewardCoverV25928'),fallback=$('#seasonRewardFallbackV25928'),cover=String(ticket.cover||entry.cover||'');
+  if(cover){image.src=cover;image.classList.remove('hidden');fallback.classList.add('hidden')}else{image.removeAttribute('src');image.classList.add('hidden');fallback.classList.remove('hidden')}
+  $('#seasonRewardOpenV25928').textContent=`Открыть билет · ×${Math.max(1,Number(ticket.count)||1)}`;
+  modal.classList.remove('hidden');
+}
+
+/* On a title with many parts, eight identical-number buttons make viewers
+   guess what they mean. The current part stays visible; switching is one
+   labelled select instead of a second grid above the series grid. */
+enhanceSeasonTabsV151=function(){
+  const entry=watchStateV15.entry;if(!entry)return;
+  const parts=watchPartsV15(entry),current=Math.min(watchStateV15.season,parts.length-1),box=$('#watchSeasonTabs'),caption=$('#watchPartCurrent');
+  if(caption)caption.innerHTML=watchPartCaptionV151(parts[current],current);
+  if(!box)return;
+  if(parts.length<=1){box.innerHTML='';return;}
+  box.innerHTML=`<label class="watch-season-select-v25928"><span>Выбрать часть</span><select id="watchSeasonSelectV25928">${parts.map((part,index)=>`<option value="${index}" ${index===current?'selected':''}>${index+1}. ${esc(part.title||`Сезон ${index+1}`)}${part.year?` · ${esc(part.year)}`:''}</option>`).join('')}</select></label>`;
+  $('#watchSeasonSelectV25928').onchange=event=>watchSetSeasonV15(Number(event.target.value)||0);
+};
+
+const verifyEpisodeBeforeV25928=verifyEpisodeV16;
+verifyEpisodeV16=function(){
+  const entry=watchStateV15?.entry,season=Math.max(0,Number(watchStateV15?.season)||0),before=entry?seasonRecordV25917(entry,season,false)?.rewardedAt:null;
+  const ok=verifyEpisodeBeforeV25928?.apply(this,arguments);
+  const record=entry?seasonRecordV25917(entry,season,false):null;
+  if(ok&&entry&&!before&&record?.rewardedAt&&Number(record.rewardTickets)>0)showSeasonRewardV25928(entry,record,record.rewardTickets);
+  return ok;
+};
+window.verifyEpisodeV16=verifyEpisodeV16;
+
+function ensureFirstStartModalV25928(){
+  let modal=$('#firstStartModalV25928');
+  if(modal)return modal;
+  document.body.insertAdjacentHTML('beforeend',`<div id="firstStartModalV25928" class="first-start-modal-v25928 hidden" role="dialog" aria-modal="true" aria-labelledby="firstStartTitleV25928">
+    <section class="first-start-card-v25928">
+      <span>ДОБРО ПОЖАЛОВАТЬ В SENIME</span>
+      <h2 id="firstStartTitleV25928">Здесь всё просто</h2>
+      <p>Не нужно сначала настраивать профиль или разбираться в карточках.</p>
+      <ol><li><b>Найди</b> аниме в каталоге.</li><li><b>Добавь</b> его в «Сейчас» или «Посмотреть».</li><li><b>Смотри</b> — прогресс и награды появятся сами.</li></ol>
+      <div><button id="firstStartCatalogV25928" type="button">Найти первое аниме</button><button id="firstStartLaterV25928" class="secondary" type="button">Пока просто осмотрюсь</button></div>
+      <small>Профиль, задания и коллекция пригодятся потом — на старте их можно не трогать.</small>
+    </section>
+  </div>`);
+  modal=$('#firstStartModalV25928');
+  const finish=()=>{const p=ensureProfileV16();p.onboardingV25928={seenAt:Date.now()};saveData();modal.classList.add('hidden')};
+  $('#firstStartLaterV25928').onclick=finish;
+  $('#firstStartCatalogV25928').onclick=()=>{finish();catalogShowV10?.();setTimeout(()=>$('#catalogSearchV10, #catalogSearch')?.focus(),350)};
+  return modal;
+}
+
+function maybeShowFirstStartV25928(){
+  if(!(accountSignedInV236?.()||accountSessionV23?.access_token))return false;
+  const p=ensureProfileV16();
+  if(p.onboardingV25928?.seenAt)return false;
+  const hasAnime=Object.values(latestData?.sections||{}).some(rows=>Array.isArray(rows)&&rows.length);
+  if(hasAnime){p.onboardingV25928={seenAt:Date.now(),migrated:true};saveData();return false;}
+  closeAccountV23?.();
+  ensureFirstStartModalV25928().classList.remove('hidden');
+  return true;
+}
+
+const accountLoginBeforeV25928=accountLoginV23;
+accountLoginV23=async function(){const out=await accountLoginBeforeV25928?.apply(this,arguments);setTimeout(maybeShowFirstStartV25928,550);return out};
+const accountRegisterBeforeV25928=accountRegisterV23;
+accountRegisterV23=async function(){const out=await accountRegisterBeforeV25928?.apply(this,arguments);if(out?.signed)setTimeout(maybeShowFirstStartV25928,650);return out};
+
+window.SENIME_BUILD=SENIME_V25928;
+document.documentElement.dataset.senimeBuild=SENIME_V25928;
+console.info('Senime V25.9.28 clear onboarding, season reward reveal and simplified season picker active');
